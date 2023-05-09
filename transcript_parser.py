@@ -1,4 +1,3 @@
-
 import os
 import re
 
@@ -121,6 +120,29 @@ def interview_parser(filename):
         
         return interview
 
+#Get raw text for a person (Interviewer or Respondent)
+def get_raw_section_text(section_text, person):
+    if pd.isna(section_text):
+        return ''
+    
+    indices = ['I:', 'R:']
+    raw_text = ''
+    
+    index = 'I:' if person == 'Interviewer' else 'R:' if person == 'Respondent' else None
+    lines = section_text.split('\n')
+    insert = False
+
+    for line in lines:
+        if line.startswith(index):
+            insert = True
+            line = line[2:].strip()
+        elif any(line.startswith(i) for i in indices):
+            insert = False
+
+        if insert:
+            raw_text = ' '.join([raw_text, line])
+
+    return raw_text.strip()
 
 #parse folder of transcripts
 def wave_parser(folder):
@@ -130,9 +152,8 @@ def wave_parser(folder):
         interview = interview_parser(filename)
         interviews.append(interview)
     interviews = pd.DataFrame(interviews)
+
+    for person in ['Interviewer', 'Respondent']:
+        interviews[person + ' Full Text'] = interviews[interview_sections].applymap(lambda x: get_raw_section_text(x, person)).apply(lambda x: ' '.join(x).strip(), axis=1)
+
     return interviews
-
-
-interviews = wave_parser('downloads/wave_1')
-
-

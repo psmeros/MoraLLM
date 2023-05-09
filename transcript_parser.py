@@ -4,7 +4,7 @@ import re
 
 import pandas as pd
 
-TRANSCRIPT_ENCODING='iso-8859-1'
+TRANSCRIPT_ENCODING='windows-1252'
 
 interview_sections = ['Household',
             'Friends',
@@ -25,10 +25,8 @@ interview_sections = ['Household',
             'The Media',
             'Future Prospects']
 
-interview_metadata = ['IC',
-                      'M',
+interview_metadata = ['M',
                       'W',
-                      'ICM',
                       'Name of Interviewer',
                       'Date of Interview',
                       'Interview Location',
@@ -39,38 +37,47 @@ interview_metadata = ['IC',
                       'Survey Religion',
                       'Survey Denom',
                       'Religious Affiliation',
-                      'Physical Description',
-                      'Field Notes']
+                      'Physical Description']
 
-#M: 0
-#W: 0
-#ICM:
+skipped_comments =['#IC',
+                   '#ICM',
+                   '#C',
+                   '#OC',
+                   '#I',
+                   '#NC',
+                   '#X',
+                   '#IN',
+                   '#IX',
+                   '#R',
+                   '#FIELD NOTES',
+                   '#END']
 
-#Name of Interviewer:	Chris Smith
-#Date of Interview:	4/29/03
-#Interview Location:	Lansdale Public Library, Lansdale, PA
-#Interview Code:	CS-07216
 
-#AGE: 14
-#GENDER: Boy
-#RACE: White
-#SURVEY RELIGION: Christian	
-#SURVEY DENOM: Bible Church/ Bible Believe
-#RELIGIOUS AFFILIATION: Bible Church
- 
-#PHYSICAL DESCRIPTION: Bleached blond hair, wrestler, acne on face, braces, talked a little funny
+#Metadata normalization
+def normalize_metadata(line):
+    try:
+        key, value = line.split(':', 1)
+    except:
+        key, value = line, ''
 
-#FIELD NOTES
+    key = re.sub(r'[ ]+', '', key.strip().lower()[1:])
+    for m in interview_metadata:
+        if re.sub(r'[ ]+', '', m.lower()) == key:
+            return m, value.strip()
+    
+    print('Metadata not found: ' + key)
+    return None, None
+
 
 #Section name normalization
 def normalize_section_name(section):
     section = re.sub(r'[\d: -]+', '', section[1:]).strip().lower()
     for s in interview_sections:
-        if re.sub(r'[ -]+', '', s).lower() in section:
+        if section.startswith(re.sub(r'[ -]+', '', s).lower()):
             return s
-    if section not in ['start', 'end', 'fieldnotes']:
-        print('Section not found: ' + section)
-
+    
+    print('Section not found: ' + section)
+    return None
 
 def interview_parser(filename):
     with open(filename, 'r', encoding=TRANSCRIPT_ENCODING) as f:
@@ -78,28 +85,36 @@ def interview_parser(filename):
         lines = text.split('\n')
         interview = {}
         section = ''
-
+        metadata_lines = True
 
         for line in lines:
 
-            #Initial key-value pairs
-            if line.startswith('#') and  re.search(r':[ \t]', line):
-                key, value = line.split(':', 1)
-                interview[key[1:]] = value.strip()
+            #End of interview metadata
+            if line.startswith('#START'):
+                metadata_lines = False
+
+            #Skip comments
+            elif any(re.sub(r'[\s]+', '', line).lower().startswith(re.sub(r'[\s]+', '', comment).lower()) for comment in skipped_comments):
+                section = ''
+
+            #Interview metadata
+            elif line.startswith('#') and  metadata_lines:
+                key, value = normalize_metadata(line)
+                interview[key] = value
             
             #Section headers
             elif line.startswith('#'):
-                if section != '':
-                    interview[section] = interview[section].strip()
+                # if section != '':
+                #     interview[section] = interview[section].strip()
                 
                 #Section name normalization
                 section = normalize_section_name(line)
                 
-                if section in ['START', 'END']:
-                    section = ''
-                else:
+                if section != '' and section in interview:
+                    interview[section] += '\n'
+                elif section != '' and section not in interview:
                     interview[section] = ''
-            
+                               
             #Section content
             elif not line.startswith('#') and section != '':
                 interview[section] += line + '\n'
@@ -118,7 +133,7 @@ def wave_parser(folder):
     return interviews
 
 
-interview = interview_parser('downloads/wave_1/TC-14180-13-B-W-RC-RG-SD_S.txt')
+#interview = interview_parser('downloads/wave_1/TC-14180-13-B-W-RC-RG-SD_S.txt')
 
 interviews = wave_parser('downloads/wave_1')
 

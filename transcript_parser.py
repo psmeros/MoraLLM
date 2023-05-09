@@ -18,7 +18,6 @@ interview_sections = ['Household',
             'Individualization/De-Institutionalization',
             'Evaluate Church',
             'School',
-            'Home School',
             'Volunteering & Organized Activities',
             'Dating',
             'Sexuality',
@@ -39,16 +38,16 @@ interview_metadata = ['M',
                       'Religious Affiliation',
                       'Physical Description']
 
-skipped_comments =['#IC',
-                   '#ICM',
-                   '#C',
-                   '#OC',
-                   '#I',
-                   '#NC',
-                   '#X',
-                   '#IN',
-                   '#IX',
-                   '#R',
+skipped_comments =['#IC:',
+                   '#ICM:',
+                   '#C:',
+                   '#OC:',
+                   '#I:',
+                   '#NC:',
+                   '#X:',
+                   '#IN:',
+                   '#IX:',
+                   '#R:',
                    '#FIELD NOTES',
                    '#END']
 
@@ -104,16 +103,17 @@ def interview_parser(filename):
             
             #Section headers
             elif line.startswith('#'):
-                # if section != '':
-                #     interview[section] = interview[section].strip()
+
+                #Strip previous section
+                if section != '':
+                    interview[section] = interview[section].strip()
                 
                 #Section name normalization
                 section = normalize_section_name(line)
                 
-                if section != '' and section in interview:
-                    interview[section] += '\n'
-                elif section != '' and section not in interview:
-                    interview[section] = ''
+                #Initialize section
+                interview[section] = interview.get(section, '') + '\n'
+
                                
             #Section content
             elif not line.startswith('#') and section != '':
@@ -133,14 +133,6 @@ def wave_parser(folder):
     return interviews
 
 
-#interview = interview_parser('downloads/wave_1/TC-14180-13-B-W-RC-RG-SD_S.txt')
-
 interviews = wave_parser('downloads/wave_1')
-
-
-#interview['DATING']
-
-
-#def fiter_interview(person):
 
 

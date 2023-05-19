@@ -2,6 +2,7 @@ import os
 import re
 
 import pandas as pd
+import numpy as np
 
 TRANSCRIPT_ENCODING='windows-1252'
 
@@ -43,13 +44,18 @@ skipped_comments =['#IC:',
                    '#OC:',
                    '#I:',
                    '#NC:',
-                   '#X:',
                    '#IN:',
-                   '#IX:',
-                   '#R:',
                    '#FIELD NOTES',
                    '#END']
 
+interview_participants = ['I:',
+                          'R:']
+
+markers_mapping = {'#X:': 'R:',
+                   '#IX:': 'I:',
+                   '#R:': 'R:',
+                   r':M\d+:': ':',
+                   r':W\d+:': ':'}
 
 #Metadata normalization
 def normalize_metadata(line):
@@ -80,6 +86,11 @@ def normalize_section_name(section):
 def interview_parser(filename):
     with open(filename, 'r', encoding=TRANSCRIPT_ENCODING) as f:
         text = f.read()
+
+        #apply markers mapping
+        for k, v in markers_mapping.items():
+            text = re.sub(k, v, text)
+
         lines = text.split('\n')
         interview = {}
         section = ''
@@ -102,10 +113,6 @@ def interview_parser(filename):
             
             #Section headers
             elif line.startswith('#'):
-
-                #Strip previous section
-                if section != '':
-                    interview[section] = interview[section].strip()
                 
                 #Section name normalization
                 section = normalize_section_name(line)
@@ -120,29 +127,28 @@ def interview_parser(filename):
         
         return interview
 
-#Get raw text for a person (Interviewer or Respondent)
-def get_raw_section_text(section_text, person):
-    if pd.isna(section_text):
-        return ''
-    
-    indices = ['I:', 'R:']
+#Get raw text for an interview participant (Interviewer or Respondent)
+def get_raw_section_text(section_text, interview_participant):
     raw_text = ''
-    
-    index = 'I:' if person == 'Interviewer' else 'R:' if person == 'Respondent' else None
-    lines = section_text.split('\n')
-    insert = False
+    try:
+        lines = section_text.split('\n')
+        insert = False
 
-    for line in lines:
-        if line.startswith(index):
-            insert = True
-            line = line[2:].strip()
-        elif any(line.startswith(i) for i in indices):
-            insert = False
+        for line in lines:
+            if line.startswith(interview_participant):
+                insert = True
+                line = line[len(interview_participant):].strip()
+            elif any(line.startswith(i) for i in interview_participants):
+                insert = False
 
-        if insert:
-            raw_text = ' '.join([raw_text, line])
+            if insert:
+                raw_text = ' '.join([raw_text.strip(), line])
 
-    return raw_text.strip()
+        raw_text = raw_text.strip()
+    except:
+        pass
+
+    return raw_text
 
 #parse folder of transcripts
 def wave_parser(folder):
@@ -153,7 +159,17 @@ def wave_parser(folder):
         interviews.append(interview)
     interviews = pd.DataFrame(interviews)
 
-    for person in ['Interviewer', 'Respondent']:
-        interviews[person + ' Full Text'] = interviews[interview_sections].applymap(lambda x: get_raw_section_text(x, person)).apply(lambda x: ' '.join(x).strip(), axis=1)
+    #Get raw text for each interview section and participant
+    for section in interview_sections:
+        for participant in interview_participants:
+            interviews[participant + ' ' + section] = interviews[section].apply(lambda s: get_raw_section_text(s, participant))
+
+    #cleaning
+    interviews[interview_sections] = interviews[interview_sections].applymap(lambda x: x.strip() if not pd.isna(x) else x)
+    interviews = interviews.replace('', pd.NA)
 
     return interviews
+
+
+if __name__ == '__main__':
+    interviews = wave_parser('downloads/wave_1')

@@ -1,46 +1,67 @@
-import pandas as pd
-import numpy as np
-import spacy
+import itertools
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import spacy
+from pandarallel import pandarallel
+from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-
+from constants import INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS
 from transcript_parser import wave_parser
 
+
+
 #Compute embeddings for a folder of transcripts
-def compute_embeddings(wave_folder, output_file):
-    nlp = spacy.load("en_core_web_sm")
+def compute_embeddings(wave_folder, output_file, section_list=None):
+    pandarallel.initialize()
+
+    nlp = spacy.load("en_core_web_lg")
     interviews = wave_parser(wave_folder)
 
-    for person in ['Interviewer', 'Respondent']:
-        interviews[person + ' Embeddings'] = interviews[person + ' Full Text'].apply(lambda x: list(nlp(x).vector))
+    if section_list:
+        for section in section_list:
+            interviews[section + ' Embeddings'] = interviews[section].parallel_apply(lambda x: nlp(x).vector if not pd.isna(x) else pd.NA)
+    else:
+        for section in INTERVIEW_SECTIONS:
+            for participant in INTERVIEW_PARTICIPANTS:
+                interviews[participant + ' ' + section + ' Embeddings'] = interviews[participant + ' ' + section].parallel_apply(lambda x: nlp(x).vector if not pd.isna(x) else pd.NA)
 
-    interviews.to_csv(output_file, index=False)
+    interviews.to_pickle(output_file)
 
 
 #Plot embeddings of a folder of transcripts
 def plot_embeddings(embeddings_file):
 
-    wave_1_embeddings = pd.read_csv(embeddings_file)[['Interviewer Embeddings', 'Respondent Embeddings']]
+    interviews = pd.read_pickle(embeddings_file)
+    interviews = interviews[['Name of Interviewer', 'I: Morality Embeddings']].dropna()
 
-    #Convert string to numpy array
-    interviwer_embeddings = wave_1_embeddings['Interviewer Embeddings'].apply(lambda x: np.fromstring(x[1:-1], dtype=float, sep=',')).apply(pd.Series).to_numpy()
-    respondent_embeddings = wave_1_embeddings['Respondent Embeddings'].apply(lambda x: np.fromstring(x[1:-1], dtype=float, sep=',')).apply(pd.Series).to_numpy()
-    
-    #Remove NaNs
-    interviwer_embeddings = interviwer_embeddings[~np.isnan(interviwer_embeddings).any(axis=1)]
-    respondent_embeddings = respondent_embeddings[~np.isnan(respondent_embeddings).any(axis=1)]
+    embeddings = TSNE(n_components=2, metric="cosine", random_state=42).fit_transform(interviews['I: Morality Embeddings'].apply(pd.Series))
+    #embeddings = PCA(n_components=2, whiten=True, random_state=42).fit_transform(interviews['I: Morality Embeddings'].apply(pd.Series))
 
-    # Use t-SNE to project the embeddings onto a 2D plane
-    tsne = TSNE(n_components=2, perplexity=10, learning_rate=100)
-    interviwer_embeddings_2d = tsne.fit_transform(interviwer_embeddings)
-    respondent_embeddings_2d = tsne.fit_transform(respondent_embeddings)
+    interviews = interviews[['Name of Interviewer']].join(pd.DataFrame(embeddings))
 
-    # Plot the results
-    plt.scatter(interviwer_embeddings_2d[:, 0], interviwer_embeddings_2d[:, 1], c='r')
-    plt.scatter(respondent_embeddings_2d[:, 0], respondent_embeddings_2d[:, 1], c='b')
-    plt.show()
+    interviewers = interviews['Name of Interviewer'].value_counts()
+    interviewers = interviewers[interviewers > 15].index.tolist()
+
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(20, 20))
+
+    for selected_interviewers in itertools.combinations(interviewers, 3):
+        data = interviews[interviews['Name of Interviewer'].isin(selected_interviewers)]
+        ax = sns.kdeplot(data=data, x=0, y=1, hue='Name of Interviewer', fill=True, alpha=0.5)
+        sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
+        plt.title('Interviewer Embeddings')
+        plt.show()
+
+
 
 
 if __name__ == '__main__':
-    plot_embeddings('outputs/wave_1_embeddings.csv')
+    #compute_embeddings('downloads/wave_1', 'outputs/wave_1_embeddings.pkl', ['I: Morality'])
+    plot_embeddings('outputs/wave_1_embeddings.pkl')
+
+
+

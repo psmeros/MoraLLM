@@ -12,6 +12,7 @@ from sklearn.manifold import TSNE
 
 from constants import INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS
 from transcript_parser import wave_parser
+from helpers import display_notification
 
 
 #Compute embeddings for a folder of transcripts
@@ -88,3 +89,4 @@ if __name__ == '__main__':
             print('k =', k, 'perplexity =', perplexity)
             plot_embeddings('outputs/wave_1_embeddings.pkl', perplexity, k)
 
+    display_notification('Transformers embeddings computed!')

@@ -16,10 +16,11 @@ from helpers import display_notification
 
 
 #Compute embeddings for a folder of transcripts
-def compute_embeddings(wave_folder, output_file, section_list=None):
+def compute_embeddings(wave_folder, output_file, spacy_model='lg', section_list=None):
     pandarallel.initialize()
 
-    nlp = spacy.load("en_core_web_trf")
+    nlp = spacy.load('en_core_web_'+spacy_model, disable=['parser', 'ner', 'tagger', 'textcat', 'lemmatizer', 'tok2vec', 'attribute_ruler'])
+
     interviews = wave_parser(wave_folder)
 
     if section_list:
@@ -55,38 +56,40 @@ def k_most_distant_interviewers(interviewers_embeddings, k):
 
 
 #Plot embeddings of k distant interviewers
-def plot_embeddings(embeddings_file, perplexity=30, k=3):
+def plot_embeddings(embeddings_file, embeddings, dim_reduction='TSNE', perplexity=5, k=3):
 
     interviews = pd.read_pickle(embeddings_file)
-    interviews = interviews[['Name of Interviewer', 'I: Morality Embeddings']].dropna()
+    interviews = interviews[['Name of Interviewer', embeddings]].dropna()
 
     interviewers = interviews.groupby('Name of Interviewer').mean()
 
-    interviewers_indices = k_most_distant_interviewers(interviewers['I: Morality Embeddings'], k)
+    interviewers_indices = k_most_distant_interviewers(interviewers[embeddings], k)
     selected_interviewers = interviewers.iloc[interviewers_indices].index.tolist()
 
-    embeddings = TSNE(n_components=2, perplexity=perplexity, random_state=42).fit_transform(interviews['I: Morality Embeddings'].apply(pd.Series))
-    #embeddings = PCA(n_components=2, whiten=True, random_state=42).fit_transform(interviews['I: Morality Embeddings'].apply(pd.Series))
 
-    interviews = interviews[['Name of Interviewer']].join(pd.DataFrame(embeddings))
-
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(20, 20))
 
-    data = interviews[interviews['Name of Interviewer'].isin(selected_interviewers)]
-    ax = sns.kdeplot(data=data, x=0, y=1, hue='Name of Interviewer', fill=True, alpha=0.5)
+    if dim_reduction == 'TSNE':
+        data = TSNE(n_components=2, perplexity=perplexity, random_state=42).fit_transform(interviews[embeddings].apply(pd.Series))
+    elif dim_reduction == 'PCA':
+        data = PCA(n_components=2, random_state=42).fit_transform(interviews[embeddings].apply(pd.Series))
+
+    data = interviews[['Name of Interviewer']].join(pd.DataFrame(data))
+    data = data[data['Name of Interviewer'].isin(selected_interviewers)]
+    ax = sns.kdeplot(data=data, x=0, y=1, hue='Name of Interviewer', fill=True, alpha=0.5, bw_adjust=1)
     sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
-    plt.title('Interviewer Embeddings')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Top ' + str(k) + ' Most Distant Interviewers on '+ embeddings.split()[1])
+    plt.gca().get_legend().set_title('Interviewer')
     plt.show()
 
 
 
 
 if __name__ == '__main__':
-    compute_embeddings('downloads/wave_1', 'outputs/wave_1_embeddings.pkl', ['I: Morality'])
-    for k in [2, 3, 4, 5]:
-        for perplexity in [5]:
-            print('k =', k, 'perplexity =', perplexity)
-            plot_embeddings('outputs/wave_1_embeddings.pkl', perplexity, k)
-
-    display_notification('Transformers embeddings computed!')
+    #compute_embeddings('downloads/wave_1', 'outputs/wave_1_embeddings.pkl', spacy_model='lg', section_list=['I: Morality', 'I: Religion'])
+    plot_embeddings('outputs/wave_1_embeddings.pkl', embeddings='I: Morality Embeddings')
+    plot_embeddings('outputs/wave_1_embeddings.pkl', embeddings='I: Religion Embeddings')
+    #display_notification('Transformers embeddings computed!')

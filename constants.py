@@ -52,4 +52,4 @@ INTERVIEW_MARKERS_MAPPING = {'#X:': 'R:',
                 #    r':W\d+:': ':'
                    }
 
-MORALITY_SECTIONS = ['M' + str(i) + ':' for i in list(range(17))+['X']]
+MORALITY_QUESTIONS = ['M' + str(i) + ':' for i in list(range(17))+['X']]

@@ -1,5 +1,6 @@
-#OUTPUT FILES
-outputs/
+#DATA FILES
+data
+outputs
 
 #MAC OS
 *.DS_Store

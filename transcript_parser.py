@@ -4,7 +4,7 @@ import re
 import pandas as pd
 import numpy as np
 
-from constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, MORALITY_SECTIONS, TRANSCRIPT_ENCODING
+from constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, MORALITY_QUESTIONS, TRANSCRIPT_ENCODING
 
 
 #Metadata normalization
@@ -34,13 +34,13 @@ def normalize_section_name(line, filename):
     return None
 
 
-def normalize_morality_section_name(line, filename):
-    #TODO: lines can belong to multiple sections
-    for section in MORALITY_SECTIONS:
+def normalize_morality_question_name(line, filename):
+    #TODO: lines can belong to multiple questions
+    for section in MORALITY_QUESTIONS:
         if line.startswith(section):
             return section[:-1], line[len(section):].strip()
     
-    print(os.path.abspath(filename), line, '(Morality Section Not Found!)')
+    print(os.path.abspath(filename), line, '(Morality Question Not Found!)')
     return None, None
 
 def interview_parser(filename):
@@ -107,7 +107,7 @@ def get_raw_text(interview):
                     insert[index] = True
                     line = line[len(participant):].strip()
                     if section in ['Morality']:
-                        normalize_morality_section_name(line, interview['Filename'])
+                        normalize_morality_question_name(line, interview['Filename'])
                     break
 
             for index, participant in enumerate(INTERVIEW_PARTICIPANTS):

@@ -6,17 +6,6 @@ import numpy as np
 
 from constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, TRANSCRIPT_ENCODING
 
-#Convert encoding of files in a folder
-def convert_encoding(folder_path, from_encoding, to_encoding):
-    for filename in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, filename)        
-        if os.path.isfile(file_path):
-            with open(file_path, 'r', encoding = from_encoding) as file:
-                file_contents = file.read()
-            with open(file_path, 'w', encoding = to_encoding) as file:
-                file.write(file_contents)
-            print('Converted file:', filename)
-
 
 #Metadata normalization
 def normalize_metadata(line):
@@ -88,27 +77,32 @@ def interview_parser(filename):
         
         return interview
 
-#Get raw text for an interview participant (Interviewer or Respondent)
-def get_raw_section_text(section_text, interview_participant):
-    raw_text = ''
+#Get raw text for each section and participant
+def get_raw_text(interview):
+    raw_text = {participant + section : '' for section in INTERVIEW_SECTIONS for participant in INTERVIEW_PARTICIPANTS}
+
     try:
-        lines = section_text.split('\n')
-        insert = False
+        for section in INTERVIEW_SECTIONS:
+            lines = interview[section].split('\n')
+            insert = [False] * len(INTERVIEW_PARTICIPANTS)
 
-        for line in lines:
-            if line.startswith(interview_participant):
-                insert = True
-                line = line[len(interview_participant):].strip()
-            elif any(line.startswith(i) for i in INTERVIEW_PARTICIPANTS):
-                insert = False
+            for line in lines:
 
-            if insert:
-                raw_text = ' '.join([raw_text.strip(), line])
+                for index, participant in enumerate(INTERVIEW_PARTICIPANTS):
+                    if line.startswith(participant):
+                        insert = [False] * len(INTERVIEW_PARTICIPANTS)
+                        insert[index] = True
+                        line = line[len(participant):].strip()
+                        break
 
-        raw_text = raw_text.strip()
+                for index, participant in enumerate(INTERVIEW_PARTICIPANTS):
+                    if insert[index] == True:
+                        raw_text[participant + ' ' + section] += line.strip() + ' '
+                        break
     except:
         pass
 
+    raw_text = pd.Series(raw_text)
     return raw_text
 
 #parse folder of transcripts
@@ -120,17 +114,14 @@ def wave_parser(folder):
         interviews.append(interview)
     interviews = pd.DataFrame(interviews)
 
-    #Get raw text for each interview section and participant
-    for section in INTERVIEW_SECTIONS:
-        for participant in INTERVIEW_PARTICIPANTS:
-            interviews[participant + ' ' + section] = interviews[section].apply(lambda s: get_raw_section_text(s, participant))
-
+    #get raw text for each interview
+    interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS].apply(get_raw_text, axis = 1))
+    
     #cleaning
-    interviews[INTERVIEW_SECTIONS] = interviews[INTERVIEW_SECTIONS].applymap(lambda x: x.strip() if not pd.isna(x) else x)
     interviews = interviews.replace('', pd.NA)
 
     return interviews
 
 
 if __name__ == '__main__':
-    interviews = wave_parser('downloads/wave_1')
+    interviews = wave_parser('data/wave_1')

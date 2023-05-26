@@ -48,5 +48,8 @@ INTERVIEW_PARTICIPANTS = ['I:',
 INTERVIEW_MARKERS_MAPPING = {'#X:': 'R:',
                    '#IX:': 'I:',
                    '#R:': 'R:',
-                   r':M\d+:': ':',
-                   r':W\d+:': ':'}
+                #    r':M\d+:': ':',
+                #    r':W\d+:': ':'
+                   }
+
+MORALITY_SECTIONS = ['M' + str(i) + ':' for i in list(range(17))+['X']]

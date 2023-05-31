@@ -4,44 +4,65 @@ import re
 import pandas as pd
 import numpy as np
 
-from constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, MORALITY_QUESTIONS, TRANSCRIPT_ENCODING
+from constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, MORALITY_QUESTIONS, REFINED_INTERVIEW_SECTIONS, TRANSCRIPT_ENCODING
+from helpers import error_handling
 
 
 #Metadata normalization
 def normalize_metadata(line, filename):
+    key, value = None, None
     try:
-        key, value = line.split(':', 1)
+        line_key, line_value = line.split(':', 1)
     except:
-        key, value = line, ''
+        line_key, line_value = line, ''
 
-    key = re.sub(r'[ ]+', '', key.strip().lower()[1:])
+    line_key = re.sub(r'[ ]+', '', line_key.strip().lower()[1:])
     for m in INTERVIEW_METADATA:
-        if re.sub(r'[ ]+', '', m.lower()) == key:
-            return m, value.strip()
+        if re.sub(r'[ ]+', '', m.lower()) == line_key:
+            key = m
+            value = line_value.strip()
+            break
     
-    print(os.path.abspath(filename), line, '(Metadata Not Found!)')
-    return None, None
+    if not key and not value:
+        error_handling(filename, line, 'Metadata Not Found!')
+        key, value = '', ''
+
+    return key, value
 
 
 #Section name normalization
 def normalize_section_name(line, filename):
+    section = None
     line = re.sub(r'[\d: -]+', '', line[1:]).strip().lower()
-    for section in INTERVIEW_SECTIONS:
-        if line.startswith(re.sub(r'[ -]+', '', section).lower()):
-            return section
+    for s in INTERVIEW_SECTIONS:
+        if line.startswith(re.sub(r'[ -]+', '', s).lower()):
+            section = s
+            break
     
-    print(os.path.abspath(filename), line, '(Section Not Found!)')
-    return None
+    if not section:
+        error_handling(filename, line, 'Section Not Found!')
+        section = ''
 
+    return section
 
+#Morality questions name normalization
 def normalize_morality_question_name(line, filename):
-    #TODO: lines can belong to multiple questions
-    for section in MORALITY_QUESTIONS:
-        if line.startswith(section):
-            return section[:-1], line[len(section):].strip()
-    
-    print(os.path.abspath(filename), line, '(Morality Question Not Found!)')
-    return None, None
+    questions = []
+    search = True
+    while search:
+        search = False
+        for question in MORALITY_QUESTIONS:
+            if line.startswith(question):
+                questions.append(question[:-1])
+                line = line[len(question):].strip()
+                search = True
+                break
+        
+    if not questions:
+        error_handling(filename, line, 'Morality Question Not Found!')
+        questions, line = [], ''
+
+    return questions, line
 
 def interview_parser(filename):
     with open(filename, 'r', encoding = TRANSCRIPT_ENCODING) as f:
@@ -62,9 +83,9 @@ def interview_parser(filename):
             if line.startswith('#START'):
                 metadata_lines = False
 
-            #Skip comments
-            elif any(re.sub(r'[\s]+', '', line).lower().startswith(re.sub(r'[\s]+', '', comment).lower()) for comment in INTERVIEW_COMMENTS):
-                section = ''
+            #Skip comments and empty lines
+            elif line.strip() == '' or any(re.sub(r'[\s]+', '', line).lower().startswith(re.sub(r'[\s]+', '', comment).lower()) for comment in INTERVIEW_COMMENTS):
+                continue
 
             #Interview metadata
             elif line.startswith('#') and  metadata_lines:
@@ -89,31 +110,39 @@ def interview_parser(filename):
 
 #Get raw text for each section and participant
 def get_raw_text(interview):
-    raw_text = {participant + section : '' for section in INTERVIEW_SECTIONS for participant in INTERVIEW_PARTICIPANTS}
+    raw_text = {section : '' for section in REFINED_INTERVIEW_SECTIONS}
 
-    
     for section in INTERVIEW_SECTIONS:
-        try:
-            lines = interview[section].split('\n')
-        except:
-            lines = []
-        insert = [False] * len(INTERVIEW_PARTICIPANTS)
+  
+        if not interview[section]:
+            error_handling(interview['Filename'], section, 'Section None!', print_line=True)
+            continue
+        elif interview[section].strip() == '':
+            continue
+        else:
+            lines = interview[section].strip().split('\n')
+
+        participant = None
+        morality_questions = []
 
         for line in lines:
-
-            for index, participant in enumerate(INTERVIEW_PARTICIPANTS):
-                if line.startswith(participant):
-                    insert = [False] * len(INTERVIEW_PARTICIPANTS)
-                    insert[index] = True
+            for p in INTERVIEW_PARTICIPANTS:
+                if line.startswith(p):
+                    participant = p
                     line = line[len(participant):].strip()
-                    if section in ['Morality']:
-                        normalize_morality_question_name(line, interview['Filename'])
+                    if section == 'Morality':
+                        morality_questions, line = normalize_morality_question_name(line, interview['Filename'])
                     break
-
-            for index, participant in enumerate(INTERVIEW_PARTICIPANTS):
-                if insert[index] == True:
+          
+            if not participant:
+                error_handling(interview['Filename'], line, 'Participant Not Found!')
+                continue
+            else:
+                if section == 'Morality':
+                    for question in morality_questions:
+                        raw_text[participant + section + ':' + question] += line.strip() + ' '
+                else:
                     raw_text[participant + section] += line.strip() + ' '
-                    break
 
     raw_text = pd.Series(raw_text)
     return raw_text

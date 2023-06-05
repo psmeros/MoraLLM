@@ -4,7 +4,7 @@ import re
 import pandas as pd
 import numpy as np
 
-from constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, MORALITY_QUESTIONS, REFINED_INTERVIEW_SECTIONS, TRANSCRIPT_ENCODING
+from constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, TRANSCRIPT_ENCODING
 from helpers import error_handling
 
 
@@ -109,8 +109,11 @@ def interview_parser(filename):
         return interview
 
 #Get raw text for each section and participant
-def get_raw_text(interview):
-    raw_text = {section : '' for section in REFINED_INTERVIEW_SECTIONS}
+def get_raw_text(interview, morality_breakdown):
+    if morality_breakdown:
+        raw_text = {section : '' for section in REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN}
+    else:
+        raw_text = {section : '' for section in REFINED_SECTIONS}
 
     for section in INTERVIEW_SECTIONS:
   
@@ -138,7 +141,7 @@ def get_raw_text(interview):
                 error_handling(interview['Filename'], line, 'Participant Not Found!')
                 continue
             else:
-                if section == 'Morality':
+                if section == 'Morality' and morality_breakdown:
                     for question in morality_questions:
                         raw_text[participant + section + ':' + question] += line.strip() + ' '
                 else:
@@ -148,7 +151,7 @@ def get_raw_text(interview):
     return raw_text
 
 #parse folder of transcripts
-def wave_parser(folder):
+def wave_parser(folder, flatten_Morality_questions=False):
     interviews = []
     for filename in os.listdir(folder):
         filename = os.path.join(folder, filename)
@@ -157,7 +160,7 @@ def wave_parser(folder):
     interviews = pd.DataFrame(interviews)
 
     #get raw text for each interview
-    interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS+['Filename']].apply(get_raw_text, axis = 1))
+    interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS+['Filename']].apply(lambda i: get_raw_text(i, flatten_Morality_questions), axis = 1))
     
     #cleaning
     interviews = interviews.replace('', pd.NA)

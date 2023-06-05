@@ -10,9 +10,9 @@ from transcript_parser import wave_parser
 
 pd.set_option('mode.chained_assignment', None)
 
-def word_count(interviews_folder=None, pos_count=True, save_to_cache=True, word_counts_cache=None):
+def word_count(interviews_folder=None, morality_breakdown=False, pos_count=True, save_to_cache=True, word_counts_cache=None):
     if interviews_folder:
-        interviews = wave_parser(interviews_folder)
+        interviews = wave_parser(interviews_folder, morality_breakdown)
         
         pandarallel.initialize()
         nlp = spacy.load("en_core_web_lg")
@@ -69,24 +69,25 @@ def plot_ratio(word_counts, save=False):
         plt.savefig('data/plots/wordiness_ratio.png', bbox_inches='tight')
     plt.show()
         
+def plot_distribution(word_counts, save=False):
+    word_counts = word_counts.melt(id_vars=['Interview Participant', 'Interview Code'], var_name='Section', value_name='Word Count')
 
-# word_counts = word_counts.melt(id_vars=['Interview Participant', 'Interview Code'], var_name='Section', value_name='Word Count')
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(20, 15))
 
+    color_palette = sns.color_palette('icefire')
+    ax = sns.violinplot(data=word_counts, y='Section', x='Word Count', hue='Interview Participant', split=True, inner='quart', linewidth=1, cut=0, scale='width', scale_hue=False, palette=[color_palette[-1], color_palette[0]])
+    ax.legend(title='Interview Participant', loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=2)
+    ax.set_xscale('log')
+    ax.xaxis.set_major_formatter(ScalarFormatter())
+    ax.set_xlabel('Wordiness Distribution')
+    ax.set_ylabel('')
 
-
-# word_counts[word_counts['Word Count'] > 2000]
-
-#interview_ratio[(interview_ratio>100).any(axis=1)]
-#interviews.iloc[interview_ratio[(interview_ratio>100).any(axis=1)].index]
-
-
-# word_counts['Word Count'].plot(kind='hist', bins=30, logx=True)
-
-# word_counts['Word Count'] = word_counts['Word Count'].astype(int)
-
-
-# ax = sns.violinplot(data=word_counts, y='Section', x='Word Count', hue='Interview Participant', split=True, inner='quart', linewidth=1)
-# ax.set_title('Word Count by Interview Section')
+    sns.despine(left=True, bottom=True)
+    plt.tight_layout()
+    if save:
+        plt.savefig('data/plots/wordiness_distribution.png', bbox_inches='tight')
+    plt.show()
 
 
 
@@ -95,3 +96,4 @@ if __name__ == '__main__':
     # word_counts = word_count(interviews_folder='data/wave_1')
     word_counts = word_count(word_counts_cache='data/cache/word_counts.pkl')
     plot_ratio(word_counts, save=True)
+    plot_distribution(word_counts, save=True)

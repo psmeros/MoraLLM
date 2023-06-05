@@ -151,7 +151,7 @@ def get_raw_text(interview, morality_breakdown):
     return raw_text
 
 #parse folder of transcripts
-def wave_parser(folder, flatten_Morality_questions=False):
+def wave_parser(folder, morality_breakdown=False):
     interviews = []
     for filename in os.listdir(folder):
         filename = os.path.join(folder, filename)
@@ -160,7 +160,7 @@ def wave_parser(folder, flatten_Morality_questions=False):
     interviews = pd.DataFrame(interviews)
 
     #get raw text for each interview
-    interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS+['Filename']].apply(lambda i: get_raw_text(i, flatten_Morality_questions), axis = 1))
+    interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS+['Filename']].apply(lambda i: get_raw_text(i, morality_breakdown), axis = 1))
     
     #cleaning
     interviews = interviews.replace('', pd.NA)

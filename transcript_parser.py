@@ -150,21 +150,31 @@ def get_raw_text(interview, morality_breakdown):
 
 #parse folder of transcripts
 def wave_parser(folder, morality_breakdown=False):
-    interviews = []
-    for filename in os.listdir(folder):
-        filename = os.path.join(folder, filename)
-        interview = interview_parser(filename)
-        interviews.append(interview)
-    interviews = pd.DataFrame(interviews)
-
-    #get raw text for each interview
-    interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS+['Filename']].apply(lambda i: get_raw_text(i, morality_breakdown), axis = 1))
     
-    #cleaning
-    interviews = interviews.replace('', pd.NA)
+    waves = []
+    for foldername in os.listdir(folder):
+        foldername = os.path.join(folder, foldername)
+        if os.path.isdir(foldername):
+            interviews = []
 
-    return interviews
+            for filename in os.listdir(foldername):
+                filename = os.path.join(foldername, filename)
+                if os.path.isfile(filename):
+                    interview = interview_parser(filename)
+                    interviews.append(interview)
+            interviews = pd.DataFrame(interviews)
+
+            #clean interviews
+            interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS+['Filename']].apply(lambda i: get_raw_text(i, morality_breakdown), axis = 1))
+            interviews = interviews.replace('', pd.NA)
+            
+            #add wave
+            interviews['Wave'] = int(foldername[-1])
+            waves.append(interviews)
+
+    waves = pd.concat(waves)
+    return waves
 
 
 if __name__ == '__main__':
-    interviews = wave_parser('data/wave_1')
+    interviews = wave_parser('data/waves')

@@ -57,7 +57,7 @@ def plot_ratio(word_counts, save=False):
     palette = {section: color_palette[-1] if median > 1 else color_palette[0] for section, median in interview_ratio.median().items()}
     ax = sns.boxplot(data=interview_ratio, orient='h', whis=[0, 100], palette=palette)
     ax.axvline(x = 1, color=color_palette[int(len(color_palette)/2)], linestyle='--', linewidth=5)
-    ax.set_title('Interviewer vs Respondent Wordiness')
+    #ax.set_title('Interviewer vs Respondent Wordiness')
     ax.set_xlabel('Ratio')
     ax.set_xscale('log')
     ax.xaxis.set_major_formatter(ScalarFormatter())
@@ -80,7 +80,8 @@ def plot_distribution(word_counts, save=False):
     ax.legend(title='Interview Participant', loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=2)
     ax.set_xscale('log')
     ax.xaxis.set_major_formatter(ScalarFormatter())
-    ax.set_xlabel('Wordiness Distribution')
+    #ax.set_title('Wordiness Distribution')
+    ax.set_xlabel('')
     ax.set_ylabel('')
 
     sns.despine(left=True, bottom=True)

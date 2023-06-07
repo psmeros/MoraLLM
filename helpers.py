@@ -1,12 +1,19 @@
 import os
+from striprtf.striprtf import rtf_to_text
 
 #Convert encoding of files in a folder
 def convert_encoding(folder_path, from_encoding, to_encoding):
     for filename in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, filename)        
+        file_path = os.path.join(folder_path, filename)
         if os.path.isfile(file_path):
-            with open(file_path, 'r', encoding = from_encoding) as file:
-                file_contents = file.read()
+            if from_encoding == 'rtf':
+                with open(file_path, 'r') as file:
+                    file_contents = file.read()
+                    file_contents = rtf_to_text(file_contents, encoding = to_encoding)
+                    file_path = file_path[:-len(from_encoding)] + 'txt'
+            else:
+                with open(file_path, 'r', encoding = from_encoding) as file:
+                    file_contents = file.read()
             with open(file_path, 'w', encoding = to_encoding) as file:
                 file.write(file_contents)
             print('Converted file:', filename)

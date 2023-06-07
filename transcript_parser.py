@@ -35,7 +35,7 @@ def normalize_section_name(line, filename):
     section = None
     line = re.sub(r'[\d: -]+', '', line[1:]).strip().lower()
     for s in INTERVIEW_SECTIONS:
-        if line.startswith(re.sub(r'[ -]+', '', s).lower()):
+        if re.sub(r'[ -]+', '', s).lower() in line:
             section = s
             break
     
@@ -73,9 +73,10 @@ def interview_parser(filename):
             text = re.sub(k, v, text)
 
         lines = text.split('\n')
-        interview = {'Filename': filename}
+        interview = {'Filename': filename} | {field : '' for field in INTERVIEW_METADATA + INTERVIEW_SECTIONS}
         section = ''
         metadata_lines = True
+        comment_lines = False
 
         for line in lines:
 
@@ -83,28 +84,28 @@ def interview_parser(filename):
             if line.startswith('#START'):
                 metadata_lines = False
 
-            #Skip comments and empty lines
-            elif line.strip() == '' or any(re.sub(r'[\s]+', '', line).lower().startswith(re.sub(r'[\s]+', '', comment).lower()) for comment in INTERVIEW_COMMENTS):
+            #Skip empty lines
+            elif line.strip() == '':
                 continue
 
+            #Skip comments
+            elif any(re.sub(r'[\s]+', '', line).lower().startswith(re.sub(r'[\s]+', '', comment).lower()) for comment in INTERVIEW_COMMENTS):
+                comment_lines = True
+
             #Interview metadata
-            elif line.startswith('#') and  metadata_lines:
+            elif line.startswith('#') and metadata_lines:
                 key, value = normalize_metadata(line, filename)
                 interview[key] = value
             
             #Section headers
             elif line.startswith('#'):
-                
+                comment_lines = False
                 #Section name normalization
                 section = normalize_section_name(line, filename)
-                
-                #Initialize section
-                interview[section] = interview.get(section, '') + '\n'
-
                                
             #Section content
-            elif not line.startswith('#') and section != '':
-                interview[section] += line + '\n'
+            elif not line.startswith('#') and not comment_lines:
+                    interview[section] += line + '\n'
         
         return interview
 
@@ -117,10 +118,7 @@ def get_raw_text(interview, morality_breakdown):
 
     for section in INTERVIEW_SECTIONS:
   
-        if not interview[section]:
-            error_handling(interview['Filename'], section, 'Section None!', print_line=True)
-            continue
-        elif interview[section].strip() == '':
+        if not interview[section] or interview[section].strip() == '':
             continue
         else:
             lines = interview[section].strip().split('\n')

@@ -172,7 +172,7 @@ def wave_parser(folder, morality_breakdown=False):
             interviews['Wave'] = int(foldername[-1])
             waves.append(interviews)
 
-    waves = pd.concat(waves)
+    waves = pd.concat(waves, ignore_index=True)
     return waves
 
 

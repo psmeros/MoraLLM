@@ -17,20 +17,27 @@ from simpletransformers.language_representation import RepresentationModel
 
 
 #Compute embeddings for a folder of transcripts
-def compute_embeddings(wave_folder, output_file, model='lg', section_list=None):
-    if not section_list:
-        section_list = REFINED_SECTIONS 
-    if model == 'trf':
-        transformer = RepresentationModel(model_type='bert', model_name='bert-base-uncased', use_cuda=False)
-        vectorizer = lambda x: pd.Series(transformer.encode_sentences(x.str.lower(), combine_strategy='mean').tolist())
-    elif model in ['lg', 'md']:
-        #nlp = spacy.load('en_core_web_'+model, disable=['parser', 'ner', 'tagger', 'textcat', 'lemmatizer', 'tok2vec', 'attribute_ruler'])
-        nlp = spacy.load('en_core_web_'+model)
-        # pandarallel.initialize()
-        vectorizer = lambda x: x.str.lower().apply(lambda y: np.mean([w.vector for w in nlp(y) if w.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']], axis=0))
+def compute_embeddings(wave_folder, output_file, section, model='lg'):
                                                    
     interviews = wave_parser(wave_folder)
-    interviews[[s + '_Embeddings' for s in section_list]] = interviews[section_list].fillna('').apply(vectorizer, axis=1)
+
+    #Keep only POS of interest
+    nlp = spacy.load('en_core_web_lg')
+    interviews[section] = interviews[section].apply(lambda s: ' '.join([w.text for w in nlp(s) if w.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']]) if not pd.isna(s) else pd.NA)
+    interviews[section] = interviews[section].str.strip()
+    interviews = interviews.dropna(subset=[section])
+
+    #Compute embeddings
+    if model == 'trf':
+        transformer = RepresentationModel(model_type='bert', model_name='bert-base-uncased', use_cuda=False)
+        vectorizer = lambda x: pd.Series(transformer.encode_sentences(x, combine_strategy='mean').tolist())
+    elif model in ['lg', 'md']:
+        nlp = spacy.load('en_core_web_'+model)
+        pandarallel.initialize()
+        vectorizer = lambda x: x.parallel_apply(lambda y: nlp(y).vector)
+
+    interviews[section + '_Embeddings'] = vectorizer(interviews[section])
+    interviews = interviews.dropna(subset=[section + '_Embeddings'])
     interviews.to_pickle(output_file)
 
 # Find k interviewers with maximum distance
@@ -88,17 +95,19 @@ def plot_embeddings(embeddings_file, embeddings, dim_reduction='TSNE', perplexit
 
 
 #Plot morality embeddings of all waves
-def plot_morality_embeddings(embeddings_file, morality_entities, dim_reduction='TSNE', perplexity=5):
+def plot_morality_embeddings(embeddings_file, model, morality_entities, dim_reduction='TSNE', perplexity=5):
 
     interviews = pd.read_pickle(embeddings_file)
     interviews = interviews[['Wave', 'R:Morality_Embeddings']].dropna()
     interviews.columns = ['Name', 'Embeddings']
     interviews['Name'] = interviews['Name'].apply(lambda x: 'Wave ' + str(x))
     
-    nlp = spacy.load('en_core_web_lg', disable=['parser', 'ner', 'tagger', 'textcat', 'lemmatizer', 'tok2vec', 'attribute_ruler'])
-    vectorizer = lambda x: x.str.lower().apply(lambda y: nlp(y).vector)
-    # transformer = RepresentationModel(model_type='bert', model_name='bert-base-uncased', use_cuda=False)
-    # vectorizer = lambda x: pd.Series(transformer.encode_sentences(x, combine_strategy='mean').tolist())
+    if model == 'trf':
+        transformer = RepresentationModel(model_type='bert', model_name='bert-base-uncased', use_cuda=False)
+        vectorizer = lambda x: pd.Series(transformer.encode_sentences(x, combine_strategy='mean').tolist())
+    elif model in ['lg', 'md']:
+        nlp = spacy.load('en_core_web_lg')
+        vectorizer = lambda x: x.apply(lambda y: nlp(y).vector)
     
     morality_entities = pd.DataFrame(morality_entities).melt(var_name='Name', value_name='Embeddings')
     morality_entities['Embeddings'] = vectorizer(morality_entities['Embeddings'].str.lower())
@@ -129,9 +138,10 @@ def plot_morality_embeddings(embeddings_file, morality_entities, dim_reduction='
 
 
 if __name__ == '__main__':
-    # compute_embeddings('data/waves', 'data/cache/morality_embeddings.pkl', model='lg', section_list=['R:Morality'])
-    morality_entities = {'good':['Good', 'Beneficial', 'Positive', 'Kind', 'Generous', 'Compassionate', 'Altruistic', 'Virtuous', 'Wholesome', 'Noble'], 'neutral':['Neutral', 'Impartial', 'Objective', 'Indifferent', 'Unbiased', 'Uninvolved', 'Detached', 'Dispassionate', 'Equitable', 'Uncommitted'], 'evil':['Malevolent', 'Sinister', 'Wicked', 'Diabolical', 'Maleficent', 'Villainous', 'Malignant', 'Cruel', 'Corrupt', 'Nefarious']}
-    plot_morality_embeddings('data/cache/morality_embeddings.pkl', morality_entities=morality_entities, dim_reduction='TSNE', perplexity=200)
+    model = 'lg'
+    compute_embeddings('data/waves', 'data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality')
+    morality_entities = {'Deontological Morality' : ['Duty', 'Obligation', 'Moral rules', 'Rights', 'Justice', 'Intent', 'Ethical principles', 'Moral absolutes', 'Categorical imperatives', 'Virtue ethics'], 'Consequentialist Morality' : ['Consequences', 'Utility', 'Outcomes', 'Maximizing', 'Well-being', 'Hedonism', 'Utilitarianism', 'Cost-benefit analysis', 'Pragmatism', 'Egoism']}
+    plot_morality_embeddings('data/cache/morality_embeddings_'+model+'.pkl', model=model, morality_entities=morality_entities, dim_reduction='TSNE', perplexity=100)
     #plot_embeddings('outputs/wave_1_embeddings.pkl', embeddings='I: Morality Embeddings')
     #plot_embeddings('outputs/wave_1_embeddings.pkl', embeddings='I: Religion Embeddings')
-    # display_notification('Transformers embeddings computed!')
+    display_notification('Transformers embeddings computed!')

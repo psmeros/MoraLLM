@@ -1,6 +1,7 @@
 import pandas as pd
 import seaborn as sns
 import spacy
+from __init__ import *
 from matplotlib import pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from pandarallel import pandarallel

@@ -2,11 +2,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import spacy
+from __init__ import *
 from simpletransformers.language_representation import RepresentationModel
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from preprocessing.constants import MORALITY_ENTITIES
 
+from preprocessing.constants import MORALITY_ENTITIES
 from preprocessing.embeddings import compute_embeddings
 
 
@@ -31,16 +32,18 @@ def plot_morality_embeddings(embeddings_file, model, morality_entities, dim_redu
     data = pd.concat([interviews, morality_entities], ignore_index=True)
 
     if dim_reduction == 'TSNE':
-        data = data[['Name']].join(pd.DataFrame(TSNE(n_components=2, perplexity=perplexity, random_state=42).fit_transform(data['Embeddings'].apply(pd.Series))))
+        tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+        data = data[['Name']].join(pd.DataFrame(tsne.fit_transform(data['Embeddings'].apply(pd.Series))))
+
     elif dim_reduction == 'PCA':
-        data = data[['Name']].join(pd.DataFrame(PCA(n_components=2, random_state=42).fit_transform(data['Embeddings'].apply(pd.Series))))
+        pca = PCA(n_components=2, random_state=42)
+        pca.fit(morality_entities['Embeddings'].apply(pd.Series))
+        data = data[['Name']].join(pd.DataFrame(pca.transform(data['Embeddings'].apply(pd.Series))))
 
     # data = data.groupby('Name').mean().reset_index()
 
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(20, 20))
-
-    # ax = sns.kdeplot(data=data, x=0, y=1, hue='Name', fill=True, alpha=0.5, bw_adjust=1, palette='colorblind')
 
     ax = sns.scatterplot(data=data, x=0, y=1, hue='Name', palette='Set2', s = 500)
 

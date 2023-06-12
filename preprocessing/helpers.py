@@ -2,12 +2,6 @@ import os
 import pandas as pd
 from striprtf.striprtf import rtf_to_text
 
-#set pandas options
-def my_pandas_options():
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.max_colwidth', None)
-    pd.set_option('mode.chained_assignment', None)
-
 #Convert encoding of files in a folder
 def convert_encoding(folder_path, from_encoding, to_encoding):
     for filename in os.listdir(folder_path):

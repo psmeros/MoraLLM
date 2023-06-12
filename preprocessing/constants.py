@@ -88,3 +88,6 @@ MORALITY_QUESTIONS = ['M' + str(i) + ':' for i in list(range(17))+['X']]
 
 REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN = [participant + section for participant in INTERVIEW_PARTICIPANTS for section in [s for s in INTERVIEW_SECTIONS if s not in ['Morality']] + ['Morality:'+q[:-1] for q in MORALITY_QUESTIONS]]
 REFINED_SECTIONS = [participant + section for participant in INTERVIEW_PARTICIPANTS for section in INTERVIEW_SECTIONS]
+
+MORALITY_ENTITIES = {'Deontological Morality' : ['Duty', 'Obligation', 'Moral rules', 'Rights', 'Justice', 'Intent', 'Ethical principles', 'Moral absolutes', 'Categorical imperatives', 'Virtue ethics'],
+                     'Consequentialist Morality' : ['Consequences', 'Utility', 'Outcomes', 'Maximizing', 'Well-being', 'Hedonism', 'Utilitarianism', 'Cost-benefit analysis', 'Pragmatism', 'Egoism']}

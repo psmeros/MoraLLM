@@ -5,15 +5,15 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from pandarallel import pandarallel
 
-from constants import INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, REFINED_SECTIONS
-from transcript_parser import wave_parser
+from preprocessing.constants import INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, REFINED_SECTIONS
+from preprocessing.transcript_parser import wave_parser
 
-pd.set_option('mode.chained_assignment', None)
-
-def word_count(interviews_folder=None, morality_breakdown=False, pos_count=True, save_to_cache=True, word_counts_cache=None):
+def word_count(interviews_folder=None, wave=1, morality_breakdown=False, pos_count=True, save_to_cache=True, word_counts_cache=None):
     if interviews_folder:
         interviews = wave_parser(interviews_folder, morality_breakdown)
-        
+
+        interviews = interviews[interviews['Wave'] == wave].reset_index(drop=True)
+
         pandarallel.initialize()
         nlp = spacy.load("en_core_web_lg")
 
@@ -47,8 +47,11 @@ def word_count(interviews_folder=None, morality_breakdown=False, pos_count=True,
     return word_counts
 
 
-def plot_ratio(word_counts, save=False):
-    interview_ratio = word_counts[word_counts['Interview Participant'] == 'Interviewer'][INTERVIEW_SECTIONS] / word_counts[word_counts['Interview Participant'] == 'Respondent'][INTERVIEW_SECTIONS]
+def plot_ratio(word_counts, wave=1, save=False):
+    interviewer_counts = word_counts[word_counts['Interview Participant'] == 'Interviewer'][INTERVIEW_SECTIONS]
+    respondent_counts = word_counts[word_counts['Interview Participant'] == 'Respondent'][INTERVIEW_SECTIONS]
+    interview_ratio = interviewer_counts / respondent_counts
+    interview_ratio = interview_ratio.dropna(axis='columns')
     
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(20, 15))
@@ -71,6 +74,7 @@ def plot_ratio(word_counts, save=False):
         
 def plot_distribution(word_counts, save=False):
     word_counts = word_counts.melt(id_vars=['Interview Participant', 'Interview Code'], var_name='Section', value_name='Word Count')
+    word_counts = word_counts[word_counts['Word Count'] != 0]
 
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(20, 15))
@@ -94,7 +98,7 @@ def plot_distribution(word_counts, save=False):
 
 
 if __name__ == '__main__':
-    # word_counts = word_count(interviews_folder='data/wave_1')
+    # word_counts = word_count(interviews_folder='data/waves')
     word_counts = word_count(word_counts_cache='data/cache/word_counts.pkl')
     plot_ratio(word_counts, save=True)
     plot_distribution(word_counts, save=True)

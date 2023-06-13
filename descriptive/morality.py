@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from sklearn.semi_supervised import LabelPropagation
 import spacy
 from __init__ import *
 from simpletransformers.language_representation import RepresentationModel
@@ -12,7 +13,7 @@ from preprocessing.embeddings import compute_embeddings
 
 
 #Plot morality embeddings of all waves
-def plot_morality_embeddings(embeddings_file, model, morality_entities, dim_reduction='TSNE', perplexity=5):
+def plot_morality_embeddings(embeddings_file, model, morality_entities, label_propagation=False, dim_reduction='TSNE', perplexity=5):
 
     interviews = pd.read_pickle(embeddings_file)
     interviews = interviews[['Wave', 'R:Morality_Embeddings']].dropna()
@@ -29,7 +30,13 @@ def plot_morality_embeddings(embeddings_file, model, morality_entities, dim_redu
     morality_entities = pd.DataFrame(morality_entities).melt(var_name='Name', value_name='Embeddings')
     morality_entities['Embeddings'] = vectorizer(morality_entities['Embeddings'].str.lower())
     
-    data = pd.concat([interviews, morality_entities], ignore_index=True)
+    if label_propagation:
+        label_propagation = LabelPropagation()
+        label_propagation.fit(morality_entities['Embeddings'].apply(pd.Series), morality_entities['Name'])
+        interviews['Name'] = interviews['Name'].str.cat(label_propagation.predict(interviews['Embeddings'].apply(pd.Series)), sep=' - ')
+        data = interviews
+    else:
+        data = pd.concat([interviews, morality_entities], ignore_index=True)
 
     if dim_reduction == 'TSNE':
         tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
@@ -39,8 +46,6 @@ def plot_morality_embeddings(embeddings_file, model, morality_entities, dim_redu
         pca = PCA(n_components=2, random_state=42)
         pca.fit(morality_entities['Embeddings'].apply(pd.Series))
         data = data[['Name']].join(pd.DataFrame(pca.transform(data['Embeddings'].apply(pd.Series))))
-
-    # data = data.groupby('Name').mean().reset_index()
 
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(20, 20))
@@ -58,6 +63,6 @@ def plot_morality_embeddings(embeddings_file, model, morality_entities, dim_redu
 
 
 if __name__ == '__main__':
-    model = 'lg'
+    model = 'trf'
     # compute_embeddings('data/waves', 'data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality')
-    plot_morality_embeddings('data/cache/morality_embeddings_'+model+'.pkl', model=model, morality_entities=MORALITY_ENTITIES, dim_reduction='TSNE', perplexity=100)
+    plot_morality_embeddings(embeddings_file='data/cache/morality_embeddings_'+model+'.pkl', model=model, morality_entities=MORALITY_ENTITIES, label_propagation=True, dim_reduction='TSNE', perplexity=100)

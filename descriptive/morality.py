@@ -16,7 +16,7 @@ from preprocessing.embeddings import compute_embeddings
 def plot_morality_embeddings(embeddings_file, model, morality_entities, label_propagation=False, dim_reduction='TSNE', perplexity=5):
 
     interviews = pd.read_pickle(embeddings_file)
-    interviews = interviews[['Wave', 'R:Morality_Embeddings']].dropna()
+    interviews = interviews[['Wave', 'R:Morality:M1_Embeddings']].dropna()
     interviews.columns = ['Name', 'Embeddings']
     interviews['Name'] = interviews['Name'].apply(lambda x: 'Wave ' + str(x))
     
@@ -29,6 +29,7 @@ def plot_morality_embeddings(embeddings_file, model, morality_entities, label_pr
     
     morality_entities = pd.DataFrame(morality_entities).melt(var_name='Name', value_name='Embeddings')
     morality_entities['Embeddings'] = vectorizer(morality_entities['Embeddings'].str.lower())
+    # morality_entities = morality_entities.groupby('Name').mean().reset_index()
     
     if label_propagation:
         label_propagation = LabelPropagation()
@@ -63,6 +64,6 @@ def plot_morality_embeddings(embeddings_file, model, morality_entities, label_pr
 
 
 if __name__ == '__main__':
-    model = 'trf'
+    model = 'lg'
     # compute_embeddings('data/waves', 'data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality')
     plot_morality_embeddings(embeddings_file='data/cache/morality_embeddings_'+model+'.pkl', model=model, morality_entities=MORALITY_ENTITIES, label_propagation=True, dim_reduction='TSNE', perplexity=100)

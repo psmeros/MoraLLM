@@ -3,18 +3,19 @@ import spacy
 from pandarallel import pandarallel
 from simpletransformers.language_representation import RepresentationModel
 
+from __init__ import *
 from preprocessing.transcript_parser import wave_parser
 
 #Compute embeddings for a folder of transcripts
-def compute_embeddings(wave_folder, output_file, section, keep_POS=True, model='lg'):
-                                                   
-    interviews = wave_parser(wave_folder)
+def compute_embeddings(wave_folder, output_file, section, morality_breakdown=False, keep_POS=True, model='lg'):
 
-    #Keep only POS of interest
+    interviews = wave_parser(wave_folder, morality_breakdown=morality_breakdown)
+
+    #Keep only POS of interest (was ['VERB', 'NOUN', 'ADJ', 'ADV'], now just ['NOUN'])
     if keep_POS:
         nlp = spacy.load('en_core_web_lg')
-        interviews[section] = interviews[section].apply(lambda s: ' '.join([w.text for w in nlp(s) if w.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']]) if not pd.isna(s) else pd.NA)
-        interviews[section] = interviews[section].str.strip()
+        pandarallel.initialize()
+        interviews[section] = interviews[section].parallel_apply(lambda s: ' '.join(set([w.text for w in nlp(s.lower()) if w.pos_ in ['NOUN']])).strip() if not pd.isna(s) else pd.NA)
         interviews = interviews.dropna(subset=[section])
 
     #Compute embeddings
@@ -33,4 +34,4 @@ def compute_embeddings(wave_folder, output_file, section, keep_POS=True, model='
 
 if __name__ == '__main__':
     model = 'lg'
-    compute_embeddings('data/waves', 'data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality')
+    compute_embeddings(wave_folder='data/waves', output_file='data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality:M1', morality_breakdown=True, keep_POS=True)

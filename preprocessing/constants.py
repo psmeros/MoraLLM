@@ -95,7 +95,13 @@ REFINED_SECTIONS = [participant + section for participant in INTERVIEW_PARTICIPA
 # MORALITY_ENTITIES = {'Deontological Morality' : ['Duty', 'Obligations', 'Intrinsic Value', 'Rules', 'Intention', 'Right', 'Wrong', 'Responsibility'],
 #                      'Consequential Morality' : ['Utilitarianism', 'Consequences', 'Hedonistic Calculus', 'Cost Benefit Analysis', 'Teleological', 'Egoism', 'Consequentialism', 'Impartiality']}
 
-MORALITY_ENTITIES = {'Intrinsic Values' : ['Values', 'Intrinsic', 'Morality', 'Importance', 'Meaning', 'Ends', 'Ethics', 'Beliefs', 'Autonomy', 'Dignity', 'Rights', 'Humanity', 'Inherent', 'Goodness', 'Essence', 'Nature', 'Characteristics', 'Inner', 'Unconditional', 'Worth'],
-                     'Consequentialism' : ['Ethics', 'Utilitarianism', 'Morality', 'Actions', 'Outcomes', 'Consequences', 'Maximization', 'Principles', 'Happiness', 'Consequentialist', 'Value', 'Moral', 'Philosophy', 'Decisions', 'Ethical', 'Altruism', 'Conduct', 'Evaluating', 'Results', 'Utility'],
-                     'Trust' : ['Trust', 'Reliability', 'Confidence', 'Faith', 'Belief', 'Credibility', 'Integrity', 'Honesty', 'Dependability', 'Loyalty', 'Transparency', 'Accountability', 'Fidelity', 'Assurance', 'Openness', 'Sincerity', 'Consistency', 'Goodwill', 'Reputation', 'Commitment']}
+# MORALITY_ENTITIES = {'Intrinsic Values' : ['Values', 'Intrinsic', 'Morality', 'Importance', 'Meaning', 'Ends', 'Ethics', 'Beliefs', 'Autonomy', 'Dignity', 'Rights', 'Humanity', 'Inherent', 'Goodness', 'Essence', 'Nature', 'Characteristics', 'Inner', 'Unconditional', 'Worth'],
+#                      'Consequentialism' : ['Ethics', 'Utilitarianism', 'Morality', 'Actions', 'Outcomes', 'Consequences', 'Maximization', 'Principles', 'Happiness', 'Consequentialist', 'Value', 'Moral', 'Philosophy', 'Decisions', 'Ethical', 'Altruism', 'Conduct', 'Evaluating', 'Results', 'Utility'],
+#                      'Trust' : ['Trust', 'Reliability', 'Confidence', 'Faith', 'Belief', 'Credibility', 'Integrity', 'Honesty', 'Dependability', 'Loyalty', 'Transparency', 'Accountability', 'Fidelity', 'Assurance', 'Openness', 'Sincerity', 'Consistency', 'Goodwill', 'Reputation', 'Commitment']}
 
+MORALITY_ENTITIES = {'Care': ['kindness', 'compassion', 'nurture', 'empathy', 'suffer', 'cruel', 'hurt', 'harm'],
+                     'Equality': ['equality', 'egalitarian', 'justice', 'nondiscriminatory', 'prejudice', 'inequality', 'discrimination', 'biased'],
+                     'Proportionality': ['proportional', 'merit', 'deserving', 'reciprocal', 'disproportionate', 'cheating', 'favoritism', 'recognition'],
+                     'Loyalty': ['loyal', 'solidarity', 'patriot', 'fidelity', 'betray', 'treason', 'disloyal', 'traitor'],
+                     'Authority': ['authority', 'obey', 'respect', 'tradition', 'subversion', 'disobey', 'disrespect', 'chaos'],
+                     'Purity': ['purity', 'sanctity', 'sacred', 'wholesome', 'impurity', 'depravity', 'degradation', 'unnatural']}

@@ -7,6 +7,7 @@ from simpletransformers.language_representation import RepresentationModel
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.semi_supervised import LabelPropagation
+from scipy.spatial.distance import cosine
 
 from preprocessing.constants import MORALITY_ENTITIES
 from preprocessing.embeddings import compute_embeddings, transform_embeddings
@@ -59,9 +60,37 @@ def plot_morality_embeddings(embeddings_file, model, anchors, label_propagation=
     plt.savefig('data/plots/morality_embeddings.png', bbox_inches='tight')
     plt.show()
 
+#Plot moral foundations by wave
+def plot_moral_foundations(interviews_file, foundations_file):
+    #load data
+    interviews = pd.read_pickle(interviews_file)
+    interviews = interviews[['Wave', 'R:Morality_Embeddings']].dropna().rename(columns={'Wave': 'Name', 'R:Morality_Embeddings': 'Embeddings'})
+    interviews['Name'] = interviews['Name'].apply(lambda x: 'Wave ' + str(x))
+    moral_foundations = pd.read_pickle(foundations_file)
+    
+    #compute similarity
+    interviews = interviews.merge(moral_foundations, how='cross')
+    interviews['Similarity'] = interviews.apply(lambda x: 1 - cosine(x['Embeddings_x'], x['Embeddings_y']), axis=1)
+    interviews = interviews[['Name_x', 'Name_y', 'Similarity']].rename(columns={'Name_x': 'Wave', 'Name_y': 'Anchor'})
 
+    #plot boxplots
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(10, 20))
+    ax = sns.boxplot(data=interviews, y='Anchor', x='Similarity', hue='Wave', hue_order=['Wave 1', 'Wave 2', 'Wave 3'], orient='h', whis=[10, 100], palette='Set2')
+    ax.legend(title='', loc='upper center', bbox_to_anchor=(0.3, -0.03), ncol=3)
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Moral Foundations by Wave')
+    plt.savefig('data/plots/moral_foundations.png', bbox_inches='tight')
+    plt.show()
+
+    #aggregate similarity
+    print(interviews.groupby('Wave').mean(numeric_only=True))
+    
 
 if __name__ == '__main__':
     model = 'lg'
     # compute_embeddings('data/waves', 'data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality')
-    plot_morality_embeddings(embeddings_file='data/cache/morality_embeddings_'+model+'.pkl', model=model, anchors=MORALITY_ENTITIES, label_propagation=False, dim_reduction='TSNE', perplexity=5)
+    # plot_morality_embeddings(embeddings_file='data/cache/morality_embeddings_'+model+'.pkl', model=model, anchors=MORALITY_ENTITIES, label_propagation=False, dim_reduction='TSNE', perplexity=5)
+    plot_moral_foundations(interviews_file='data/cache/morality_embeddings_'+model+'.pkl', foundations_file='data/cache/moral_foundations.pkl')
+

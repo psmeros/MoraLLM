@@ -39,7 +39,7 @@ def compute_embeddings(wave_folder, output_file, section, morality_breakdown=Fal
 
     interviews.to_pickle(output_file)
 
-
+#Transform embeddings to match anchor embeddings
 def transform_embeddings(embeddings, anchors, model='lg'):
 
     #Compute anchor embeddings
@@ -65,7 +65,30 @@ def transform_embeddings(embeddings, anchors, model='lg'):
 
     return embeddings, anchors
 
+#Compute morality anchors based on morality dictionary
+def compute_morality_anchors(dictionary_file, output_file):
+    dictionary = pd.DataFrame(pd.read_pickle(dictionary_file)).T
+    dictionary = dictionary.reset_index(names=['word'])
+
+    vectorizer = get_vectorizer()
+    dictionary['Embeddings'] = vectorizer(dictionary['word'].str.lower())
+
+    morality_anchors = pd.DataFrame()
+
+    for column in dictionary.columns:
+        if column not in ['word', 'Embeddings']:
+            morality_anchors[column] = sum(dictionary['Embeddings']*dictionary[column])/sum(dictionary[column])
+
+    morality_anchors = morality_anchors.T
+    morality_anchors['Embeddings'] = morality_anchors.apply(lambda x: np.array(x), axis=1)
+    morality_anchors = morality_anchors[['Embeddings']]
+    morality_anchors = morality_anchors.reset_index(names=['Name'])
+
+    morality_anchors.to_pickle(output_file)
 
 if __name__ == '__main__':
     model = 'lg'
-    compute_embeddings(wave_folder='data/waves', output_file='data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality', morality_breakdown=False, keep_POS=True)
+    # compute_embeddings(wave_folder='data/waves', output_file='data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality', morality_breakdown=False, keep_POS=True)
+    compute_morality_anchors(dictionary_file='data/misc/eMFD.pkl', output_file='data/cache/morality_anchors.pkl')
+
+

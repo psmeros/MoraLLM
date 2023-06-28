@@ -53,21 +53,17 @@ def morality_wordiness(interviews_folder, dictionary_file, output_file):
     lemmatize = lambda text : [token.lemma_ for token in nlp(text) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']]
     interviews['Morality Words'] = interviews['R:Morality'].parallel_apply(lemmatize)
     interviews = interviews[['Wave', 'Morality Words']]
-    interviews = interviews.merge(interviews.groupby('Wave').count(), on='Wave').rename(columns={'Morality Words_x': 'Morality Words', 'Morality Words_y': 'Total Interviews'})
 
     #cleaning
     interviews['Morality Words'] = interviews['Morality Words'].apply(lambda x: [word for word in x if word.isalpha()])
     
-    #group by wave
-    interviews = interviews.groupby(['Wave', 'Total Interviews']).sum().reset_index()
-
     #count unique words
-    interviews['Unique Words per Interview'] = interviews.apply(lambda x: len(set(x['Morality Words']))/x['Total Interviews'], axis=1)
+    interviews['Unique Words'] = interviews['Morality Words'].apply(lambda x: len(set(x)))
 
     #count unique eMFD words
     dictionary = pd.DataFrame(pd.read_pickle(dictionary_file)).T
     dictionary = dictionary.reset_index(names=['word'])['word'].tolist()
-    interviews['Unique eMFD Words per Interview'] = interviews.apply(lambda x: len([w for w in set(x['Morality Words']) if w in dictionary])/x['Total Interviews'], axis=1)
+    interviews['Unique eMFD Words'] = interviews['Morality Words'].apply(lambda x: len([w for w in set(x) if w in dictionary]))
 
     #save to cache
     interviews.to_pickle(output_file)
@@ -122,6 +118,23 @@ def plot_distribution(word_counts_cache):
     plt.savefig('data/plots/wordiness_distribution.png', bbox_inches='tight')
     plt.show()
 
+def plot_morality_wordiness(morality_wordiness_file):
+    morality_wordiness = pd.read_pickle(morality_wordiness_file)
+    morality_wordiness = morality_wordiness[['Wave', 'Unique Words', 'Unique eMFD Words']].melt(id_vars=['Wave'], var_name='Type', value_name='Counts')
+
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(20, 15))
+
+    color_palette = sns.color_palette('icefire')
+    ax = sns.barplot(data=morality_wordiness, y='Wave', x='Counts', hue='Type', palette=color_palette)
+    ax.legend(title='Morality Section Counts', loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=2)
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    sns.despine(left=True, bottom=True)
+    plt.tight_layout()
+    plt.savefig('data/plots/morality_wordiness.png', bbox_inches='tight')
+    plt.show()
 
 
 
@@ -129,4 +142,5 @@ if __name__ == '__main__':
     # word_count(interviews_folder='data/waves', output_file='data/cache/word_counts.pkl')
     # plot_ratio(word_counts_cache='data/cache/word_counts.pkl')
     # plot_distribution(word_counts_cache='data/cache/word_counts.pkl')
-    morality_wordiness(interviews_folder='data/waves', dictionary_file='data/misc/eMFD.pkl', output_file='data/cache/morality_wordiness.pkl')
+    # morality_wordiness(interviews_folder='data/waves', dictionary_file='data/misc/eMFD.pkl', output_file='data/cache/morality_wordiness.pkl')
+    plot_morality_wordiness(morality_wordiness_file='data/cache/morality_wordiness.pkl')

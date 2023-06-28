@@ -90,7 +90,7 @@ def plot_moral_foundations(interviews_file, foundations_file):
 
 if __name__ == '__main__':
     model = 'lg'
-    # compute_embeddings('data/waves', 'data/cache/morality_embeddings_'+model+'.pkl', model=model, section='R:Morality')
+    compute_embeddings('data/waves', 'data/cache/morality_embeddings_POS_'+model+'.pkl', model=model, section='R:Morality', keep_POS=True)
     # plot_morality_embeddings(embeddings_file='data/cache/morality_embeddings_'+model+'.pkl', model=model, anchors=MORALITY_ENTITIES, label_propagation=False, dim_reduction='TSNE', perplexity=5)
-    plot_moral_foundations(interviews_file='data/cache/morality_embeddings_'+model+'.pkl', foundations_file='data/cache/moral_foundations.pkl')
+    plot_moral_foundations(interviews_file='data/cache/morality_embeddings_POS_'+model+'.pkl', foundations_file='data/cache/moral_foundations.pkl')
 

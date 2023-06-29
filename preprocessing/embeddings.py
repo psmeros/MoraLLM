@@ -26,7 +26,7 @@ def compute_embeddings(wave_folder, output_file, section, morality_breakdown=Fal
     if keep_POS:
         nlp = spacy.load('en_core_web_lg')
         pandarallel.initialize()
-        interviews[section] = interviews[section].parallel_apply(lambda s: ' '.join(set([w.text for w in nlp(s.lower()) if w.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])).strip() if not pd.isna(s) else pd.NA)
+        interviews[section] = interviews[section].parallel_apply(lambda s: ' '.join(set([w.text for w in nlp(s.lower()) if w.pos_ in ['NOUN', 'ADJ']])).strip() if not pd.isna(s) else pd.NA)
 
     #Compute embeddings
     interviews = interviews.dropna(subset=[section])

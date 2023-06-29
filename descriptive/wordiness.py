@@ -5,6 +5,7 @@ from __init__ import *
 from matplotlib import pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from pandarallel import pandarallel
+from wordcloud import WordCloud
 
 from preprocessing.constants import INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, REFINED_SECTIONS
 from preprocessing.transcript_parser import wave_parser
@@ -50,7 +51,7 @@ def morality_wordiness(interviews_folder, dictionary_file, output_file):
     nlp = spacy.load("en_core_web_lg")
 
     #lemmatization
-    lemmatize = lambda text : [token.lemma_ for token in nlp(text) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']]
+    lemmatize = lambda text : [token.lemma_ for token in nlp(text) if token.pos_ in ['NOUN', 'ADJ']]
     interviews['Morality Words'] = interviews['R:Morality'].parallel_apply(lemmatize)
     interviews = interviews[['Wave', 'Morality Words']]
 
@@ -136,7 +137,23 @@ def plot_morality_wordiness(morality_wordiness_file):
     plt.savefig('data/plots/morality_wordiness.png', bbox_inches='tight')
     plt.show()
 
+def plot_morality_wordcloud(morality_wordiness_file):
+    morality_wordiness = pd.read_pickle(morality_wordiness_file)
+    words = morality_wordiness.groupby('Wave')['Morality Words'].sum().reset_index(name='Morality Words')
+    words['Morality Words'] = words['Morality Words'].apply(lambda l: ' '.join([w.strip() for w in l if w not in ['people', 'stuff', 'thing', 'lot', 'time', 'way']]))
 
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(20, 15))
+    wordcloud = WordCloud(background_color='white', collocations=False, contour_width=0.1, contour_color='black',  max_font_size=150, random_state=42, colormap='Dark2')
+    for i in range (len(words)):
+        plt.subplot(len(words), 1, i+1)
+        wc = wordcloud.generate(words['Morality Words'].iloc[i])
+        plt.imshow(wc, interpolation='bilinear')
+        plt.axis("off")
+        plt.title(words['Wave'].iloc[i])
+    plt.tight_layout()
+    plt.savefig('data/plots/morality_wordcloud.png', bbox_inches='tight')
+    plt.show()
 
 if __name__ == '__main__':
     # word_count(interviews_folder='data/waves', output_file='data/cache/word_counts.pkl')
@@ -144,3 +161,4 @@ if __name__ == '__main__':
     # plot_distribution(word_counts_cache='data/cache/word_counts.pkl')
     # morality_wordiness(interviews_folder='data/waves', dictionary_file='data/misc/eMFD.pkl', output_file='data/cache/morality_wordiness.pkl')
     plot_morality_wordiness(morality_wordiness_file='data/cache/morality_wordiness.pkl')
+    plot_morality_wordcloud(morality_wordiness_file='data/cache/morality_wordiness.pkl')

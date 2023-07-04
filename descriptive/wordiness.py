@@ -59,12 +59,12 @@ def morality_wordiness(interviews_folder, dictionary_file, output_file):
     interviews['Morality Words'] = interviews['Morality Words'].apply(lambda x: [word for word in x if word.isalpha()])
     
     #count unique words
-    interviews['Unique Words'] = interviews['Morality Words'].apply(lambda x: len(set(x)))
+    interviews['Nouns & Adjectives'] = interviews['Morality Words'].apply(lambda x: len(x))
 
     #count unique eMFD words
     dictionary = pd.DataFrame(pd.read_pickle(dictionary_file)).T
     dictionary = dictionary.reset_index(names=['word'])['word'].tolist()
-    interviews['Unique eMFD Words'] = interviews['Morality Words'].apply(lambda x: len([w for w in set(x) if w in dictionary]))
+    interviews['eMFD Nouns & Adjectives'] = interviews['Morality Words'].apply(lambda x: len([w for w in x if w in dictionary]))
 
     #save to cache
     interviews.to_pickle(output_file)
@@ -121,7 +121,7 @@ def plot_distribution(word_counts_cache):
 
 def plot_morality_wordiness(morality_wordiness_file):
     morality_wordiness = pd.read_pickle(morality_wordiness_file)
-    morality_wordiness = morality_wordiness[['Wave', 'Unique Words', 'Unique eMFD Words']].melt(id_vars=['Wave'], var_name='Type', value_name='Counts')
+    morality_wordiness = morality_wordiness[['Wave', 'Nouns & Adjectives', 'eMFD Nouns & Adjectives']].melt(id_vars=['Wave'], var_name='Type', value_name='Counts')
 
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(20, 15))
@@ -156,9 +156,10 @@ def plot_morality_wordcloud(morality_wordiness_file):
     plt.show()
 
 if __name__ == '__main__':
-    # word_count(interviews_folder='data/waves', output_file='data/cache/word_counts.pkl')
-    # plot_ratio(word_counts_cache='data/cache/word_counts.pkl')
-    # plot_distribution(word_counts_cache='data/cache/word_counts.pkl')
-    # morality_wordiness(interviews_folder='data/waves', dictionary_file='data/misc/eMFD.pkl', output_file='data/cache/morality_wordiness.pkl')
+    word_count(interviews_folder='data/waves', output_file='data/cache/word_counts.pkl')
+    plot_ratio(word_counts_cache='data/cache/word_counts.pkl')
+    plot_distribution(word_counts_cache='data/cache/word_counts.pkl')
+
+    morality_wordiness(interviews_folder='data/waves', dictionary_file='data/misc/eMFD.pkl', output_file='data/cache/morality_wordiness.pkl')
     plot_morality_wordiness(morality_wordiness_file='data/cache/morality_wordiness.pkl')
     plot_morality_wordcloud(morality_wordiness_file='data/cache/morality_wordiness.pkl')

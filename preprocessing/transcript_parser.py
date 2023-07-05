@@ -2,9 +2,9 @@ import os
 import re
 
 import pandas as pd
-import numpy as np
+from __init__ import *
 
-from preprocessing.constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, TRANSCRIPT_ENCODING
+from preprocessing.constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, TRANSCRIPT_ENCODING
 from preprocessing.helpers import error_handling
 
 
@@ -173,6 +173,10 @@ def wave_parser(folder, morality_breakdown=False):
             waves.append(interviews)
 
     waves = pd.concat(waves, ignore_index=True)
+    
+    #Clean Gender Metadata
+    waves['Gender'] = waves['Gender'].map(METADATA_GENDER_MAP)
+    
     return waves
 
 

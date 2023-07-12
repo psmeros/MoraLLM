@@ -149,11 +149,11 @@ def get_raw_text(interview, morality_breakdown):
     return raw_text
 
 #parse folder of transcripts
-def wave_parser(folder, morality_breakdown=False):
+def wave_parser(waves_folder='data/waves', morality_breakdown=False):
     
     waves = []
-    for foldername in os.listdir(folder):
-        foldername = os.path.join(folder, foldername)
+    for foldername in os.listdir(waves_folder):
+        foldername = os.path.join(waves_folder, foldername)
         if os.path.isdir(foldername):
             interviews = []
 
@@ -181,4 +181,4 @@ def wave_parser(folder, morality_breakdown=False):
 
 
 if __name__ == '__main__':
-    interviews = wave_parser('data/waves')
+    interviews = wave_parser()

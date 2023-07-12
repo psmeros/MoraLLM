@@ -159,7 +159,7 @@ def wave_parser(folder, morality_breakdown=False):
 
             for filename in os.listdir(foldername):
                 filename = os.path.join(foldername, filename)
-                if os.path.isfile(filename):
+                if os.path.isfile(filename) and filename.endswith('.txt'):
                     interview = interview_parser(filename)
                     interviews.append(interview)
             interviews = pd.DataFrame(interviews)

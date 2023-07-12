@@ -51,19 +51,22 @@ INTERVIEW_METADATA = [  #wave_1
                         #wave_3
                         'P']
 
-INTERVIEW_COMMENTS =[   #all waves
-                        '#IC:',
-                        '#ICM:',
-                        '#C:',
-                        '#OC:',
-                        '#I:',
-                        '#NC:',
-                        '#IN:',
-                        '#FIELD NOTES',
-                        '#END',
-                        #wave_3
-                        '#Interview File Name:',
-                        '#NOTES']
+INTERVIEW_SINGLELINE_COMMENTS =[ #all waves
+                                '#ICM:',
+                                '#C:',
+                                '#OC:',
+                                #wave_3
+                                '#Interview File Name:']
+
+INTERVIEW_MULTILINE_COMMENTS =[ #all waves
+                                '#IC:',
+                                '#I:',
+                                '#NC:',
+                                '#IN:',
+                                '#FIELD NOTES',
+                                '#END',
+                                #wave_3
+                                '#NOTES']
 
 INTERVIEW_PARTICIPANTS = ['I:', 'R:']
 

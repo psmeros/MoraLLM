@@ -4,7 +4,7 @@ import re
 import pandas as pd
 from __init__ import *
 
-from preprocessing.constants import INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_COMMENTS, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, TRANSCRIPT_ENCODING
+from preprocessing.constants import INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, TRANSCRIPT_ENCODING
 from preprocessing.helpers import error_handling
 
 
@@ -88,9 +88,13 @@ def interview_parser(filename):
             elif line.strip() == '':
                 continue
 
-            #Skip comments
-            elif any(re.sub(r'[\s]+', '', line).lower().startswith(re.sub(r'[\s]+', '', comment).lower()) for comment in INTERVIEW_COMMENTS):
+            #Skip mutliline comments
+            elif any(re.sub(r'[\s]+', '', line).lower().startswith(re.sub(r'[\s]+', '', comment).lower()) for comment in INTERVIEW_MULTILINE_COMMENTS):
                 comment_lines = True
+
+            #Skip singleline comments
+            elif any(re.sub(r'[\s]+', '', line).lower().startswith(re.sub(r'[\s]+', '', comment).lower()) for comment in INTERVIEW_SINGLELINE_COMMENTS):
+                continue
 
             #Interview metadata
             elif line.startswith('#') and metadata_lines:

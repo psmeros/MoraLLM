@@ -75,7 +75,7 @@ def plot_moral_foundations(embeddings_file, moral_foundations_file):
 
 if __name__ == '__main__':
     model='lg'
-    embeddings_file='data/cache/morality_embeddings_POS_'+model+'.pkl'
+    embeddings_file='data/cache/morality_embeddings_'+model+'.pkl'
     moral_foundations_file='data/cache/moral_foundations.pkl'
     label_propagation=False
     dim_reduction='TSNE'
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     plot_morality_embeddings(embeddings_file=embeddings_file, moral_foundations_file=moral_foundations_file, model=model, label_propagation=label_propagation, dim_reduction=dim_reduction, perplexity=perplexity)
 
     model='lg'
-    embeddings_file='data/cache/morality_embeddings_POS_'+model+'.pkl'
+    embeddings_file='data/cache/morality_embeddings_'+model+'.pkl'
     moral_foundations_file='data/cache/moral_foundations.pkl'
     plot_moral_foundations(embeddings_file=embeddings_file, moral_foundations_file=moral_foundations_file)
 

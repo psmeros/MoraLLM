@@ -11,19 +11,14 @@ from preprocessing.embeddings import compute_embeddings, transform_embeddings
 
 
 #Plot morality embeddings of all waves
-def plot_morality_embeddings(embeddings_file, moral_foundations_file, model, label_propagation=False, dim_reduction='TSNE', perplexity=5):
+def plot_morality_embeddings(embeddings_file, dim_reduction='TSNE', perplexity=5):
 
     interviews = pd.read_pickle(embeddings_file)
     interviews = interviews[['Wave', 'R:Morality_Embeddings']].dropna().rename(columns={'Wave': 'Name', 'R:Morality_Embeddings': 'Embeddings'})
     interviews['Name'] = interviews['Name'].apply(lambda x: 'Wave ' + str(x))
     
-    moral_foundations = pd.read_pickle(moral_foundations_file)
-    interviews['Embeddings'] = transform_embeddings(interviews['Embeddings'], moral_foundations, model=model)
-        
-    if label_propagation:
-        label_propagation = LabelPropagation()
-        label_propagation.fit(moral_foundations['Embeddings'].apply(pd.Series), moral_foundations['Name'])
-        interviews['Name'] = interviews['Name'].str.cat(label_propagation.predict(interviews['Embeddings'].apply(pd.Series)), sep=' - ')
+    #Τransform embeddings
+    interviews['Embeddings'] = transform_embeddings(interviews['Embeddings'])
 
     #Dimensionality reduction
     data = interviews
@@ -74,16 +69,11 @@ def plot_moral_foundations(embeddings_file, moral_foundations_file):
     
 
 if __name__ == '__main__':
-    model='lg'
-    embeddings_file='data/cache/morality_embeddings_'+model+'.pkl'
-    moral_foundations_file='data/cache/moral_foundations.pkl'
-    label_propagation=False
+    embeddings_file='data/cache/morality_embeddings_lg.pkl'
     dim_reduction='TSNE'
     perplexity=5
-    plot_morality_embeddings(embeddings_file=embeddings_file, moral_foundations_file=moral_foundations_file, model=model, label_propagation=label_propagation, dim_reduction=dim_reduction, perplexity=perplexity)
+    plot_morality_embeddings(embeddings_file, dim_reduction, perplexity)
 
-    model='lg'
-    embeddings_file='data/cache/morality_embeddings_'+model+'.pkl'
+    embeddings_file='data/cache/morality_embeddings_lg.pkl'
     moral_foundations_file='data/cache/moral_foundations.pkl'
-    plot_moral_foundations(embeddings_file=embeddings_file, moral_foundations_file=moral_foundations_file)
-
+    plot_moral_foundations(embeddings_file, moral_foundations_file)

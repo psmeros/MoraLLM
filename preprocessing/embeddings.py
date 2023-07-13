@@ -42,26 +42,14 @@ def compute_embeddings(interviews, section_list, model):
     
     return interviews
 
-
-#Transform embeddings to match anchor embeddings
-def transform_embeddings(embeddings, moral_foundations, model='lg'):
-
-    #Compute old embeddings
-    vectorizer = get_vectorizer(model=model)
-    moral_foundations['Old Embeddings'] = vectorizer(moral_foundations['Name'].str.lower())
-
-    #Find transformation matrix
-    regressor = LinearRegression()
-    regressor.fit(moral_foundations['Old Embeddings'].apply(pd.Series), moral_foundations['Embeddings'].apply(pd.Series))
-    transformation_matrix = regressor.coef_.T
-
-    #Transform embeddings
+#Transform input embeddings
+def transform_embeddings(embeddings, transformation_matrix_file = 'data/cache/transformation_matrix.pkl'):
+    transformation_matrix = pd.read_pickle(transformation_matrix_file).values
     embeddings = embeddings.apply(pd.Series).apply(lambda x: np.dot(x, transformation_matrix), axis=1)
-
     return embeddings
 
-#Compute morality anchors based on morality dictionary
-def compute_eMFD_embeddings(dictionary_file, output_file):
+#Compute eMFD embeddings and transformation matrix
+def embed_eMFD(dictionary_file, moral_foundations_file, transformation_matrix_file):
     dictionary = pd.DataFrame(pd.read_pickle(dictionary_file)).T
     dictionary = dictionary.reset_index(names=['word'])
 
@@ -83,7 +71,17 @@ def compute_eMFD_embeddings(dictionary_file, output_file):
     moral_foundations['Name'] = moral_foundations['Name'].apply(lambda x: x.split('.')[0].capitalize())
     moral_foundations = moral_foundations.groupby('Name').mean().reset_index()
 
-    moral_foundations.to_pickle(output_file)
+    #Compute global embeddings
+    global_embeddings = vectorizer(moral_foundations['Name'].str.lower())
+
+    #Find transformation matrix
+    regressor = LinearRegression()
+    regressor.fit(global_embeddings.apply(pd.Series), moral_foundations['Embeddings'].apply(pd.Series))
+    transformation_matrix = pd.DataFrame(regressor.coef_.T)
+
+    #Save files
+    moral_foundations.to_pickle(moral_foundations_file)
+    transformation_matrix.to_pickle(transformation_matrix_file)
 
 
 if __name__ == '__main__':
@@ -95,5 +93,6 @@ if __name__ == '__main__':
     interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
 
     dictionary_file = 'data/misc/eMFD.pkl'
-    output_file = 'data/cache/moral_foundations.pkl'
-    compute_eMFD_embeddings(dictionary_file=dictionary_file, output_file=output_file)
+    moral_foundations_file = 'data/cache/moral_foundations.pkl'
+    transformation_matrix_file = 'data/cache/transformation_matrix.pkl'
+    embed_eMFD(dictionary_file, moral_foundations_file, transformation_matrix_file)

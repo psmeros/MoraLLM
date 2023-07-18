@@ -99,3 +99,12 @@ METADATA_GENDER_MAP = {'Female':'Female',
                        'BOY':'Male',
                        'boy':'Male',
                        'Boy':'Male'}
+
+MORALITY_ORIGIN = ['Intrinsic',
+                   'Experience',
+                   'Consequences',
+                   'Family',
+                   'Community',
+                   'Media',
+                   'Laws',
+                   'Holy Scripture']

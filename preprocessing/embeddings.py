@@ -6,7 +6,9 @@ from pandarallel import pandarallel
 from simpletransformers.language_representation import RepresentationModel
 from sklearn.linear_model import LinearRegression
 
+from preprocessing.metadata_parser import merge_codings, merge_matches
 from preprocessing.transcript_parser import wave_parser
+
 
 def get_vectorizer(model='lg', parallel=False):
     if model == 'trf':
@@ -85,14 +87,26 @@ def embed_eMFD(dictionary_file, moral_foundations_file, transformation_matrix_fi
 
 
 if __name__ == '__main__':
+    config = [3]
 
-    interviews = wave_parser()
-    model = 'lg'
-    section_list = ['R:Morality']
-    interviews = compute_embeddings(interviews, section_list, model)
-    interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+    if 1 in config:
+        interviews = wave_parser()
+        model = 'lg'
+        section_list = ['R:Morality']
+        interviews = compute_embeddings(interviews, section_list, model)
+        interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
 
-    dictionary_file = 'data/misc/eMFD.pkl'
-    moral_foundations_file = 'data/cache/moral_foundations.pkl'
-    transformation_matrix_file = 'data/cache/transformation_matrix.pkl'
-    embed_eMFD(dictionary_file, moral_foundations_file, transformation_matrix_file)
+    if 2 in config:
+        dictionary_file = 'data/misc/eMFD.pkl'
+        moral_foundations_file = 'data/cache/moral_foundations.pkl'
+        transformation_matrix_file = 'data/cache/transformation_matrix.pkl'
+        embed_eMFD(dictionary_file, moral_foundations_file, transformation_matrix_file)
+
+    if 3 in config:
+        interviews = wave_parser()
+        interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
+        interviews = merge_codings(interviews)
+        model = 'lg'
+        section_list = ['Wave 1:R:Morality', 'Wave 2:R:Morality', 'Wave 3:R:Morality']
+        interviews = compute_embeddings(interviews, section_list, model)
+        interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')

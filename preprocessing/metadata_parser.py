@@ -36,5 +36,5 @@ def merge_codings(interviews, codings_file = 'data/waves/interview_codings.csv')
 
 if __name__ == '__main__':
     interviews = wave_parser()
-    interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 3'])
+    interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
     interviews = merge_codings(interviews)

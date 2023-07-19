@@ -10,7 +10,7 @@ def merge_matches(interviews, wave_list, matches_file = 'data/waves/interview_ma
     for wave in wave_list:
         wave_interviews = interviews[interviews['Wave'] == int(wave.split()[-1])]
         wave_interviews = wave_interviews.add_prefix(wave + ':')
-        matches = matches.merge(wave_interviews, left_on = wave, right_on = wave + ':Interview Code', how = 'left', validate = '1:1')
+        matches = matches.merge(wave_interviews, left_on = wave, right_on = wave + ':Interview Code', how = 'inner')
 
     matches = matches.drop(wave_list, axis=1)
 
@@ -27,7 +27,6 @@ def merge_codings(interviews, codings_file = 'data/waves/interview_codings.csv')
     codings['Community'] = codings['Community'] | codings['Friends']
     codings = codings.drop(['Parents', 'Friends'], axis=1)
     codings = codings.reset_index()
-    codings['Wave'] = 1
 
     interviews = interviews.merge(codings, left_on='Wave 1:Interview Code', right_on='Interview Code', how = 'left')
     

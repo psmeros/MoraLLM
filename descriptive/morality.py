@@ -1,13 +1,16 @@
+from itertools import combinations
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from __init__ import *
 from scipy.spatial.distance import cosine
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from sklearn.semi_supervised import LabelPropagation
 
-from preprocessing.embeddings import compute_embeddings, transform_embeddings
+from preprocessing.constants import MORALITY_ORIGIN
+from preprocessing.embeddings import transform_embeddings
 
 
 #Plot morality embeddings of all waves
@@ -56,7 +59,7 @@ def plot_moral_foundations(embeddings_file, moral_foundations_file):
     #plot boxplots
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 20))
-    ax = sns.boxplot(data=interviews, y='Anchor', x='Similarity', hue='Wave', hue_order=['Wave 1', 'Wave 2', 'Wave 3'], orient='h', whis=[10, 100], palette='Set2')
+    ax = sns.boxplot(data=interviews, y='Anchor', x='Similarity', hue='Wave', hue_order=['Wave 1', 'Wave 2', 'Wave 3'], orient='h', palette='Set2')
     ax.legend(title='', loc='upper center', bbox_to_anchor=(0.3, -0.03), ncol=3)
     plt.xlabel('')
     plt.ylabel('')
@@ -66,14 +69,49 @@ def plot_moral_foundations(embeddings_file, moral_foundations_file):
 
     #aggregate similarity
     print(interviews.groupby('Wave').mean(numeric_only=True))
-    
+
+#Plot semantic shift by morality origin
+def plot_semantic_shift(embeddings_file, wave_list):
+
+    interviews = pd.read_pickle(embeddings_file)
+
+    #Compute semantic shift between all pairs of waves
+    compute_shift = lambda i: np.sum([cosine(i[w[0] + ':R:Morality_Embeddings'], i[w[1] + ':R:Morality_Embeddings']) for w in list(combinations(wave_list, 2))])
+    interviews['Shift'] = interviews.apply(compute_shift, axis=1)
+
+    #Prepare data for plotting
+    interviews = interviews[MORALITY_ORIGIN + ['Shift']]
+    interviews = interviews.melt(id_vars=['Shift'], value_vars=MORALITY_ORIGIN, var_name='Morality Origin', value_name='Check')
+    interviews = interviews[interviews['Check'] == True].drop(columns=['Check'])
+
+    #Plot boxplots
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(10, 20))
+    ax = sns.boxplot(data=interviews, y='Morality Origin', x='Shift', orient='h', palette='Set2')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Semantic Shift by Morality Origin')
+    plt.savefig('data/plots/semantic_shift.png', bbox_inches='tight')
+    plt.show()
+
+    #Print order by median
+    print(' < '.join(interviews.groupby('Morality Origin').median().sort_values(by='Shift').index.tolist()))    
 
 if __name__ == '__main__':
-    embeddings_file='data/cache/morality_embeddings_lg.pkl'
-    dim_reduction='TSNE'
-    perplexity=5
-    plot_morality_embeddings(embeddings_file, dim_reduction, perplexity)
+    config = [3]
 
-    embeddings_file='data/cache/morality_embeddings_lg.pkl'
-    moral_foundations_file='data/cache/moral_foundations.pkl'
-    plot_moral_foundations(embeddings_file, moral_foundations_file)
+    if 1 in config:
+        embeddings_file = 'data/cache/morality_embeddings_lg.pkl'
+        dim_reduction = 'TSNE'
+        perplexity = 5
+        plot_morality_embeddings(embeddings_file, dim_reduction, perplexity)
+
+    if 2 in config:
+        embeddings_file = 'data/cache/morality_embeddings_lg.pkl'
+        moral_foundations_file = 'data/cache/moral_foundations.pkl'
+        plot_moral_foundations(embeddings_file, moral_foundations_file)
+
+    if 3 in config:
+        embeddings_file = 'data/cache/temporal_morality_embeddings_lg.pkl'
+        wave_list = ['Wave 1', 'Wave 2', 'Wave 3']
+        plot_semantic_shift(embeddings_file, wave_list)

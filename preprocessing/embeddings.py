@@ -51,11 +51,11 @@ def transform_embeddings(embeddings, transformation_matrix_file = 'data/cache/tr
     return embeddings
 
 #Compute eMFD embeddings and transformation matrix
-def embed_eMFD(dictionary_file, moral_foundations_file, transformation_matrix_file):
+def embed_eMFD(dictionary_file, model, moral_foundations_file, transformation_matrix_file):
     dictionary = pd.DataFrame(pd.read_pickle(dictionary_file)).T
     dictionary = dictionary.reset_index(names=['word'])
 
-    vectorizer = get_vectorizer()
+    vectorizer = get_vectorizer(model=model)
     dictionary['Embeddings'] = vectorizer(dictionary['word'].str.lower())
 
     moral_foundations = pd.DataFrame()
@@ -87,7 +87,7 @@ def embed_eMFD(dictionary_file, moral_foundations_file, transformation_matrix_fi
 
 
 if __name__ == '__main__':
-    config = [3]
+    config = [2]
 
     if 1 in config:
         interviews = wave_parser()
@@ -98,9 +98,10 @@ if __name__ == '__main__':
 
     if 2 in config:
         dictionary_file = 'data/misc/eMFD.pkl'
+        model = 'lg'
         moral_foundations_file = 'data/cache/moral_foundations.pkl'
         transformation_matrix_file = 'data/cache/transformation_matrix.pkl'
-        embed_eMFD(dictionary_file, moral_foundations_file, transformation_matrix_file)
+        embed_eMFD(dictionary_file, model, moral_foundations_file, transformation_matrix_file)
 
     if 3 in config:
         interviews = wave_parser()

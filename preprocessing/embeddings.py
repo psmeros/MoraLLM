@@ -11,16 +11,14 @@ from preprocessing.transcript_parser import wave_parser
 
 
 def get_vectorizer(model='lg', parallel=False):
+    if parallel:
+        pandarallel.initialize()
     if model == 'trf':
         transformer = RepresentationModel(model_type='bert', model_name='bert-base-uncased', use_cuda=False)
         vectorizer = lambda x: pd.Series(transformer.encode_sentences(x, combine_strategy='mean').tolist())
     elif model in ['lg', 'md']:
         nlp = spacy.load('en_core_web_'+model)
-        if parallel:
-            pandarallel.initialize()
-            vectorizer = lambda x: x.parallel_apply(lambda y: nlp(y).vector)
-        else:
-            vectorizer = lambda x: x.apply(lambda y: nlp(y).vector)
+        vectorizer = lambda x: x.parallel_apply(lambda y: nlp(y).vector) if parallel else x.apply(lambda y: nlp(y).vector)
     return vectorizer
 
 #Compute embeddings for interview sections

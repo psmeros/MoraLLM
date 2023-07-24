@@ -97,8 +97,45 @@ def plot_semantic_shift(embeddings_file, wave_list):
     #Print order by median
     print(' < '.join(interviews.groupby('Morality Origin').median().sort_values(by='Shift').index.tolist()))    
 
+def plot_silhouette_score(embeddings_file):
+    #Load data
+    interviews = pd.read_pickle(embeddings_file)
+    interviews = interviews[['Wave', 'R:Morality_Embeddings']].dropna().rename(columns={'Wave': 'Name', 'R:Morality_Embeddings': 'Embeddings'})
+    interviews['Name'] = interviews['Name'].apply(lambda x: 'Wave ' + str(x))
+    interviews = interviews.reset_index(names='id')
+
+    #Τransform embeddings
+    interviews['Embeddings'] = transform_embeddings(interviews['Embeddings'])
+
+    #Compute Cosine distance between all pairs of interviews
+    interviews = interviews.merge(interviews, how='cross', suffixes=('', '_'))
+    interviews['Distance'] = interviews.apply(lambda x: cosine(x['Embeddings'], x['Embeddings_']), axis=1)
+    interviews = interviews.drop(columns=['Embeddings', 'Embeddings_', 'id_'])
+
+    #Average for each pair of interview-wave
+    interviews = interviews.groupby(['id', 'Name', 'Name_']).mean().reset_index()
+    interviews = interviews.pivot(index=['id', 'Name'], columns='Name_', values='Distance')
+    interviews = interviews.reset_index().rename_axis(None, axis=1).drop(columns=['id'])
+
+    #Compute Silhouette Score
+    interviews['b'] = interviews.apply(lambda i: min([i[w] for w in set(['Wave 1', 'Wave 2', 'Wave 3']) - set([i['Name']])]), axis=1)
+    interviews['a'] = interviews.apply(lambda i: i[i['Name']], axis=1)
+    interviews['Silhouette Score'] = (interviews['b'] - interviews['a']) / interviews[['a', 'b']].max(axis=1)
+    interviews = interviews.sort_values(by='Name')
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(10, 5))
+    ax = sns.boxplot(data=interviews, y='Name', x='Silhouette Score', orient='h', palette='Set2')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Silhouette Score')
+    plt.savefig('data/plots/silhouette_score.png', bbox_inches='tight')
+    plt.show()
+
+
 if __name__ == '__main__':
-    config = [3]
+    config = [4]
 
     if 1 in config:
         embeddings_file = 'data/cache/morality_embeddings_lg.pkl'
@@ -115,3 +152,7 @@ if __name__ == '__main__':
         embeddings_file = 'data/cache/temporal_morality_embeddings_lg.pkl'
         wave_list = ['Wave 1', 'Wave 2', 'Wave 3']
         plot_semantic_shift(embeddings_file, wave_list)
+
+    if 4 in config:
+        embeddings_file = 'data/cache/morality_embeddings_lg.pkl'
+        plot_silhouette_score(embeddings_file)

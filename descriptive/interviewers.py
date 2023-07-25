@@ -10,9 +10,6 @@ from scipy.spatial.distance import pdist, squareform
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-from preprocessing.embeddings import compute_embeddings
-
-
 # Find k interviewers with maximum distance
 def k_most_distant_interviewers(interviewers_embeddings, k):
 
@@ -34,9 +31,8 @@ def k_most_distant_interviewers(interviewers_embeddings, k):
 
     return list(optimal_combination)
 
-
 #Plot embeddings of k distant interviewers
-def plot_embeddings(embeddings_file, section, wave=1, dim_reduction='TSNE', perplexity=5, k=3):
+def plot_interviewer_embeddings(embeddings_file, section, wave=1, dim_reduction='TSNE', perplexity=5, k=3):
 
     interviews = pd.read_pickle(embeddings_file)
     interviews = interviews[interviews['Wave'] == wave]
@@ -63,10 +59,10 @@ def plot_embeddings(embeddings_file, section, wave=1, dim_reduction='TSNE', perp
     plt.ylabel('')
     plt.title('Top ' + str(k) + ' Most Distant Interviewers on '+ re.split('[:_]', section)[1])
     plt.gca().get_legend().set_title('Interviewer')
-    plt.savefig('data/plots/interviewer_embeddings.png', bbox_inches='tight')
+    plt.savefig('data/plots/interviewers-embeddings.png', bbox_inches='tight')
     plt.show()
 
-
 if __name__ == '__main__':
-    # compute_embeddings('data/waves', 'data/cache/interviewer_embeddings.pkl', 'I:Morality', model='lg')
-    plot_embeddings(embeddings_file='data/cache/interviewer_embeddings.pkl', section='I:Morality_Embeddings')
+    embeddings_file='data/cache/interviewer_embeddings.pkl'
+    section='I:Morality_Embeddings'
+    plot_interviewer_embeddings(embeddings_file, section)

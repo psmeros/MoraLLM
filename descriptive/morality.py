@@ -28,7 +28,7 @@ def plot_morality_embeddings(interviews, dim_reduction='TSNE', perplexity=5):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Morality Embeddings')
-    plt.savefig('data/plots/morality_embeddings.png', bbox_inches='tight')
+    plt.savefig('data/plots/morality-embeddings.png', bbox_inches='tight')
     plt.show()
 
 #Plot moral foundations by wave
@@ -46,7 +46,7 @@ def plot_moral_foundations(interviews, moral_foundations):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Moral Foundations by Wave')
-    plt.savefig('data/plots/moral_foundations.png', bbox_inches='tight')
+    plt.savefig('data/plots/morality-moral_foundations.png', bbox_inches='tight')
     plt.show()
 
     #Aggregate similarity
@@ -70,7 +70,7 @@ def plot_semantic_shift(interviews, wave_list=['Wave 1', 'Wave 2', 'Wave 3']):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Semantic Shift by Morality Origin')
-    plt.savefig('data/plots/semantic_shift.png', bbox_inches='tight')
+    plt.savefig('data/plots/morality-semantic_shift.png', bbox_inches='tight')
     plt.show()
 
     #Print order by median
@@ -102,7 +102,7 @@ def plot_silhouette_score(interviews):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Silhouette Score')
-    plt.savefig('data/plots/silhouette_score.png', bbox_inches='tight')
+    plt.savefig('data/plots/morality-silhouette_score.png', bbox_inches='tight')
     plt.show()
 
 
@@ -136,9 +136,9 @@ if __name__ == '__main__':
     for c in config:
         if c == 1:
             plot_morality_embeddings(interviews, dim_reduction, perplexity)
-        if c == 2:
+        elif c == 2:
             plot_moral_foundations(interviews, moral_foundations)
-        if c == 3:
+        elif c == 3:
             plot_silhouette_score(interviews)
-        if c == 4:
+        elif c == 4:
             plot_semantic_shift(temporal_interviews)

@@ -65,7 +65,7 @@ def plot_semantic_shift(interviews, wave_list=['Wave 1', 'Wave 2', 'Wave 3']):
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
-    plt.figure(figsize=(10, 20))
+    plt.figure(figsize=(20, 10))
     ax = sns.boxplot(data=interviews, y='Morality Origin', x='Shift', orient='h', palette='Set2')
     plt.xlabel('')
     plt.ylabel('')

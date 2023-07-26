@@ -28,11 +28,11 @@ def compute_embeddings(interviews, section_list, model):
 
     for section in section_list:
         #Keep only POS of interest
-        interviews[section] = interviews[section].parallel_apply(lambda s: ' '.join([w.text for w in nlp(s.lower()) if w.pos_ in ['NOUN', 'ADJ']]).strip() if not pd.isna(s) else pd.NA)
-        interviews = interviews.dropna(subset=[section])
+        interviews_section = interviews[section].parallel_apply(lambda s: ' '.join([w.text for w in nlp(s.lower()) if w.pos_ in ['NOUN', 'ADJ']]).strip() if not pd.isna(s) else pd.NA)
 
         #Compute embeddings
-        interviews[section + '_Embeddings'] = vectorizer(interviews[section])
+        interviews = interviews[~interviews_section.isna()]
+        interviews[section + '_Embeddings'] = vectorizer(interviews_section.dropna())
         
         #Drop interviews with no embeddings
         interviews = interviews.dropna(subset=[section + '_Embeddings'])
@@ -83,7 +83,7 @@ def embed_eMFD(dictionary_file, model):
 
 
 if __name__ == '__main__':
-    config = [1, 2, 3]
+    config = [3]
     model = 'lg'
 
     for c in config:

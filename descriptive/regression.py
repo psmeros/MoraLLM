@@ -1,11 +1,15 @@
+import numpy as np
 import pandas as pd
+from __init__ import *
 from sklearn.linear_model import LinearRegression
 
 from preprocessing.embeddings import transform_embeddings
 
 #Compute coefficients for transforming waves
 def compute_coefs(from_wave, to_wave, temporal_interviews, moral_foundations):
-    samples = temporal_interviews[from_wave + ':R:Morality_Embeddings'] - temporal_interviews[to_wave + ':R:Morality_Embeddings']
+    samples = temporal_interviews[to_wave + ':R:Morality_Embeddings'] - temporal_interviews[from_wave + ':R:Morality_Embeddings']
+    samples = samples.apply(lambda x: x/np.linalg.norm(x))
+
     X = moral_foundations['Embeddings'].apply(pd.Series).T.apply(list, axis=1).tolist()
     scores = []
     coefs = []

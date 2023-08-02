@@ -5,20 +5,62 @@ from __init__ import *
 from pandarallel import pandarallel
 from simpletransformers.language_representation import RepresentationModel
 from sklearn.linear_model import LinearRegression
+import torch
+from transformers import BartTokenizer, BartModel
 
 from preprocessing.metadata_parser import merge_codings, merge_matches
 from preprocessing.transcript_parser import wave_parser
 
-#Return a SpaCy or BERT vectorizer
+#Return a SpaCy, BERT, or BART vectorizer
 def get_vectorizer(model='lg', parallel=False):
     if parallel:
         pandarallel.initialize()
-    if model == 'trf':
+    if model == 'bert':
         transformer = RepresentationModel(model_type='bert', model_name='bert-base-uncased', use_cuda=False)
         vectorizer = lambda x: pd.Series([row for row in transformer.encode_sentences(x, combine_strategy='mean')])
+    
+    elif model == 'bart':
+        model_name = 'facebook/bart-large-mnli'
+        #Load the tokenizer and model
+        tokenizer = BartTokenizer.from_pretrained(model_name)
+        model = BartModel.from_pretrained(model_name)
+
+        def extract_bart_embeddings(text):
+            #Tokenize the input text
+            input_ids = tokenizer(text, return_tensors="pt").input_ids
+
+            #Split the input text into chunks of max_chunk_length
+            num_chunks = (input_ids.size(1) - 1) // tokenizer.model_max_length + 1
+            chunked_input_ids = torch.chunk(input_ids, num_chunks, dim=1)
+
+            #Initialize an empty tensor to store the embeddings
+            all_embeddings = []
+
+            #Forward pass through the model to get the embeddings for each chunk
+            with torch.no_grad():
+                for chunk_ids in chunked_input_ids:
+                    outputs = model(input_ids=chunk_ids)
+
+                    #Extract the embeddings from the model's output
+                    embeddings = outputs.last_hidden_state
+
+                    #Average the embeddings across the sequence dimension (axis=1)
+                    averaged_embeddings = torch.mean(embeddings, dim=1)
+
+                    #Append the averaged embeddings to the list
+                    all_embeddings.append(averaged_embeddings)
+
+            #Concatenate and average the embeddings from all chunks
+            averaged_embeddings = torch.cat(all_embeddings, dim=0).mean(dim=0).numpy()
+
+            return averaged_embeddings
+    
+        vectorizer = lambda x: x.apply(extract_bart_embeddings)
+
     elif model in ['lg', 'md']:
         nlp = spacy.load('en_core_web_'+model)
         vectorizer = lambda x: x.parallel_apply(lambda y: nlp(y).vector) if parallel else x.apply(lambda y: nlp(y).vector)
+ 
     return vectorizer
 
 #Compute embeddings for interview sections

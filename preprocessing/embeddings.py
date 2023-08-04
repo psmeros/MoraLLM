@@ -12,7 +12,7 @@ from preprocessing.metadata_parser import merge_codings, merge_matches
 from preprocessing.transcript_parser import wave_parser
 
 #Return a SpaCy, BERT, or BART vectorizer
-def get_vectorizer(model='lg', parallel=False):
+def get_vectorizer(model='lg', parallel=False, filter_POS=True):
     if parallel:
         pandarallel.initialize()
     if model == 'bert':
@@ -42,16 +42,13 @@ def get_vectorizer(model='lg', parallel=False):
                     outputs = model(input_ids=chunk_ids)
 
                     #Extract the embeddings from the model's output
-                    embeddings = outputs.last_hidden_state
-
-                    #Average the embeddings across the sequence dimension (axis=1)
-                    averaged_embeddings = torch.mean(embeddings, dim=1)
+                    embeddings = outputs.last_hidden_state.mean(dim=1)
 
                     #Append the averaged embeddings to the list
-                    all_embeddings.append(averaged_embeddings)
+                    all_embeddings.append(embeddings)
 
             #Concatenate and average the embeddings from all chunks
-            averaged_embeddings = torch.cat(all_embeddings, dim=0).mean(dim=0).numpy()
+            averaged_embeddings = torch.cat(all_embeddings, dim=0).mean(dim=0, keepdim=True).numpy()
 
             return averaged_embeddings
     
@@ -59,22 +56,20 @@ def get_vectorizer(model='lg', parallel=False):
 
     elif model in ['lg', 'md']:
         nlp = spacy.load('en_core_web_'+model)
-        vectorizer = lambda x: x.parallel_apply(lambda y: nlp(y).vector) if parallel else x.apply(lambda y: nlp(y).vector)
+        validate_POS = lambda w: w.pos_ in ['NOUN', 'ADJ'] if filter_POS else True
+        mean_word_vectors = lambda s: np.mean([w.vector for w in nlp(s) if validate_POS(w)], axis=0)
+        vectorizer = lambda x: x.parallel_apply(mean_word_vectors) if parallel else x.apply(mean_word_vectors)
  
     return vectorizer
 
 #Compute embeddings for interview sections
 def compute_embeddings(interviews, section_list, model):
-    nlp = spacy.load('en_core_web_lg')
     vectorizer = get_vectorizer(model=model, parallel=True)
 
     for section in section_list:
-        #Keep only POS of interest
-        interviews_section = interviews[section].parallel_apply(lambda s: ' '.join([w.text for w in nlp(s.lower()) if w.pos_ in ['NOUN', 'ADJ']]).strip() if not pd.isna(s) else pd.NA)
-
         #Compute embeddings
-        interviews = interviews[~interviews_section.isna()]
-        interviews[section + '_Embeddings'] = vectorizer(interviews_section.dropna())
+        interviews = interviews[~interviews[section].isna()]
+        interviews[section + '_Embeddings'] = vectorizer(interviews[section])
         
         #Drop interviews with no embeddings
         interviews = interviews.dropna(subset=[section + '_Embeddings'])
@@ -95,8 +90,9 @@ def embed_eMFD(dictionary_file, model):
     dictionary = dictionary.reset_index(names=['word'])
 
     #Compute embeddings
-    vectorizer = get_vectorizer(model=model)
+    vectorizer = get_vectorizer(model=model, parallel=False, filter_POS=False)
     dictionary['Embeddings'] = vectorizer(dictionary['word'].str.lower())
+    dictionary = dictionary.dropna(subset=['Embeddings'])
 
     moral_foundations = pd.DataFrame()
 
@@ -116,6 +112,12 @@ def embed_eMFD(dictionary_file, model):
     #Compute global embeddings
     global_embeddings = vectorizer(moral_foundations['Name'].str.lower())
 
+    #Drop empty embeddings
+    moral_foundations = moral_foundations[global_embeddings.apply(lambda x: sum(x) != 0)]
+    global_embeddings = global_embeddings[global_embeddings.apply(lambda x: sum(x) != 0)]
+    global_embeddings = global_embeddings[moral_foundations['Embeddings'].apply(lambda x: sum(x) != 0)]
+    moral_foundations = moral_foundations[moral_foundations['Embeddings'].apply(lambda x: sum(x) != 0)]
+
     #Find transformation matrix
     regressor = LinearRegression()
     regressor.fit(global_embeddings.apply(pd.Series), moral_foundations['Embeddings'].apply(pd.Series))
@@ -125,7 +127,7 @@ def embed_eMFD(dictionary_file, model):
 
 
 if __name__ == '__main__':
-    config = [3]
+    config = [1,2,3]
     model = 'lg'
 
     for c in config:

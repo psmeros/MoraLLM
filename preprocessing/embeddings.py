@@ -12,7 +12,7 @@ from preprocessing.metadata_parser import merge_codings, merge_matches
 from preprocessing.transcript_parser import wave_parser
 
 #Return a SpaCy, BERT, or BART vectorizer
-def get_vectorizer(model='lg', parallel=False, filter_POS=True):
+def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=32):
     if parallel:
         pandarallel.initialize()
     if model == 'bert':
@@ -27,10 +27,10 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True):
 
         def extract_bart_embeddings(text):
             #Tokenize the input text
-            input_ids = tokenizer(text, return_tensors="pt").input_ids
+            input_ids = tokenizer(text, return_tensors="pt", padding=True).input_ids
 
             #Split the input text into chunks of max_chunk_length
-            num_chunks = (input_ids.size(1) - 1) // tokenizer.model_max_length + 1
+            num_chunks = (input_ids.size(1) - 1) // batch_size + 1
             chunked_input_ids = torch.chunk(input_ids, num_chunks, dim=1)
 
             #Initialize an empty tensor to store the embeddings
@@ -48,7 +48,7 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True):
                     all_embeddings.append(embeddings)
 
             #Concatenate and average the embeddings from all chunks
-            averaged_embeddings = torch.cat(all_embeddings, dim=0).mean(dim=0, keepdim=True).numpy()
+            averaged_embeddings = torch.cat(all_embeddings, dim=0).mean(dim=0).numpy()
 
             return averaged_embeddings
     
@@ -128,7 +128,7 @@ def embed_eMFD(dictionary_file, model):
 
 if __name__ == '__main__':
     config = [1,2,3]
-    model = 'lg'
+    model = 'bart'
 
     for c in config:
         if c == 1:

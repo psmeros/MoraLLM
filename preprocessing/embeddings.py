@@ -1,33 +1,31 @@
 import numpy as np
 import pandas as pd
 import spacy
+import torch
 from __init__ import *
 from pandarallel import pandarallel
-from simpletransformers.language_representation import RepresentationModel
 from sklearn.linear_model import LinearRegression
-import torch
-from transformers import BartTokenizer, BartModel
+from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer
 
 from preprocessing.metadata_parser import merge_codings, merge_matches
 from preprocessing.transcript_parser import wave_parser
 
 #Return a SpaCy, BERT, or BART vectorizer
-def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=32):
-    if parallel:
-        pandarallel.initialize()
-    if model == 'bert':
-        transformer = RepresentationModel(model_type='bert', model_name='bert-base-uncased', use_cuda=False)
-        vectorizer = lambda x: pd.Series([row for row in transformer.encode_sentences(x, combine_strategy='mean')])
-    
-    elif model == 'bart':
-        model_name = 'facebook/bart-large-mnli'
+def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=512):
+    if model in ['bert', 'bart']:
         #Load the tokenizer and model
-        tokenizer = BartTokenizer.from_pretrained(model_name)
-        model = BartModel.from_pretrained(model_name)
+        if model == 'bert':
+            model_name = 'bert-base-uncased'
+            tokenizer = BertTokenizer.from_pretrained(model_name)
+            model = BertModel.from_pretrained(model_name)
+        elif model == 'bart':
+            model_name = 'facebook/bart-large-mnli'
+            tokenizer = BartTokenizer.from_pretrained(model_name)
+            model = BartModel.from_pretrained(model_name)
 
-        def extract_bart_embeddings(text):
+        def extract_embeddings(text):
             #Tokenize the input text
-            input_ids = tokenizer(text, return_tensors="pt", padding=True).input_ids
+            input_ids = tokenizer(text, return_tensors='pt', padding=True).input_ids
 
             #Split the input text into chunks of max_chunk_length
             num_chunks = (input_ids.size(1) - 1) // batch_size + 1
@@ -52,10 +50,12 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=32):
 
             return averaged_embeddings
     
-        vectorizer = lambda x: x.apply(extract_bart_embeddings)
+        vectorizer = lambda x: x.apply(extract_embeddings)
 
     elif model in ['lg', 'md']:
         nlp = spacy.load('en_core_web_'+model)
+        if parallel:
+            pandarallel.initialize()
         validate_POS = lambda w: w.pos_ in ['NOUN', 'ADJ'] if filter_POS else True
         mean_word_vectors = lambda s: np.mean([w.vector for w in nlp(s) if validate_POS(w)], axis=0)
         vectorizer = lambda x: x.parallel_apply(mean_word_vectors) if parallel else x.apply(mean_word_vectors)

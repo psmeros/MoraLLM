@@ -2,11 +2,32 @@ import numpy as np
 import pandas as pd
 from __init__ import *
 from sklearn.linear_model import LinearRegression
+from transformers import pipeline
 
+from preprocessing.constants import INTERVIEW_METADATA, MORALITY_ORIGIN
 from preprocessing.embeddings import transform_embeddings
+from preprocessing.transcript_parser import wave_parser
+
+#Zero-shot classification on the morality origin classes
+def zero_shot_classification(interviews):
+    #Select question from morality section
+    morality_origin = pd.concat([interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4'], interviews[interviews['Wave'].isin([3])]['R:Morality:M5']])
+    interviews = interviews.join(morality_origin.rename('Morality Origin'))
+    interviews = interviews.dropna(subset=['Morality Origin']).reset_index(drop=True)
+
+    #Zero-shot classification
+    hypothesis_template = 'The morality origin is {}.'
+    morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+    result_dict = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
+    morality_origin = result_dict(morality_pipeline(interviews['Morality Origin'].tolist(), MORALITY_ORIGIN, hypothesis_template=hypothesis_template))
+
+    #Join and filter results
+    interviews = interviews.join(morality_origin)
+    interviews = interviews[INTERVIEW_METADATA + ['Morality Origin'] + MORALITY_ORIGIN]
+    return interviews
 
 #Compute coefficients for transforming waves
-def compute_coefs(from_wave, to_wave, temporal_interviews, moral_foundations):
+def regression(from_wave, to_wave, temporal_interviews, moral_foundations):
     samples = temporal_interviews[to_wave + ':R:Morality_Embeddings'] - temporal_interviews[from_wave + ':R:Morality_Embeddings']
     samples = samples.apply(lambda x: x/np.linalg.norm(x))
 
@@ -25,25 +46,30 @@ def compute_coefs(from_wave, to_wave, temporal_interviews, moral_foundations):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
-    model = 'lg'
-
-    moral_foundations_file = 'data/cache/moral_foundations_'+model+'.pkl'
-    transformation_matrix_file = 'data/cache/transformation_matrix_'+model+'.pkl'
-    
-    temporal_embeddings_file = 'data/cache/temporal_morality_embeddings_'+model+'.pkl'
-    from_wave = 'Wave 1'
-    to_wave = 'Wave 3'
-
-    #Load data
-    moral_foundations = pd.read_pickle(moral_foundations_file)
-    temporal_interviews = pd.read_pickle(temporal_embeddings_file)
-    
-    #Τransform embeddings
-    moral_foundations['Embeddings'] = transform_embeddings(moral_foundations['Embeddings'], transformation_matrix_file)
-    for wave in ['Wave 1', 'Wave 2', 'Wave 3']:
-        temporal_interviews[wave+':R:Morality_Embeddings'] = transform_embeddings(temporal_interviews[wave+':R:Morality_Embeddings'], transformation_matrix_file)
+    config = [2]
 
     for c in config:
         if c == 1:
-            coefs = compute_coefs(from_wave, to_wave, temporal_interviews, moral_foundations)
+            model = 'lg'
+
+            moral_foundations_file = 'data/cache/moral_foundations_'+model+'.pkl'
+            transformation_matrix_file = 'data/cache/transformation_matrix_'+model+'.pkl'
+            temporal_embeddings_file = 'data/cache/temporal_morality_embeddings_'+model+'.pkl'
+            from_wave = 'Wave 1'
+            to_wave = 'Wave 3'
+
+            #Load data
+            moral_foundations = pd.read_pickle(moral_foundations_file)
+            temporal_interviews = pd.read_pickle(temporal_embeddings_file)
+            
+            #Τransform embeddings
+            moral_foundations['Embeddings'] = transform_embeddings(moral_foundations['Embeddings'], transformation_matrix_file)
+            for wave in ['Wave 1', 'Wave 2', 'Wave 3']:
+                temporal_interviews[wave+':R:Morality_Embeddings'] = transform_embeddings(temporal_interviews[wave+':R:Morality_Embeddings'], transformation_matrix_file)
+
+            regression(from_wave, to_wave, temporal_interviews, moral_foundations)
+        
+        if c == 2:
+            interviews = wave_parser(morality_breakdown=True)
+            interviews = zero_shot_classification(interviews)
+            interviews.to_pickle('data/cache/morality_origin.pkl')

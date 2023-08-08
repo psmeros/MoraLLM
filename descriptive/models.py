@@ -23,7 +23,7 @@ def zero_shot_classification(interviews):
 
     #Join and filter results
     interviews = interviews.join(morality_origin)
-    interviews = interviews[INTERVIEW_METADATA + ['Morality Origin'] + MORALITY_ORIGIN]
+    interviews = interviews[INTERVIEW_METADATA + ['Wave', 'Morality Origin'] + MORALITY_ORIGIN]
     return interviews
 
 #Compute coefficients for transforming waves

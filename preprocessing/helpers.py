@@ -1,6 +1,32 @@
 import os
+from itertools import combinations
+
+import numpy as np
 import pandas as pd
+from scipy.spatial.distance import pdist, squareform
 from striprtf.striprtf import rtf_to_text
+
+
+# Find k embeddings with maximum distance
+def k_most_distant_embeddings(embeddings, k):
+
+    # Calculate pairwise distances between embeddings
+    distances = pdist(embeddings.tolist(), metric='cosine')
+    pairwise_distances = squareform(distances)
+
+    # Iterate through all combinations and find the one with maximum sum of distances
+    combinations_k = combinations(range(len(embeddings)), k)
+
+    max_sum_distances = -np.inf
+    optimal_combination = None
+
+    for combination in combinations_k:
+        sum_distances = np.sum(pairwise_distances[np.ix_(combination, combination)])
+        if sum_distances > max_sum_distances:
+            max_sum_distances = sum_distances
+            optimal_combination = combination
+
+    return list(optimal_combination)
 
 #Convert encoding of files in a folder
 def convert_encoding(folder_path, from_encoding, to_encoding):

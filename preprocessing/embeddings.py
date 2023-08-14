@@ -41,13 +41,13 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=512):
                     outputs = model(input_ids=chunk_ids)
 
                     #Extract the embeddings from the model's output (max-pooling)
-                    embeddings = outputs.last_hidden_state.max(dim=1)
+                    embeddings = torch.max(outputs.last_hidden_state, dim=1).values
 
                     #Append the embeddings to the list
                     all_embeddings.append(embeddings)
 
             #Concatenate and max-pool the embeddings from all chunks
-            embeddings = torch.cat(all_embeddings, dim=0).max(dim=0).numpy()
+            embeddings = torch.max(torch.cat(all_embeddings, dim=0), dim=0).values.numpy()
 
             return embeddings
     

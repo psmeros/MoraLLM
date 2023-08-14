@@ -39,16 +39,16 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=512):
                 for chunk_ids in chunked_input_ids:
                     outputs = model(input_ids=chunk_ids)
 
-                    #Extract the embeddings from the model's output
-                    embeddings = outputs.last_hidden_state.mean(dim=1)
+                    #Extract the embeddings from the model's output (max-pooling)
+                    embeddings = outputs.last_hidden_state.max(dim=1)
 
-                    #Append the averaged embeddings to the list
+                    #Append the embeddings to the list
                     all_embeddings.append(embeddings)
 
-            #Concatenate and average the embeddings from all chunks
-            averaged_embeddings = torch.cat(all_embeddings, dim=0).mean(dim=0).numpy()
+            #Concatenate and max-pool the embeddings from all chunks
+            embeddings = torch.cat(all_embeddings, dim=0).max(dim=0).numpy()
 
-            return averaged_embeddings
+            return embeddings
     
         vectorizer = lambda x: x.apply(extract_embeddings)
 
@@ -56,7 +56,7 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=512):
         nlp = spacy.load('en_core_web_'+model)
         if parallel:
             pandarallel.initialize()
-        validate_POS = lambda w: w.pos_ in ['NOUN', 'ADJ'] if filter_POS else True
+        validate_POS = lambda w: w.pos_ in ['NOUN', 'ADJ', 'VERB'] if filter_POS else True
         mean_word_vectors = lambda s: np.mean([w.vector for w in nlp(s) if validate_POS(w)], axis=0)
         vectorizer = lambda x: x.parallel_apply(mean_word_vectors) if parallel else x.apply(mean_word_vectors)
  

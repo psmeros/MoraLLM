@@ -7,6 +7,7 @@ from pandarallel import pandarallel
 from sklearn.linear_model import LinearRegression
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer
 
+from preprocessing.helpers import display_notification
 from preprocessing.metadata_parser import merge_codings, merge_matches
 from preprocessing.transcript_parser import wave_parser
 
@@ -135,6 +136,7 @@ if __name__ == '__main__':
             section_list = ['R:Morality']
             interviews = compute_embeddings(interviews, section_list, model)
             interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+            display_notification('Morality Embeddings Computed!')
 
         if c == 2:
             dictionary_file = 'data/misc/eMFD.pkl'
@@ -149,3 +151,4 @@ if __name__ == '__main__':
             section_list = ['Wave 1:R:Morality', 'Wave 2:R:Morality', 'Wave 3:R:Morality']
             interviews = compute_embeddings(interviews, section_list, model)
             interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')
+            display_notification('Temporal Morality Embeddings Computed!')

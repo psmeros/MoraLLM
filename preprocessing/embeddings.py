@@ -89,8 +89,8 @@ def embed_eMFD(dictionary_file, model):
     dictionary = pd.DataFrame(pd.read_pickle(dictionary_file)).T
     dictionary = dictionary.reset_index(names=['word'])
 
-    #Compute embeddings
-    vectorizer = get_vectorizer(model=model, parallel=False, filter_POS=False)
+    #Compute global embeddings
+    vectorizer = get_vectorizer(model='lg', parallel=False, filter_POS=False)
     dictionary['Embeddings'] = vectorizer(dictionary['word'].str.lower())
     dictionary = dictionary.dropna(subset=['Embeddings'])
 
@@ -101,27 +101,26 @@ def embed_eMFD(dictionary_file, model):
             moral_foundations[column] = sum(dictionary['Embeddings']*dictionary[column])/sum(dictionary[column])
 
     moral_foundations = moral_foundations.T
-    moral_foundations['Embeddings'] = moral_foundations.apply(lambda x: np.array(x), axis=1)
-    moral_foundations = moral_foundations[['Embeddings']]
+    moral_foundations['Global Embeddings'] = moral_foundations.apply(lambda x: np.array(x), axis=1)
+    moral_foundations = moral_foundations[['Global Embeddings']]
     moral_foundations = moral_foundations.reset_index(names=['Name'])
 
     #Average Vice and Virtue embeddings
     moral_foundations['Name'] = moral_foundations['Name'].apply(lambda x: x.split('.')[0].capitalize())
     moral_foundations = moral_foundations.groupby('Name').mean().reset_index()
 
-    #Compute global embeddings
-    global_embeddings = vectorizer(moral_foundations['Name'].str.lower())
+    #Compute local embeddings
+    vectorizer = get_vectorizer(model=model, parallel=False, filter_POS=False)
+    moral_foundations['Local Embeddings'] = vectorizer(moral_foundations['Name'].str.lower())
 
     #Drop empty embeddings
-    moral_foundations = moral_foundations[global_embeddings.apply(lambda x: sum(x) != 0)]
-    global_embeddings = global_embeddings[global_embeddings.apply(lambda x: sum(x) != 0)]
-    global_embeddings = global_embeddings[moral_foundations['Embeddings'].apply(lambda x: sum(x) != 0)]
-    moral_foundations = moral_foundations[moral_foundations['Embeddings'].apply(lambda x: sum(x) != 0)]
+    moral_foundations = moral_foundations[moral_foundations.apply(lambda x: (sum(x['Local Embeddings']) != 0) & (sum(x['Global Embeddings']) != 0), axis=1)]
 
     #Find transformation matrix
     regressor = LinearRegression()
-    regressor.fit(global_embeddings.apply(pd.Series), moral_foundations['Embeddings'].apply(pd.Series))
-    transformation_matrix = pd.DataFrame(regressor.coef_.T)
+    regressor.fit(moral_foundations['Global Embeddings'].apply(pd.Series), moral_foundations['Local Embeddings'].apply(pd.Series))
+    transformation_matrix = pd.DataFrame(regressor.coef_)
+    moral_foundations= moral_foundations.rename(columns={'Local Embeddings': 'Embeddings'})[['Name', 'Embeddings']]
 
     return moral_foundations, transformation_matrix
 

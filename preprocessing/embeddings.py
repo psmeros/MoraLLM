@@ -12,7 +12,7 @@ from preprocessing.metadata_parser import merge_codings, merge_matches
 from preprocessing.transcript_parser import wave_parser
 
 #Return a SpaCy, BERT, or BART vectorizer
-def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=512):
+def get_vectorizer(model='lg', parallel=False, filter_POS=True):
     if model in ['bert', 'bart']:
         #Load the tokenizer and model
         if model == 'bert':
@@ -26,27 +26,32 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True, batch_size=512):
 
         def extract_embeddings(text):
             #Tokenize the input text
-            input_ids = tokenizer(text, return_tensors='pt', padding=True).input_ids
+            input = tokenizer(text, return_tensors='pt')
 
             #Split the input text into chunks of max_chunk_length
-            num_chunks = (input_ids.size(1) - 1) // batch_size + 1
-            chunked_input_ids = torch.chunk(input_ids, num_chunks, dim=1)
+            num_chunks = (input['input_ids'].size(1) - 1) // tokenizer.model_max_length + 1
+            chunked_input_ids = torch.chunk(input['input_ids'], num_chunks, dim=1)
+            chunked_attention_mask = torch.chunk(input['attention_mask'], num_chunks, dim=1)
 
             #Initialize an empty tensor to store the embeddings
             all_embeddings = []
 
             #Forward pass through the model to get the embeddings for each chunk
             with torch.no_grad():
-                for chunk_ids in chunked_input_ids:
-                    outputs = model(input_ids=chunk_ids)
+                for (input_ids, attention_mask) in zip(chunked_input_ids, chunked_attention_mask):
 
-                    #Extract the embeddings from the model's output (max-pooling)
-                    embeddings = torch.max(outputs.last_hidden_state, dim=1).values
+                    #Input and Output of the transformer model
+                    inputs = {'input_ids': input_ids, 'attention_mask': attention_mask}
+                    outputs = model(**inputs, output_attentions=True)
 
-                    #Append the embeddings to the list
+                    print(inputs['attention_mask'])
+                    #Extract the embeddings from the model's output (attention-weighted max-pooling)
+                    attention_scores = torch.nn.functional.softmax(torch.max(torch.max(outputs.attentions[-1], dim=1).values, dim=1).values, dim=1)
+                    token_embeddings = outputs.last_hidden_state[0]
+                    embeddings = torch.matmul(attention_scores, token_embeddings)
                     all_embeddings.append(embeddings)
 
-            #Concatenate and max-pool the embeddings from all chunks
+            #Concatenate and aggegate the embeddings from all chunks (max-pooling)
             embeddings = torch.max(torch.cat(all_embeddings, dim=0), dim=0).values.numpy()
 
             return embeddings

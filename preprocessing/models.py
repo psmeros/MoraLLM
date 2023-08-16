@@ -17,7 +17,7 @@ def zero_shot_classification(interviews):
 
     #Zero-shot classification
     hypothesis_template = 'The morality origin is {}.'
-    morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+    morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli', multi_label=True)
     result_dict = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
     morality_origin = result_dict(morality_pipeline(interviews['Morality Origin'].tolist(), MORALITY_ORIGIN, hypothesis_template=hypothesis_template))
 

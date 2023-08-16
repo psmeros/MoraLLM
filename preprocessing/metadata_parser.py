@@ -25,7 +25,7 @@ def merge_codings(interviews, codings_file = 'data/waves/interview_codings.csv')
     codings = codings.applymap(lambda x: not pd.isnull(x))
     codings = codings.reset_index()
 
-    interviews = interviews.merge(codings, left_on='Wave 1:Interview Code', right_on='Interview Code', how = 'left')
+    interviews = interviews.merge(codings, left_on='Interview Code', right_on='Interview Code', how = 'left')
     
     return interviews
 

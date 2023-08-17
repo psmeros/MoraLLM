@@ -5,12 +5,11 @@ import torch
 from __init__ import *
 from pandarallel import pandarallel
 from sklearn.linear_model import LinearRegression
-from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer
+from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
 from preprocessing.constants import MORALITY_ORIGIN
 from preprocessing.helpers import display_notification
 from preprocessing.metadata_parser import merge_codings, merge_matches
-from preprocessing.models import zero_shot_classification
 from preprocessing.transcript_parser import wave_parser
 
 
@@ -149,9 +148,21 @@ def compute_morality_origin(embeddings_file, transformation_matrix_file):
     
     return interviews
 
+#Compute zero-shot morality origin of interviews
+def zero_shot_classification(interviews):
+    #Premise and hypothesis templates
+    hypothesis_template = 'The morality origin is {}.'
+    morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+    result_dict = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
+    morality_origin = result_dict(morality_pipeline(interviews['Morality Origin'].tolist(), MORALITY_ORIGIN, hypothesis_template=hypothesis_template))
+
+    #Join and filter results
+    interviews = interviews.join(morality_origin)
+    return interviews
+
 if __name__ == '__main__':
     config = [1,2,3]
-    model = 'bert'
+    model = 'md'
 
     for c in config:
         if c == 1:

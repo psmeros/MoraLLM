@@ -23,6 +23,9 @@ def merge_codings(interviews, codings_file = 'data/waves/interview_codings.csv')
     codings['Interview Code'] = codings['Interview Code'].str.split('-').apply(lambda x: x[0]+'-'+x[1])
     codings = codings.set_index('Interview Code')
     codings = codings.applymap(lambda x: not pd.isnull(x))
+    codings['Experience'] = codings['Experience'] | codings['Intrinsic']
+    codings['Family'] = codings['Family'] | codings['Parents']
+    codings = codings.drop(['Intrinsic', 'Parents'], axis=1)
     codings = codings.reset_index()
 
     interviews = interviews.merge(codings, left_on='Interview Code', right_on='Interview Code', how = 'left')

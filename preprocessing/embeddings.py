@@ -89,7 +89,7 @@ def compute_embeddings(interviews, section_list, model):
 #Transform input embeddings
 def transform_embeddings(embeddings, transformation_matrix_file):
     transformation_matrix = pd.read_pickle(transformation_matrix_file).values
-    embeddings = embeddings.apply(pd.Series).apply(lambda x: np.dot(x, transformation_matrix), axis=1)
+    embeddings = embeddings.apply(pd.Series).apply(lambda x: np.dot(x, transformation_matrix.T), axis=1)
     return embeddings
 
 #Compute eMFD embeddings and transformation matrix
@@ -162,39 +162,41 @@ def zero_shot_classification(interviews):
     return interviews
 
 if __name__ == '__main__':
+    #Hyperparameters
     config = [1,2,3]
-    model = 'bert'
+    models = ['md', 'lg', 'bert', 'bart', 'entail']
 
-    for c in config:
-        if c == 1:
-            interviews = wave_parser(morality_breakdown=True)
-            morality_origin = pd.concat([interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4'], interviews[interviews['Wave'].isin([3])]['R:Morality:M5']])
-            interviews = interviews.join(morality_origin.rename('Morality_Origin'))
-            interviews = interviews.dropna(subset=['Morality_Origin']).reset_index(drop=True)
-            if model == 'entail':
-                interviews = zero_shot_classification(interviews)
-            else:
-                interviews = compute_embeddings(interviews, ['Morality_Origin'], model)
-            interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-            display_notification('Morality Embeddings Computed!')
+    for model in models:
+        for c in config:
+            if c == 1:
+                interviews = wave_parser(morality_breakdown=True)
+                morality_origin = pd.concat([interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4'], interviews[interviews['Wave'].isin([3])]['R:Morality:M5']])
+                interviews = interviews.join(morality_origin.rename('Morality_Origin'))
+                interviews = interviews.dropna(subset=['Morality_Origin']).reset_index(drop=True)
+                if model == 'entail':
+                    interviews = zero_shot_classification(interviews)
+                else:
+                    interviews = compute_embeddings(interviews, ['Morality_Origin'], model)
+                interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+                display_notification('Morality Embeddings Computed!')
 
-        if c == 2:
-            dictionary_file = 'data/misc/eMFD.pkl'
-            moral_foundations, transformation_matrix = embed_eMFD(dictionary_file, model)
-            moral_foundations.to_pickle('data/cache/moral_foundations_'+model+'.pkl')
-            transformation_matrix.to_pickle('data/cache/transformation_matrix_'+model+'.pkl')
+            if c == 2:
+                dictionary_file = 'data/misc/eMFD.pkl'
+                moral_foundations, transformation_matrix = embed_eMFD(dictionary_file, model)
+                moral_foundations.to_pickle('data/cache/moral_foundations_'+model+'.pkl')
+                transformation_matrix.to_pickle('data/cache/transformation_matrix_'+model+'.pkl')
 
-        if c == 3:
-            embeddings_file = 'data/cache/morality_embeddings_'+model+'.pkl'
-            transformation_matrix_file = 'data/cache/transformation_matrix_'+model+'.pkl'
-            interviews = compute_morality_origin(embeddings_file, transformation_matrix_file)
-            interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+            if c == 3:
+                embeddings_file = 'data/cache/morality_embeddings_'+model+'.pkl'
+                transformation_matrix_file = 'data/cache/transformation_matrix_'+model+'.pkl'
+                interviews = compute_morality_origin(embeddings_file, transformation_matrix_file)
+                interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
 
-        if c == 4:
-            interviews = wave_parser()
-            interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
-            interviews = merge_codings(interviews)
-            section_list = ['Wave 1:R:Morality', 'Wave 2:R:Morality', 'Wave 3:R:Morality']
-            interviews = compute_embeddings(interviews, section_list, model)
-            interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')
-            display_notification('Temporal Morality Embeddings Computed!')
+            if c == 4:
+                interviews = wave_parser()
+                interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
+                interviews = merge_codings(interviews)
+                section_list = ['Wave 1:R:Morality', 'Wave 2:R:Morality', 'Wave 3:R:Morality']
+                interviews = compute_embeddings(interviews, section_list, model)
+                interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')
+                display_notification('Temporal Morality Embeddings Computed!')

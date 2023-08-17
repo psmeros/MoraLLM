@@ -138,7 +138,7 @@ def compute_morality_origin(embeddings_file, transformation_matrix_file):
 
     #Load and transform data
     interviews = pd.read_pickle(embeddings_file)
-    embeddings = transform_embeddings(interviews['R:Morality_Embeddings'], transformation_matrix_file)
+    embeddings = transform_embeddings(interviews['Morality_Origin_Embeddings'], transformation_matrix_file)
 
     #Compute cosine similarity with morality origin vectors
     morality_origin = pd.Series({mo:nlp(mo).vector for mo in MORALITY_ORIGIN})
@@ -154,7 +154,7 @@ def zero_shot_classification(interviews):
     hypothesis_template = 'The morality origin is {}.'
     morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
     result_dict = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
-    morality_origin = result_dict(morality_pipeline(interviews['Morality Origin'].tolist(), MORALITY_ORIGIN, hypothesis_template=hypothesis_template))
+    morality_origin = result_dict(morality_pipeline(interviews['Morality_Origin'].tolist(), MORALITY_ORIGIN, hypothesis_template=hypothesis_template))
 
     #Join and filter results
     interviews = interviews.join(morality_origin)
@@ -162,18 +162,18 @@ def zero_shot_classification(interviews):
 
 if __name__ == '__main__':
     config = [1,2,3]
-    model = 'md'
+    model = 'bert'
 
     for c in config:
         if c == 1:
             interviews = wave_parser(morality_breakdown=True)
             morality_origin = pd.concat([interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4'], interviews[interviews['Wave'].isin([3])]['R:Morality:M5']])
-            interviews = interviews.join(morality_origin.rename('Morality Origin'))
-            interviews = interviews.dropna(subset=['Morality Origin']).reset_index(drop=True)
+            interviews = interviews.join(morality_origin.rename('Morality_Origin'))
+            interviews = interviews.dropna(subset=['Morality_Origin']).reset_index(drop=True)
             if model == 'entail':
                 interviews = zero_shot_classification(interviews)
             else:
-                interviews = compute_embeddings(interviews, ['Morality Origin'], model)
+                interviews = compute_embeddings(interviews, ['Morality_Origin'], model)
             interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
             display_notification('Morality Embeddings Computed!')
 

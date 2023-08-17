@@ -178,7 +178,7 @@ if __name__ == '__main__':
                 else:
                     interviews = compute_embeddings(interviews, ['Morality_Origin'], model)
                 interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-                display_notification('Morality Embeddings Computed!')
+                display_notification(model, 'Morality Embeddings Computed!')
 
             if c == 2:
                 dictionary_file = 'data/misc/eMFD.pkl'
@@ -199,4 +199,4 @@ if __name__ == '__main__':
                 section_list = ['Wave 1:R:Morality', 'Wave 2:R:Morality', 'Wave 3:R:Morality']
                 interviews = compute_embeddings(interviews, section_list, model)
                 interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')
-                display_notification('Temporal Morality Embeddings Computed!')
+                display_notification(model, 'Temporal Morality Embeddings Computed!')

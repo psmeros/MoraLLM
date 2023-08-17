@@ -7,9 +7,12 @@ from pandarallel import pandarallel
 from sklearn.linear_model import LinearRegression
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer
 
+from preprocessing.constants import MORALITY_ORIGIN
 from preprocessing.helpers import display_notification
 from preprocessing.metadata_parser import merge_codings, merge_matches
+from preprocessing.models import zero_shot_classification
 from preprocessing.transcript_parser import wave_parser
+
 
 #Return a SpaCy, BERT, or BART vectorizer
 def get_vectorizer(model='lg', parallel=False, filter_POS=True):
@@ -130,16 +133,36 @@ def embed_eMFD(dictionary_file, model):
 
     return moral_foundations, transformation_matrix
 
+#Compute morality origin of interviews
+def compute_morality_origin(embeddings_file, transformation_matrix_file):
+    nlp = spacy.load('en_core_web_lg')
+
+    #Load and transform data
+    interviews = pd.read_pickle(embeddings_file)
+    embeddings = transform_embeddings(interviews['R:Morality_Embeddings'], transformation_matrix_file)
+
+    #Compute cosine similarity with morality origin vectors
+    morality_origin = pd.Series({mo:nlp(mo).vector for mo in MORALITY_ORIGIN})
+    for mo in MORALITY_ORIGIN:
+        interviews[mo] = embeddings.apply(lambda e: torch.cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0])
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].apply(lambda x: pd.Series({mo:p for mo, p in zip(MORALITY_ORIGIN, torch.nn.functional.softmax(torch.from_numpy(x.to_numpy()), dim=0).numpy())}), axis=1)
+    
+    return interviews
 
 if __name__ == '__main__':
     config = [1,2,3]
-    model = 'bart'
+    model = 'bert'
 
     for c in config:
         if c == 1:
-            interviews = wave_parser()
-            section_list = ['R:Morality']
-            interviews = compute_embeddings(interviews, section_list, model)
+            interviews = wave_parser(morality_breakdown=True)
+            morality_origin = pd.concat([interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4'], interviews[interviews['Wave'].isin([3])]['R:Morality:M5']])
+            interviews = interviews.join(morality_origin.rename('Morality Origin'))
+            interviews = interviews.dropna(subset=['Morality Origin']).reset_index(drop=True)
+            if model == 'entail':
+                interviews = zero_shot_classification(interviews)
+            else:
+                interviews = compute_embeddings(interviews, ['Morality Origin'], model)
             interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
             display_notification('Morality Embeddings Computed!')
 
@@ -150,6 +173,12 @@ if __name__ == '__main__':
             transformation_matrix.to_pickle('data/cache/transformation_matrix_'+model+'.pkl')
 
         if c == 3:
+            embeddings_file = 'data/cache/morality_embeddings_'+model+'.pkl'
+            transformation_matrix_file = 'data/cache/transformation_matrix_'+model+'.pkl'
+            interviews = compute_morality_origin(embeddings_file, transformation_matrix_file)
+            interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+
+        if c == 4:
             interviews = wave_parser()
             interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
             interviews = merge_codings(interviews)

@@ -4,18 +4,12 @@ from __init__ import *
 from sklearn.linear_model import LinearRegression
 from transformers import pipeline
 
-from preprocessing.constants import INTERVIEW_METADATA, MORALITY_ORIGIN
+from preprocessing.constants import MORALITY_ORIGIN
 from preprocessing.embeddings import transform_embeddings
-from preprocessing.transcript_parser import wave_parser
 
 #Zero-shot classification on the morality origin classes
 def zero_shot_classification(interviews):
-    #Select question from morality section
-    morality_origin = pd.concat([interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4'], interviews[interviews['Wave'].isin([3])]['R:Morality:M5']])
-    interviews = interviews.join(morality_origin.rename('Morality Origin'))
-    interviews = interviews.dropna(subset=['Morality Origin']).reset_index(drop=True)
-
-    #Zero-shot classification
+    #Premise and hypothesis templates
     hypothesis_template = 'The morality origin is {}.'
     morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
     result_dict = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
@@ -23,7 +17,6 @@ def zero_shot_classification(interviews):
 
     #Join and filter results
     interviews = interviews.join(morality_origin)
-    interviews = interviews[INTERVIEW_METADATA + ['Wave', 'Morality Origin'] + MORALITY_ORIGIN]
     return interviews
 
 #Compute coefficients for transforming waves
@@ -68,8 +61,3 @@ if __name__ == '__main__':
                 temporal_interviews[wave+':R:Morality_Embeddings'] = transform_embeddings(temporal_interviews[wave+':R:Morality_Embeddings'], transformation_matrix_file)
 
             regression(from_wave, to_wave, temporal_interviews, moral_foundations)
-        
-        if c == 2:
-            interviews = wave_parser(morality_breakdown=True)
-            interviews = zero_shot_classification(interviews)
-            interviews.to_pickle('data/cache/morality_origin.pkl')

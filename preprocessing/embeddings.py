@@ -4,7 +4,7 @@ import spacy
 import torch
 from __init__ import *
 from pandarallel import pandarallel
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Ridge
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
@@ -126,7 +126,7 @@ def embed_eMFD(dictionary_file, model):
     moral_foundations = moral_foundations[moral_foundations.apply(lambda x: (sum(x['Local Embeddings']) != 0) & (sum(x['Global Embeddings']) != 0), axis=1)]
 
     #Find transformation matrix
-    regressor = LinearRegression()
+    regressor = Ridge(random_state=42)
     regressor.fit(moral_foundations['Global Embeddings'].apply(pd.Series), moral_foundations['Local Embeddings'].apply(pd.Series))
     transformation_matrix = pd.DataFrame(regressor.coef_)
     moral_foundations= moral_foundations.rename(columns={'Local Embeddings': 'Embeddings'})[['Name', 'Embeddings']]

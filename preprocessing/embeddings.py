@@ -5,6 +5,7 @@ import torch
 from __init__ import *
 from pandarallel import pandarallel
 from sklearn.linear_model import LinearRegression
+from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
 from preprocessing.constants import MORALITY_ORIGIN
@@ -46,10 +47,11 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True):
                     inputs = {'input_ids': input_ids, 'attention_mask': attention_mask}
                     outputs = model(**inputs, output_attentions=True)
 
-                    #Extract the embeddings from the model's output (attention-weighted max-pooling)
-                    attention_scores = torch.nn.functional.softmax(torch.max(torch.max(outputs.attentions[-1], dim=1).values, dim=1).values, dim=1)
-                    token_embeddings = outputs.last_hidden_state[0]
-                    embeddings = torch.matmul(attention_scores, token_embeddings)
+                    #Extract the embeddings from the model's output (max-pooling)
+                    # attention_scores = torch.nn.functional.softmax(torch.max(torch.max(outputs.attentions[-1], dim=1).values, dim=1).values, dim=1)
+                    # token_embeddings = outputs.last_hidden_state[0]
+                    # embeddings = torch.matmul(attention_scores, token_embeddings)
+                    embeddings = torch.max(outputs.last_hidden_state[0], dim=0, keepdim=True).values
                     all_embeddings.append(embeddings)
 
             #Concatenate and aggegate the embeddings from all chunks (max-pooling)
@@ -142,7 +144,7 @@ def compute_morality_origin(embeddings_file, transformation_matrix_file):
     #Compute cosine similarity with morality origin vectors
     morality_origin = pd.Series({mo:nlp(mo).vector for mo in MORALITY_ORIGIN})
     for mo in MORALITY_ORIGIN:
-        interviews[mo] = embeddings.apply(lambda e: torch.cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0])
+        interviews[mo] = embeddings.apply(lambda e: cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0])
     interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].apply(lambda x: pd.Series({mo:p for mo, p in zip(MORALITY_ORIGIN, torch.nn.functional.softmax(torch.from_numpy(x.to_numpy()), dim=0).numpy())}), axis=1)
     
     return interviews

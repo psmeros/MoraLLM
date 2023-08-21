@@ -10,7 +10,7 @@ from preprocessing.metadata_parser import merge_codings
 
 def cross_entropy_loss(interviews):
     #Keep interviews with codings and merge 
-    interviews = interviews[interviews['Wave'] == 1]
+    interviews = interviews[interviews['Wave'].isin([1,3])]
     interviews = merge_codings(interviews)
     interviews[[mo + '_y' for mo in MORALITY_ORIGIN]] = interviews[[mo + '_y' for mo in MORALITY_ORIGIN]].applymap(int)
     
@@ -39,7 +39,7 @@ def explain_entailment(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [1]
     models = ['md', 'lg', 'bert', 'bart', 'entail']
 
     for c in config:

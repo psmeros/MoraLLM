@@ -5,7 +5,7 @@ pandas==1.5.3
 scikit_learn==1.2.2
 scipy==1.10.1
 seaborn==0.12.2
-simpletransformers==0.63.11
+transformers==4.28.1
 spacy==3.5.3
 striprtf==0.0.25
 en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.5.0/en_core_web_lg-3.5.0-py3-none-any.whl
@@ -13,3 +13,4 @@ en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl
 en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.5.0/en_core_web_trf-3.5.0-py3-none-any.whl
 wordcloud==1.9.2
+transformers-interpret==0.10.0

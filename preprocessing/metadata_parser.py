@@ -16,19 +16,23 @@ def merge_matches(interviews, wave_list, matches_file = 'data/waves/interview_ma
 
     return matches
 
-#Merge codings for wave 1 of interviews
-def merge_codings(interviews, codings_file = 'data/waves/interview_codings.csv'):
-    codings = pd.read_csv(codings_file)
+#Merge codings for wave 1 and wave 3 of interviews
+def merge_codings(interviews, codings_file_1 = 'data/waves/interview_codings-wave_1.csv', codings_file_3 = 'data/waves/interview_codings-wave_3.csv'):
+    codings_1 = pd.read_csv(codings_file_1)
+    codings_3 = pd.read_csv(codings_file_3)
+    codings_1['Interview Code'] = codings_1['Interview Code'].str.split('-').apply(lambda x: x[0]+'-'+x[1])
+    codings_1['Wave'] = 1
+    codings_3['Wave'] = 3
+    codings = pd.concat([codings_1, codings_3])
 
-    codings['Interview Code'] = codings['Interview Code'].str.split('-').apply(lambda x: x[0]+'-'+x[1])
-    codings = codings.set_index('Interview Code')
+    codings = codings.set_index(['Interview Code', 'Wave'])
     codings = codings.applymap(lambda x: not pd.isnull(x))
     codings['Experience'] = codings['Experience'] | codings['Intrinsic']
     codings['Family'] = codings['Family'] | codings['Parents']
     codings = codings.drop(['Intrinsic', 'Parents'], axis=1)
     codings = codings.reset_index()
 
-    interviews = interviews.merge(codings, left_on='Interview Code', right_on='Interview Code', how = 'left')
+    interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
     
     return interviews
 

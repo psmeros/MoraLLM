@@ -163,7 +163,7 @@ def zero_shot_classification(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3]
+    config = [4]
     models = ['md', 'lg', 'bert', 'bart', 'entail']
 
     for model in models:
@@ -193,10 +193,7 @@ if __name__ == '__main__':
                 interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
 
             if c == 4:
-                interviews = wave_parser()
+                interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
                 interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
-                interviews = merge_codings(interviews)
-                section_list = ['Wave 1:R:Morality', 'Wave 2:R:Morality', 'Wave 3:R:Morality']
-                interviews = compute_embeddings(interviews, section_list, model)
                 interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')
                 display_notification(model + ' Temporal Morality Embeddings Computed!')

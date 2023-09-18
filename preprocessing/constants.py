@@ -108,3 +108,5 @@ MORALITY_ORIGIN =   ['Experience',
                      'Media',
                      'Laws',
                      'Holy Scripture']
+
+CODERS = ['Leke', 'Tomas']

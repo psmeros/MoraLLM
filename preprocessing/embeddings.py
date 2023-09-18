@@ -10,7 +10,7 @@ from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pip
 
 from preprocessing.constants import MORALITY_ORIGIN
 from preprocessing.helpers import display_notification
-from preprocessing.metadata_parser import merge_codings, merge_matches
+from preprocessing.metadata_parser import merge_matches
 from preprocessing.transcript_parser import wave_parser
 
 

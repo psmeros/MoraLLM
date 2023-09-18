@@ -7,7 +7,7 @@ from sklearn.metrics import log_loss
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers_interpret import ZeroShotClassificationExplainer
 
-from preprocessing.constants import MORALITY_ORIGIN
+from preprocessing.constants import MORALITY_ORIGIN, CODERS
 from preprocessing.metadata_parser import merge_codings
 
 
@@ -15,15 +15,19 @@ def cross_entropy_loss(interviews):
     #Keep interviews with codings and merge 
     interviews = interviews[interviews['Wave'].isin([1,3])]
     interviews = merge_codings(interviews)
-    interviews[[mo + '_y' for mo in MORALITY_ORIGIN]] = interviews[[mo + '_y' for mo in MORALITY_ORIGIN]].applymap(int)
-    
-    #Compute loss
-    weight = interviews[[mo + '_y' for mo in MORALITY_ORIGIN]].sum()/interviews[[mo + '_y' for mo in MORALITY_ORIGIN]].sum().sum()
-    loss = pd.Series({mo: log_loss(interviews[mo + '_y'], interviews[mo + '_x']) for mo in MORALITY_ORIGIN})
-    loss = (weight.reset_index(drop=True) * loss.reset_index(drop=True))
-    loss.index = MORALITY_ORIGIN
-    
-    return loss
+
+    for coder in CODERS:
+        interviews[[mo + '_' + coder for mo in MORALITY_ORIGIN]] = interviews[[mo + '_' + coder for mo in MORALITY_ORIGIN]].applymap(int)
+        
+        #Compute loss
+        weight = interviews[[mo + '_' + coder for mo in MORALITY_ORIGIN]].sum()/interviews[[mo + '_' + coder for mo in MORALITY_ORIGIN]].sum().sum()
+        loss = pd.Series({mo: log_loss(interviews[mo + '_' + coder], interviews[mo]) for mo in MORALITY_ORIGIN})
+        loss = (weight.reset_index(drop=True) * loss.reset_index(drop=True))
+        loss.index = MORALITY_ORIGIN
+        
+        print('Coder:', coder, 'Model:', model, 'Loss:', loss.sum())
+        # print('Max Loss:', loss.max(), loss.idxmax())
+        # print('Min Loss:', loss.min(), loss.idxmin())
 
 #Explain word-level attention for zero-shot models
 def explain_entailment(interviews):
@@ -71,17 +75,14 @@ def plot_morality_evolution(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [1]
     models = ['md', 'lg', 'bert', 'bart', 'entail']
 
     for c in config:
         if c == 1:
             for model in models:
                 interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-                loss = cross_entropy_loss(interviews)
-                print(model, 'model loss:', loss.sum())
-                # print(model, 'max loss:', loss.max(), loss.idxmax())
-                # print(model, 'max loss:', loss.min(), loss.idxmin())
+                cross_entropy_loss(interviews)
         if c == 2:
             interviews = pd.read_pickle('data/cache/morality_embeddings_entail.pkl')
             interviews = interviews[interviews['Wave'] == 1]

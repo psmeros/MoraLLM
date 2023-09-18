@@ -16,20 +16,36 @@ def merge_matches(interviews, wave_list, matches_file = 'data/waves/interview_ma
 
     return matches
 
-#Merge codings for wave 1 and wave 3 of interviews
-def merge_codings(interviews, codings_file_1 = 'data/waves/interview_codings-wave_1.csv', codings_file_3 = 'data/waves/interview_codings-wave_3.csv'):
-    codings_1 = pd.read_csv(codings_file_1)
-    codings_3 = pd.read_csv(codings_file_3)
-    codings_1['Interview Code'] = codings_1['Interview Code'].str.split('-').apply(lambda x: x[0]+'-'+x[1])
-    codings_1['Wave'] = 1
-    codings_3['Wave'] = 3
-    codings = pd.concat([codings_1, codings_3])
+#Merge codings from two coders for wave 1 and wave 3 of interviews
+def merge_codings(interviews, codings_folder = 'data/codings'):
+    #Parse codings
+    codings_wave_1 = []
+    codings_wave_3 = []
+    for file in os.listdir(codings_folder):
+        file = os.path.join(codings_folder, file)
+        if os.path.isfile(file) and file.endswith('.csv'):
+            coding = pd.read_csv(file)
+            coding['Wave'] = int(file.split('_')[1])
+            coding.attrs['Wave'] = int(file.split('_')[1])
+            coding.attrs['Coder'] = file.split('_')[2].split('.')[0].capitalize()
+            if coding.attrs['Wave'] == 1:
+                coding['Interview Code'] = coding['Interview Code'].str.split('-').apply(lambda x: x[0]+'-'+x[1])
 
-    codings = codings.set_index(['Interview Code', 'Wave'])
-    codings = codings.applymap(lambda x: not pd.isnull(x))
-    codings['Experience'] = codings['Experience'] | codings['Intrinsic']
-    codings['Family'] = codings['Family'] | codings['Parents']
-    codings = codings.drop(['Intrinsic', 'Parents'], axis=1)
+            coding = coding.set_index(['Interview Code', 'Wave'])
+            coding = coding.applymap(lambda x: not pd.isnull(x))
+            coding['Experience'] = coding['Experience'] | coding['Intrinsic']
+            coding['Family'] = coding['Family'] | coding['Parents']
+            coding = coding.drop(['Intrinsic', 'Parents'], axis=1)
+
+            if coding.attrs['Wave'] == 1:
+                codings_wave_1.append(coding)
+            elif coding.attrs['Wave'] == 3:
+                codings_wave_3.append(coding)
+    
+    #Merge codings
+    codings_wave_1 = codings_wave_1[0].join(codings_wave_1[1], lsuffix='_'+codings_wave_1[0].attrs['Coder'], rsuffix='_'+codings_wave_1[1].attrs['Coder'])
+    codings_wave_3 = codings_wave_3[0].join(codings_wave_3[1], lsuffix='_'+codings_wave_3[0].attrs['Coder'], rsuffix='_'+codings_wave_3[1].attrs['Coder'])
+    codings = pd.concat([codings_wave_1, codings_wave_3])
     codings = codings.reset_index()
 
     interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')

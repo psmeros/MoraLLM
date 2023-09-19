@@ -23,21 +23,30 @@ def plot_cross_entropy_loss(models = ['lg', 'bert', 'bart', 'entail']):
             interviews[mo + '_All Codings'] = interviews[mo + '_' + CODERS[0]] | interviews[mo + '_' + CODERS[1]]
             interviews[mo + '_Common Codings'] = interviews[mo + '_' + CODERS[0]] & interviews[mo + '_' + CODERS[1]]
 
+        weight = interviews[[mo + '_Common Codings' for mo in MORALITY_ORIGIN]].sum()/interviews[[mo + '_Common Codings' for mo in MORALITY_ORIGIN]].sum().sum()
+
         for c in ['All Codings', CODERS[1], CODERS[0], 'Common Codings']:
-            losses.append({'Model': model, 'Codings': c, 'Loss': pd.Series({mo: log_loss(interviews[mo + '_' + c].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN}).mean()})
+            loss = pd.Series({mo: log_loss(interviews[mo + '_' + c].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN})
+            loss = weight.reset_index(drop=True) * loss.reset_index(drop=True)
+            losses.append({'Model': model, 'Codings': c, 'Loss': loss.sum()})
+
     losses = pd.DataFrame(losses)
-    baseline_loss = pd.Series({mo: log_loss(interviews[mo + '_' + CODERS[1]].astype(int), interviews[mo + '_' + CODERS[0]].astype(int)) for mo in MORALITY_ORIGIN}).sort_values()
+
+    baseline_loss = pd.Series({mo: log_loss(interviews[mo + '_' + CODERS[1]].astype(int), interviews[mo + '_' + CODERS[0]].astype(int)) for mo in MORALITY_ORIGIN})
+    baseline_loss = weight.reset_index(drop=True) * baseline_loss.reset_index(drop=True)
+    baseline_loss.index = MORALITY_ORIGIN
+    baseline_loss = baseline_loss.sort_values()
 
     #Plot model comparison
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
     ax = sns.barplot(losses, x = 'Loss', y = 'Model', hue='Codings', palette='Set2')
-    plt.axvline(x=baseline_loss.mean(), linestyle='--', linewidth=4, label='Coders Agreement')
-    plt.axvline(x=0.4, linestyle='--', linewidth=2, color='grey')
-    plt.axvline(x=0.9, linestyle='--', linewidth=2, color='grey')
-    plt.xlabel('Cross-Entropy Loss')
+    plt.axvline(x=baseline_loss.sum(), linestyle='--', linewidth=4, label='Coders Agreement')
+    plt.axvline(x=0.6, linestyle='--', linewidth=2, color='grey')
+    plt.axvline(x=1.2, linestyle='--', linewidth=2, color='grey')
+    plt.xlabel('Weighted Cross-Entropy Loss')
     plt.xscale('log')
-    plt.xticks([0.4, 0.9, 6], ['0.4', '0.9', '6'])
+    plt.xticks([0.6, 1.2, 7.4], ['0.6', '1.2', '7.4'])
     plt.xlim(0.1, 15)
     plt.yticks([0, 1, 2, 3], ['SpaCy', 'Bert', 'Bart', 'Entailment'])
     plt.title('Model Comparison')
@@ -49,10 +58,10 @@ def plot_cross_entropy_loss(models = ['lg', 'bert', 'bart', 'entail']):
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
     ax = sns.barplot(x = baseline_loss.values, y = baseline_loss.index, palette='Blues_d')
-    plt.xticks([0, 5, 10, 15])
-    plt.xlabel('Cross-Entropy Loss')
+    plt.xticks([0, 1, 2, 3])
+    plt.xlabel('Weighted Cross-Entropy Loss')
     plt.ylabel('Morality Origin')
-    plt.title('Coders Agreement')
+    plt.title('Coders Agreement Breakdown')
     plt.savefig('data/plots/evaluation-coders_agreement.png', bbox_inches='tight')
     plt.show()
 

@@ -30,7 +30,18 @@ def plot_cross_entropy_loss(models = ['lg', 'bert', 'bart', 'entail']):
             loss = pd.Series({mo: log_loss(interviews[mo + '_' + c].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN})
             loss = weight.reset_index(drop=True) * loss.reset_index(drop=True)
             losses.append({'Model': model, 'Codings': c, 'Loss': loss.sum()})
-
+        
+        if model == 'entail':
+            entailment_breakdown = []
+            for c in ['All Codings', CODERS[1], CODERS[0], 'Common Codings']:
+                loss = pd.Series({mo: log_loss(interviews[mo + '_' + c].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN})
+                loss = weight.reset_index(drop=True) * loss.reset_index(drop=True)
+                loss.index = MORALITY_ORIGIN
+                loss['Codings'] = c
+                loss = pd.DataFrame(loss).T
+                entailment_breakdown = [loss] + entailment_breakdown
+            entailment_breakdown = pd.concat(entailment_breakdown, ignore_index=True)
+            
     losses = pd.DataFrame(losses)
 
     baseline_loss = pd.Series({mo: log_loss(interviews[mo + '_' + CODERS[1]].astype(int), interviews[mo + '_' + CODERS[0]].astype(int)) for mo in MORALITY_ORIGIN})
@@ -58,15 +69,16 @@ def plot_cross_entropy_loss(models = ['lg', 'bert', 'bart', 'entail']):
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')
     plt.show()
 
-    #Plot coders agreement
+    #Plot entailment model loss breakdown
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
-    ax = sns.barplot(x = baseline_loss.values, y = baseline_loss.index, palette='Blues_d')
-    plt.xticks([0, 1, 2, 3])
-    plt.xlabel('Weighted Cross-Entropy Loss')
-    plt.ylabel('Morality Origin')
-    plt.title('Coders Agreement Breakdown')
-    plt.savefig('data/plots/evaluation-coders_agreement.png', bbox_inches='tight')
+    entailment_breakdown.plot(kind='barh', x = 'Codings', stacked=True, colormap='Set2')
+    plt.xlabel('Cross-Entropy Loss')
+    plt.xticks([0, .5, 1])
+    plt.ylabel('Codings')
+    plt.title('Entailment Model Loss Breakdown')
+    plt.legend(loc='upper right', bbox_to_anchor=(1.8, 1.03), fontsize='xx-small')
+    plt.savefig('data/plots/evaluation-entailment_loss_breakdown.png', bbox_inches='tight')
     plt.show()
 
 #Plot coders agreement using Cohen's Kappa
@@ -141,7 +153,7 @@ def plot_morality_evolution(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [1,2]
 
     for c in config:
         if c == 1:

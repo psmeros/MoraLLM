@@ -1,4 +1,6 @@
+import numpy as np
 import pandas as pd
+import pytextrank
 import seaborn as sns
 import spacy
 from __init__ import *
@@ -7,8 +9,33 @@ from matplotlib.ticker import ScalarFormatter
 from pandarallel import pandarallel
 from wordcloud import WordCloud
 
-from preprocessing.constants import INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, REFINED_SECTIONS
+from preprocessing.constants import CODERS, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ORIGIN, REFINED_SECTIONS
+from preprocessing.metadata_parser import merge_codings
 from preprocessing.transcript_parser import wave_parser
+
+
+#Plot wordcloud for each morality origin
+def plot_morality_wordcloud(interviews):
+    nlp = spacy.load('en_core_web_lg')
+    nlp.add_pipe('textrank')
+    num_of_labels = int(np.ceil(interviews[[mo + '_' + c for mo in MORALITY_ORIGIN for c in CODERS]].sum(axis=1).mean()/len(CODERS)))
+    lemmatize = lambda text, pos, blacklist: ' '.join([word.lemma_ for phrase in nlp(text)._.phrases[:num_of_labels] for word in nlp(phrase.text) if word.pos_ in pos and word.lemma_ not in blacklist])
+
+    #Plot wordcloud
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(10, 30))
+    wordcloud = WordCloud(background_color='white', collocations=False, contour_width=0.1, contour_color='black',  max_font_size=150, random_state=42, colormap='Set2')
+
+    for i, mo in enumerate(MORALITY_ORIGIN):
+        text = interviews[interviews[mo + '_' + CODERS[0]] & interviews[mo + '_' + CODERS[1]]]['Morality_Origin']
+        text = text.apply(lambda t: lemmatize(t, ['NOUN', 'PROPN'], ['thing', 'people', 'stuff', 'way', 'trouble', 'life'])).str.cat(sep=' ')
+        plt.subplot(len(MORALITY_ORIGIN), 1, i+1)
+        plt.imshow(wordcloud.generate(text), interpolation='bilinear')
+        plt.axis('off')
+        plt.title(mo)
+    plt.tight_layout()
+    plt.savefig('data/plots/word_level-morality_wordcloud.png', bbox_inches='tight')
+    plt.show()
 
 #Plot general wordiness statistics
 def plot_general_wordiness(interviews_folder):
@@ -163,7 +190,7 @@ def plot_morality_wordiness(interviews_folder, eMFD_file):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2]
+    config = [3]
     interviews_folder='data/waves'
     eMFD_file='data/misc/eMFD.pkl'
 
@@ -172,3 +199,8 @@ if __name__ == '__main__':
             plot_general_wordiness(interviews_folder)
         elif c == 2:
             plot_morality_wordiness(interviews_folder, eMFD_file)
+        elif c == 3:
+            interviews = pd.read_pickle('data/cache/morality_embeddings_entail.pkl')
+            interviews = interviews[interviews['Wave'].isin([1,3])]
+            interviews = merge_codings(interviews)
+            plot_morality_wordcloud(interviews)

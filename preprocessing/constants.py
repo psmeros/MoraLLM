@@ -109,4 +109,13 @@ MORALITY_ORIGIN =   ['Experience',
                      'Laws',
                      'Holy Scripture']
 
+EXPLAINED_MORALITY_ORIGIN = {'Experience':'Experience',
+                             'Consequences':'Consequences',
+                             'Parents and Family':'Family',
+                             'Community and Society and School':'Community',
+                             'Friends':'Friends',
+                             'Media and TV':'Media',
+                             'Laws and Rules':'Laws',
+                             'Holy Scripture and God and Bible':'Holy Scripture'}
+
 CODERS = ['Leke', 'Tomas']

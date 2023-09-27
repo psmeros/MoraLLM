@@ -11,6 +11,7 @@ from transformers_interpret import ZeroShotClassificationExplainer
 from preprocessing.constants import CODERS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings
 
+
 #Plot cross-entropy loss for all models
 def plot_cross_entropy_loss(models = ['lg', 'bert', 'bart', 'entail']):
     #Compute losses
@@ -107,7 +108,6 @@ def plot_coders_agreement(interviews):
     plt.savefig('data/plots/evaluation-coders_agreement.png', bbox_inches='tight')
     plt.show()
 
-
 #Explain word-level attention for zero-shot models
 def explain_entailment(interviews):
     pairs = [(interviews.iloc[interviews[mo + '_x'].idxmax()]['Morality_Origin'], [mo]) for mo in MORALITY_ORIGIN]
@@ -154,20 +154,17 @@ def plot_morality_evolution(interviews):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
+    interviews = pd.read_pickle('data/cache/morality_embeddings_entail.pkl')
+    interviews = interviews[interviews['Wave'].isin([1,3])]
+    interviews = merge_codings(interviews)
+    temporal_interviews = pd.read_pickle('data/cache/temporal_morality_embeddings_entail.pkl')
 
     for c in config:
         if c == 1:
             plot_cross_entropy_loss()
         elif c == 2:
-            interviews = pd.read_pickle('data/cache/morality_embeddings_entail.pkl')
-            interviews = interviews[interviews['Wave'].isin([1,3])]
-            interviews = merge_codings(interviews)
             plot_coders_agreement(interviews)
         elif c == 3:
-            interviews = pd.read_pickle('data/cache/morality_embeddings_entail.pkl')
-            interviews = interviews[interviews['Wave'] == 1]
-            interviews = merge_codings(interviews)
             explain_entailment(interviews)
         elif c == 4:
-            interviews = pd.read_pickle('data/cache/temporal_morality_embeddings_entail.pkl')
-            plot_morality_evolution(interviews)
+            plot_morality_evolution(temporal_interviews)

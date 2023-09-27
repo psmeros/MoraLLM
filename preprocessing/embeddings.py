@@ -150,27 +150,36 @@ def compute_morality_origin(embeddings_file, transformation_matrix_file):
     return interviews
 
 #Compute zero-shot morality origin of interviews
-def zero_shot_classification(interviews):
+def zero_shot_classification(interviews, threshold=.5):
     #Premise and hypothesis templates
     hypothesis_template = 'The morality origin is {}.'
     morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-    result_dict = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
-    morality_origin = result_dict(morality_pipeline(interviews['Morality_Origin'].tolist(), MORALITY_ORIGIN, hypothesis_template=hypothesis_template, multi_label=True))
+    nlp = spacy.load('en_core_web_lg')
 
-    #Join and filter results
+    #Trasformation functions
+    sentencizer = lambda text: [sent.text.strip() for sent in nlp(text).sents]
+    classifier = lambda sentences: morality_pipeline(sentences, MORALITY_ORIGIN, hypothesis_template=hypothesis_template, multi_label=False)
+    organizer = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
+    aggregator = lambda r: pd.Series(r.max().apply(lambda x: x if x >= threshold else 0))
+
+    #Classify morality origin and join results
+    morality_origin = interviews['Morality_Origin'].apply(sentencizer).apply(classifier).apply(organizer).apply(aggregator)
     interviews = interviews.join(morality_origin)
+
     return interviews
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
-    models = ['md', 'lg', 'bert', 'bart', 'entail']
+    config = [1]
+    models = ['entail']
 
     for model in models:
         for c in config:
             if c == 1:
                 interviews = wave_parser(morality_breakdown=True)
-                morality_origin = pd.concat([interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4'], interviews[interviews['Wave'].isin([3])]['R:Morality:M5']])
+                morality_origin_wave_1_2 = interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4']
+                morality_origin_wave_3 = interviews[interviews['Wave'].isin([3])][['R:Morality:M5', 'R:Morality:M7', 'R:Morality:M2']].apply(lambda l: ' '.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
+                morality_origin = pd.concat([morality_origin_wave_1_2, morality_origin_wave_3])
                 interviews = interviews.join(morality_origin.rename('Morality_Origin'))
                 interviews = interviews.dropna(subset=['Morality_Origin']).reset_index(drop=True)
                 if model == 'entail':

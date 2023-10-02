@@ -27,20 +27,21 @@ def plot_model_comparison(interviews, models = ['lg', 'bert', 'bart', 'entail'],
         
     #Compute mean squared error
     loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), prior_classifier[mo]) for mo in MORALITY_ORIGIN}])
-    loss['Model'] = 'Baseline'
+    loss['Model'] = 'Baseline (Prior)'
     losses = [loss]
 
-    for model in models:
-        for ml in multi_label: 
+    for ml in multi_label:
+        for model in models:
             ml = '_multilabel' if ml else ''
             interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+ml+'.pkl')
             interviews = interviews[interviews['Wave'].isin([1,3])]
 
             loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN}])
-            loss['Model'] = model
+            loss['Model'] = model + ml
             losses = [loss] + losses
 
     losses = pd.concat(losses, ignore_index=True)
+    losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment', 'lg_multilabel':'SpaCy (ML)', 'bert_multilabel':'BERT (ML)', 'bart_multilabel':'BART (ML)', 'entail_multilabel':'Entailment (ML)'})
 
     #Plot model comparison
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
@@ -49,13 +50,12 @@ def plot_model_comparison(interviews, models = ['lg', 'bert', 'bart', 'entail'],
     line_1 = round(coder_A_loss, 1)
     line_2 = round(coder_B_loss, 1)
     line_3 = round(coders_agreement, 1)
-    plt.axvline(x=line_1, linestyle='-.', linewidth=4, label='Coder A Error')
-    plt.axvline(x=line_2, linestyle=':', linewidth=4, label='Coder B Error')
-    plt.axvline(x=line_3, linestyle='-', linewidth=4, label='Coders Disagreement')
+    plt.axvline(x=line_1, linestyle='-.', linewidth=4, color='indianred', label='Coder A Error')
+    plt.axvline(x=line_2, linestyle=':', linewidth=4, color='indianred', label='Coder B Error')
+    plt.axvline(x=line_3, linestyle='-', linewidth=4, color='indianred', label='Coders Disagreement')
     plt.xlabel('Mean Squared Error')
     plt.xticks([line_1, line_2, line_3], [str(line_1), str(line_2), str(line_3)])
-    plt.xlim(.0, 1.7)
-    plt.yticks(list(range(9)), ['Entailment', 'Entailment (ML)', 'BART', 'BART (ML)', 'BERT', 'BERT (ML)', 'SpaCy', 'SpaCy (ML)', 'Baseline'])
+    plt.xlim(.0, 2.2)
     plt.title('Model Comparison')
     plt.legend(loc='upper right', bbox_to_anchor=(1.65, 1.03), fontsize='small')
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')

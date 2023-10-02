@@ -13,7 +13,7 @@ from preprocessing.metadata_parser import merge_codings
 
 
 #Plot mean-squared error for all models
-def plot_model_comparison(interviews, models = ['lg', 'bert', 'bart', 'entail']):
+def plot_model_comparison(interviews, models = ['lg', 'bert', 'bart', 'entail'], multi_label = [True, False]):
 
     #Coders agreement
     coders_agreement = pd.Series({mo:mean_squared_error(interviews[mo + '_' + CODERS[0]].astype(int), interviews[mo + '_' + CODERS[1]].astype(int)) for mo in MORALITY_ORIGIN}).sum()
@@ -31,12 +31,14 @@ def plot_model_comparison(interviews, models = ['lg', 'bert', 'bart', 'entail'])
     losses = [loss]
 
     for model in models:
-        interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-        interviews = interviews[interviews['Wave'].isin([1,3])]
+        for ml in multi_label: 
+            ml = '_multilabel' if ml else ''
+            interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+ml+'.pkl')
+            interviews = interviews[interviews['Wave'].isin([1,3])]
 
-        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN}])
-        loss['Model'] = model
-        losses = [loss] + losses
+            loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN}])
+            loss['Model'] = model
+            losses = [loss] + losses
 
     losses = pd.concat(losses, ignore_index=True)
 
@@ -53,7 +55,7 @@ def plot_model_comparison(interviews, models = ['lg', 'bert', 'bart', 'entail'])
     plt.xlabel('Mean Squared Error')
     plt.xticks([line_1, line_2, line_3], [str(line_1), str(line_2), str(line_3)])
     plt.xlim(.0, 1.7)
-    plt.yticks([0, 1, 2, 3, 4], ['Entailment', 'Bart', 'Bert', 'SpaCy', 'Baseline'])
+    plt.yticks(list(range(9)), ['Entailment', 'Entailment (ML)', 'BART', 'BART (ML)', 'BERT', 'BERT (ML)', 'SpaCy', 'SpaCy (ML)', 'Baseline'])
     plt.title('Model Comparison')
     plt.legend(loc='upper right', bbox_to_anchor=(1.65, 1.03), fontsize='small')
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')

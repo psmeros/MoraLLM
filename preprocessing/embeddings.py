@@ -48,9 +48,6 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True):
                     outputs = model(**inputs, output_attentions=True)
 
                     #Extract the embeddings from the model's output (max-pooling)
-                    # attention_scores = torch.nn.functional.softmax(torch.max(torch.max(outputs.attentions[-1], dim=1).values, dim=1).values, dim=1)
-                    # token_embeddings = outputs.last_hidden_state[0]
-                    # embeddings = torch.matmul(attention_scores, token_embeddings)
                     embeddings = torch.max(outputs.last_hidden_state[0], dim=0, keepdim=True).values
                     all_embeddings.append(embeddings)
 
@@ -70,27 +67,6 @@ def get_vectorizer(model='lg', parallel=False, filter_POS=True):
         vectorizer = lambda x: x.parallel_apply(mean_word_vectors) if parallel else x.apply(mean_word_vectors)
  
     return vectorizer
-
-#Compute embeddings for interview sections
-def compute_embeddings(interviews, section_list, model):
-    vectorizer = get_vectorizer(model=model, parallel=True)
-
-    for section in section_list:
-        #Compute embeddings
-        interviews = interviews[~interviews[section].isna()]
-        interviews[section + '_Embeddings'] = vectorizer(interviews[section])
-        
-        #Drop interviews with no embeddings
-        interviews = interviews.dropna(subset=[section + '_Embeddings'])
-        interviews = interviews[interviews[section + '_Embeddings'].apply(lambda x: sum(x) != 0)]
-    
-    return interviews
-
-#Transform input embeddings
-def transform_embeddings(embeddings, transformation_matrix_file):
-    transformation_matrix = pd.read_pickle(transformation_matrix_file).values
-    embeddings = embeddings.apply(pd.Series).apply(lambda x: np.dot(x, transformation_matrix.T), axis=1)
-    return embeddings
 
 #Compute eMFD embeddings and transformation matrix
 def embed_eMFD(dictionary_file, model):
@@ -129,81 +105,79 @@ def embed_eMFD(dictionary_file, model):
     regressor = Ridge(random_state=42)
     regressor.fit(moral_foundations['Local Embeddings'].apply(pd.Series), moral_foundations['Global Embeddings'].apply(pd.Series))
     transformation_matrix = pd.DataFrame(regressor.coef_)
-    moral_foundations= moral_foundations.rename(columns={'Local Embeddings': 'Embeddings'})[['Name', 'Embeddings']]
 
-    return moral_foundations, transformation_matrix
+    return transformation_matrix
 
-#Compute morality origin of interviews
-def compute_morality_origin(embeddings_file, transformation_matrix_file):
-    nlp = spacy.load('en_core_web_lg')
-
-    #Load and transform data
-    interviews = pd.read_pickle(embeddings_file)
-    embeddings = transform_embeddings(interviews['Morality_Origin_Embeddings'], transformation_matrix_file)
-
-    #Compute cosine similarity with morality origin vectors
-    morality_origin = pd.Series({mo:nlp(mo).vector for mo in MORALITY_ORIGIN})
-    for mo in MORALITY_ORIGIN:
-        interviews[mo] = embeddings.apply(lambda e: cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0])
-    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].apply(lambda x: pd.Series({mo:p for mo, p in zip(MORALITY_ORIGIN, torch.nn.functional.softmax(torch.from_numpy(x.to_numpy()), dim=0).numpy())}), axis=1)
-    
+#Locate morality section in interviews
+def locate_morality_section(interviews, section):
+    morality_origin_wave_1_2 = interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4']
+    morality_origin_wave_3 = interviews[interviews['Wave'].isin([3])][['R:Morality:M5', 'R:Morality:M7']].apply(lambda l: ' '.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
+    morality_origin = pd.concat([morality_origin_wave_1_2, morality_origin_wave_3])
+    interviews = interviews.join(morality_origin.rename(section))
+    interviews = interviews.dropna(subset=[section]).reset_index(drop=True)
     return interviews
 
-#Compute zero-shot morality origin of interviews
-def zero_shot_classification(interviews, threshold=.0):
-    #Premise and hypothesis templates
-    hypothesis_template = 'This example is {}.'
-    morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-    nlp = spacy.load('en_core_web_lg')
+#Compute morality origin of interviews
+def compute_morality_origin(interviews, model, section, multi_label, dictionary_file='data/misc/eMFD.pkl'):
+    #Zero-shot model
+    if model == 'entail':
+        #Premise and hypothesis templates
+        hypothesis_template = 'This example is {}.'
+        morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+        nlp = spacy.load('en_core_web_lg')
 
-    #Trasformation functions
-    sentencizer = lambda text: [sent.text.strip() for sent in nlp(text).sents]
-    classifier = lambda sentences: morality_pipeline(sentences, MORALITY_ORIGIN, hypothesis_template=hypothesis_template, multi_label=False)
-    organizer = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
-    aggregator = lambda r: pd.Series(r.max().apply(lambda x: x if x >= threshold else 0))
-    full_pipeline = lambda text: aggregator(organizer(classifier(sentencizer(text))))
+        #Trasformation functions
+        sentencizer = lambda text: [sent.text.strip() for sent in nlp(text).sents]
+        classifier = lambda sentences: morality_pipeline(sentences, MORALITY_ORIGIN, hypothesis_template=hypothesis_template, multi_label=multi_label)
+        organizer = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
+        aggregator = lambda r: pd.Series(r.max())
+        full_pipeline = lambda text: aggregator(organizer(classifier(sentencizer(text))))
 
-    #Classify morality origin and join results
-    morality_origin = interviews['Morality_Origin'].apply(full_pipeline)
-    interviews = interviews.join(morality_origin)
+        #Classify morality origin and join results
+        morality_origin = interviews['Morality_Origin'].apply(full_pipeline)
+        interviews = interviews.join(morality_origin)
+    
+    #Embeddings models
+    else:
+        #Compute embeddings
+        vectorizer = get_vectorizer(model=model, parallel=True)
+        nlp = spacy.load('en_core_web_lg')
+        interviews = interviews[~interviews[section].isna()]
+        interviews[section + '_Embeddings'] = vectorizer(interviews[section])
+        
+        #Transform embeddings
+        transformation_matrix = embed_eMFD(dictionary_file, model)
+        interviews[section + '_Embeddings'] = interviews[section + '_Embeddings'].apply(pd.Series).apply(lambda x: np.dot(x, transformation_matrix.T), axis=1)
 
+        #Compute cosine similarity with morality origin vectors
+        morality_origin = pd.Series({mo:nlp(mo).vector for mo in MORALITY_ORIGIN})
+        for mo in MORALITY_ORIGIN:
+            interviews[mo] = interviews[section + '_Embeddings'].apply(lambda e: cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0])
+        
+        #Normalize similarity scores
+        if not multi_label:
+            interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].apply(lambda x: pd.Series({mo:p for mo, p in zip(MORALITY_ORIGIN, torch.nn.functional.softmax(torch.from_numpy(x.to_numpy()), dim=0).numpy())}), axis=1)
+    
     return interviews
 
 if __name__ == '__main__':
     #Hyperparameters
     config = [1]
-    models = ['entail']
+    models = ['lg', 'bert', 'bart', 'entail']
+    section = 'Morality_Origin'
+    multi_label = [True,False]
 
     for model in models:
-        for c in config:
-            if c == 1:
-                interviews = wave_parser(morality_breakdown=True)
-                morality_origin_wave_1_2 = interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4']
-                morality_origin_wave_3 = interviews[interviews['Wave'].isin([3])][['R:Morality:M5', 'R:Morality:M7']].apply(lambda l: ' '.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
-                morality_origin = pd.concat([morality_origin_wave_1_2, morality_origin_wave_3])
-                interviews = interviews.join(morality_origin.rename('Morality_Origin'))
-                interviews = interviews.dropna(subset=['Morality_Origin']).reset_index(drop=True)
-                if model == 'entail':
-                    interviews = zero_shot_classification(interviews)
-                else:
-                    interviews = compute_embeddings(interviews, ['Morality_Origin'], model)
-                interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-                display_notification(model + ' Morality Embeddings Computed!')
-
-            if c == 2:
-                dictionary_file = 'data/misc/eMFD.pkl'
-                moral_foundations, transformation_matrix = embed_eMFD(dictionary_file, model)
-                moral_foundations.to_pickle('data/cache/moral_foundations_'+model+'.pkl')
-                transformation_matrix.to_pickle('data/cache/transformation_matrix_'+model+'.pkl')
-
-            if c == 3:
-                embeddings_file = 'data/cache/morality_embeddings_'+model+'.pkl'
-                transformation_matrix_file = 'data/cache/transformation_matrix_'+model+'.pkl'
-                interviews = compute_morality_origin(embeddings_file, transformation_matrix_file)
-                interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-
-            if c == 4:
-                interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-                interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
-                interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')
-                display_notification(model + ' Temporal Morality Embeddings Computed!')
+        for ml in multi_label:
+            for c in config:
+                if c == 1:
+                    interviews = wave_parser(morality_breakdown=True)
+                    interviews = locate_morality_section(interviews, section)
+                    interviews = compute_morality_origin(interviews, model, section, ml)
+                    ml = '_multilabel' if ml else ''
+                    interviews.to_pickle('data/cache/morality_embeddings_'+model+ml+'.pkl')
+                    display_notification(model+ ml + ' Morality Embeddings Computed!')
+                elif c == 2:
+                    interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+ml+'.pkl')
+                    interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
+                    interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+ml+'.pkl')

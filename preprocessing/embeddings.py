@@ -10,7 +10,6 @@ from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pip
 
 from preprocessing.constants import MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
 from preprocessing.helpers import display_notification
-from preprocessing.metadata_parser import merge_matches
 from preprocessing.transcript_parser import wave_parser
 
 
@@ -110,7 +109,7 @@ def embed_eMFD(dictionary_file, model):
 
 #Locate morality section in interviews
 def locate_morality_section(interviews, section):
-    morality_origin_wave_1_2 = interviews[interviews['Wave'].isin([1])]['R:Morality:M4']
+    morality_origin_wave_1_2 = interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4']
     morality_origin_wave_3 = interviews[interviews['Wave'].isin([3])][['R:Morality:M5', 'R:Morality:M7', 'R:Morality:M2']].apply(lambda l: NEWLINE.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
     morality_origin = pd.concat([morality_origin_wave_1_2, morality_origin_wave_3])
     interviews = interviews.join(morality_origin.rename(section))
@@ -162,19 +161,12 @@ def compute_morality_origin(interviews, model, section, dictionary_file='data/mi
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
     models = ['lg', 'bert', 'bart', 'entail', 'entail-ml', 'entail-explained']
     section = 'Morality_Origin'
 
     for model in models:
-        for c in config:
-            if c == 1:
-                interviews = wave_parser(morality_breakdown=True)
-                interviews = locate_morality_section(interviews, section)
-                interviews = compute_morality_origin(interviews, model, section)
-                interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-                display_notification(model + ' Morality Origin Computed!')
-            elif c == 2:
-                interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-                interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
-                interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')
+        interviews = wave_parser(morality_breakdown=True)
+        interviews = locate_morality_section(interviews, section)
+        interviews = compute_morality_origin(interviews, model, section)
+        interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+        display_notification(model + ' Morality Origin Computed!')

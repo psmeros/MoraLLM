@@ -4,7 +4,7 @@ from preprocessing.transcript_parser import wave_parser
 
 
 #Merge matched interviews from different waves
-def merge_matches(interviews, wave_list, matches_file = 'data/waves/interview_matches.csv'):
+def merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/waves/interview_matches.csv'):
     matches = pd.read_csv(matches_file)[wave_list].dropna()
 
     for wave in wave_list:

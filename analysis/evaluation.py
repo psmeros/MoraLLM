@@ -10,7 +10,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers_interpret import ZeroShotClassificationExplainer
 
 from preprocessing.constants import CODERS, MORALITY_ORIGIN
-from preprocessing.metadata_parser import merge_codings
+from preprocessing.metadata_parser import merge_codings, merge_matches
 
 
 #Plot mean-squared error for all models
@@ -85,8 +85,8 @@ def plot_coders_agreement(interviews):
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
     ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=6), vmin=-0.2, vmax=1)
-    plt.ylabel(CODERS[0])
-    plt.xlabel(CODERS[1])
+    plt.ylabel('Coder A')
+    plt.xlabel('Coder B')
     colorbar = ax.collections[0].colorbar
     colorbar.set_ticks([n/10 for n in range(-1, 10, 2)]) 
     colorbar.set_ticklabels(['Poor', 'Slight', 'Fair', 'Moderate', 'Substantial', 'Perfect'])
@@ -152,12 +152,12 @@ def compute_coefficients(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [1,2,4]
     models = ['lg', 'bert', 'bart', 'entail', 'entail-ml', 'entail-explained']
     interviews = pd.read_pickle('data/cache/morality_embeddings_entail-explained.pkl')
+    temporal_interviews = interviews.copy()
     interviews = interviews[interviews['Wave'].isin([1,3])]
     interviews = merge_codings(interviews)
-    temporal_interviews = pd.read_pickle('data/cache/temporal_morality_embeddings_entail.pkl')
 
     for c in config:
         if c == 1:
@@ -167,6 +167,7 @@ if __name__ == '__main__':
         elif c == 3:
             explain_entailment(interviews)
         elif c == 4:
+            coefs = compute_coefficients(interviews)
+            temporal_interviews[MORALITY_ORIGIN] = temporal_interviews[MORALITY_ORIGIN] * coefs
+            temporal_interviews = merge_matches(temporal_interviews)
             plot_morality_evolution(temporal_interviews)
-        elif c == 5:
-            compute_coefficients(interviews)

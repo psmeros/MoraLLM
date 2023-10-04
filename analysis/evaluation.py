@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from __init__ import *
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import cohen_kappa_score, mean_squared_error
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers_interpret import ZeroShotClassificationExplainer
@@ -20,7 +21,10 @@ def plot_model_comparison(interviews, models):
     golden_labels = interviews.apply(lambda i: pd.Series(i[mo + '_' + CODERS[0]] & i[mo + '_' + CODERS[1]] for mo in MORALITY_ORIGIN), axis=1).rename(columns={i:mo for i, mo in enumerate(MORALITY_ORIGIN)})
     coder_A_loss = pd.Series({mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo + '_' + CODERS[0]].astype(int)) for mo in MORALITY_ORIGIN}).sum()
     coder_B_loss = pd.Series({mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo + '_' + CODERS[1]].astype(int)) for mo in MORALITY_ORIGIN}).sum()
-    
+
+    #Compute morality origin coefficients
+    coefs = compute_coefficients(interviews)
+
     #Baseline prior classifier
     origin_prior = golden_labels.sum()/golden_labels.sum().sum()
     prior_classifier = pd.DataFrame([origin_prior.tolist()] * len(interviews), columns=MORALITY_ORIGIN)
@@ -34,12 +38,12 @@ def plot_model_comparison(interviews, models):
         interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
         interviews = interviews[interviews['Wave'].isin([1,3])]
 
-        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN}])
+        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo]*coefs[mo]) for mo in MORALITY_ORIGIN}])
         loss['Model'] = model
         losses = [loss] + losses
 
     losses = pd.concat(losses, ignore_index=True)
-    losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment', 'lg_multilabel':'SpaCy (ML)', 'bert_multilabel':'BERT (ML)', 'bart_multilabel':'BART (ML)', 'entail_multilabel':'Entailment (ML)'})
+    losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment', 'entail-ml':'Entailment (Multi-Label)', 'entail-explained':'Entailment (Informed)', 'Baseline (Prior)':'Baseline (Prior)'})
 
     #Plot model comparison
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
@@ -48,12 +52,12 @@ def plot_model_comparison(interviews, models):
     line_1 = round(coder_A_loss, 1)
     line_2 = round(coder_B_loss, 1)
     line_3 = round(coders_agreement, 1)
+    line_4 = round(losses[MORALITY_ORIGIN].sum(axis=1).min(), 1)
     plt.axvline(x=line_1, linestyle='-.', linewidth=4, color='indianred', label='Coder A Error')
     plt.axvline(x=line_2, linestyle=':', linewidth=4, color='indianred', label='Coder B Error')
     plt.axvline(x=line_3, linestyle='-', linewidth=4, color='indianred', label='Coders Disagreement')
     plt.xlabel('Mean Squared Error')
-    plt.xticks([line_1, line_2, line_3], [str(line_1), str(line_2), str(line_3)])
-    plt.xlim(.0, 2.2)
+    plt.xticks([line_1, line_2, line_3, line_4], [str(line_1), str(line_2), str(line_3), str(line_4)])
     plt.title('Model Comparison')
     plt.legend(loc='upper right', bbox_to_anchor=(1.65, 1.03), fontsize='small')
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')
@@ -128,10 +132,22 @@ def plot_morality_evolution(interviews):
     plt.savefig('data/plots/evaluation-morality_evolution.png', bbox_inches='tight')
     plt.show()
 
+#Compute coefficients for more accurate morality origin estimation
+def compute_coefficients(interviews):
+    golden_labels = interviews.apply(lambda i: pd.Series(i[mo + '_' + CODERS[0]] & i[mo + '_' + CODERS[1]] for mo in MORALITY_ORIGIN), axis=1).rename(columns={i:mo for i, mo in enumerate(MORALITY_ORIGIN)}).astype(int)
+    coefs = {}
+    for mo in MORALITY_ORIGIN:
+        regr = LinearRegression(fit_intercept=False)
+        regr.fit(interviews[mo].values.reshape(-1, 1), golden_labels[mo].values.reshape(-1, 1))
+        coefs[mo] = regr.coef_[0][0]
+    coefs = pd.Series(coefs)
+    return coefs
+
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2]
-    models = ['entail-explained']
+    config = [1]
+    models = ['lg', 'bert', 'bart', 'entail', 'entail-ml', 'entail-explained']
     interviews = pd.read_pickle('data/cache/morality_embeddings_entail-explained.pkl')
     interviews = interviews[interviews['Wave'].isin([1,3])]
     interviews = merge_codings(interviews)
@@ -146,3 +162,5 @@ if __name__ == '__main__':
             explain_entailment(interviews)
         elif c == 4:
             plot_morality_evolution(temporal_interviews)
+        elif c == 5:
+            compute_coefficients(interviews)

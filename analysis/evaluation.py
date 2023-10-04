@@ -6,6 +6,7 @@ import seaborn as sns
 from __init__ import *
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import cohen_kappa_score, mean_squared_error
+from sklearn.preprocessing import minmax_scale
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers_interpret import ZeroShotClassificationExplainer
 
@@ -42,8 +43,13 @@ def plot_model_comparison(interviews, models):
         loss['Model'] = model
         losses = [loss] + losses
 
-    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].apply(lambda l: pd.Series({mo:1 if x == l.max() else 0 for mo,x in zip(MORALITY_ORIGIN, l)}), axis=1)
-    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo].astype(int)) for mo in MORALITY_ORIGIN}])
+    min_max = pd.DataFrame(minmax_scale(interviews[MORALITY_ORIGIN]), columns=MORALITY_ORIGIN)
+    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), min_max[mo].astype(int)) for mo in MORALITY_ORIGIN}])
+    loss['Model'] = 'Entailment (Min-Max)'
+    losses.insert(1, loss)
+
+    one_hot = interviews[MORALITY_ORIGIN].apply(lambda l: pd.Series({mo:1 if x == l.max() else 0 for mo,x in zip(MORALITY_ORIGIN, l)}), axis=1)
+    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), one_hot[mo].astype(int)) for mo in MORALITY_ORIGIN}])
     loss['Model'] = 'Entailment (One-Hot)'
     losses.insert(1, loss)
 

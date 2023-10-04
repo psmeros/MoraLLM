@@ -109,9 +109,10 @@ def embed_eMFD(dictionary_file, model):
 
 #Locate morality section in interviews
 def locate_morality_section(interviews, section):
-    morality_origin_wave_1_2 = interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4']
-    morality_origin_wave_3 = interviews[interviews['Wave'].isin([3])][['R:Morality:M5', 'R:Morality:M7', 'R:Morality:M2']].apply(lambda l: NEWLINE.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
-    morality_origin = pd.concat([morality_origin_wave_1_2, morality_origin_wave_3])
+    morality_origin_wave_1 = interviews[interviews['Wave'].isin([1])]['R:Morality:M4']
+    morality_origin_wave_2 = interviews[interviews['Wave'].isin([2])][['R:Morality:M2', 'R:Morality:M4', 'R:Morality:M6']].apply(lambda l: NEWLINE.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
+    morality_origin_wave_3 = interviews[interviews['Wave'].isin([3])][['R:Morality:M2', 'R:Morality:M5', 'R:Morality:M7']].apply(lambda l: NEWLINE.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
+    morality_origin = pd.concat([morality_origin_wave_1, morality_origin_wave_2, morality_origin_wave_3])
     interviews = interviews.join(morality_origin.rename(section))
     interviews = interviews.dropna(subset=[section]).reset_index(drop=True)
     return interviews

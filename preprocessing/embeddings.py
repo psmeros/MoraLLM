@@ -163,7 +163,7 @@ def compute_morality_origin(interviews, model, section, dictionary_file='data/mi
 if __name__ == '__main__':
     #Hyperparameters
     config = [1]
-    models = ['entail-explained']
+    models = ['lg', 'bert', 'bart', 'entail', 'entail-ml', 'entail-explained']
     section = 'Morality_Origin'
 
     for model in models:

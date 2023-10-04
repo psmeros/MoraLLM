@@ -109,13 +109,15 @@ MORALITY_ORIGIN =   ['Experience',
                      'Laws',
                      'Holy Scripture']
 
-EXPLAINED_MORALITY_ORIGIN = {'Experience':'Experience',
+MORALITY_ORIGIN_EXPLAINED = {'Experience Instinct Feeling':'Experience',
                              'Consequences':'Consequences',
-                             'Parents and Family':'Family',
-                             'Community and Society and School':'Community',
+                             'Family Parents':'Family',
+                             'Community Society School':'Community',
                              'Friends':'Friends',
-                             'Media and TV':'Media',
-                             'Laws and Rules':'Laws',
-                             'Holy Scripture and God and Bible':'Holy Scripture'}
+                             'Media TV Books':'Media',
+                             'Laws Rules':'Laws',
+                             'Holy Scripture God Bible':'Holy Scripture'}
+
+NEWLINE = '\n\n\n'
 
 CODERS = ['Leke', 'Tomas']

@@ -13,7 +13,7 @@ from preprocessing.metadata_parser import merge_codings
 
 
 #Plot mean-squared error for all models
-def plot_model_comparison(interviews, models = ['lg', 'bert', 'bart', 'entail'], multi_label = [True, False]):
+def plot_model_comparison(interviews, models):
 
     #Coders agreement
     coders_agreement = pd.Series({mo:mean_squared_error(interviews[mo + '_' + CODERS[0]].astype(int), interviews[mo + '_' + CODERS[1]].astype(int)) for mo in MORALITY_ORIGIN}).sum()
@@ -30,15 +30,13 @@ def plot_model_comparison(interviews, models = ['lg', 'bert', 'bart', 'entail'],
     loss['Model'] = 'Baseline (Prior)'
     losses = [loss]
 
-    for ml in multi_label:
-        for model in models:
-            ml = '_multilabel' if ml else ''
-            interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+ml+'.pkl')
-            interviews = interviews[interviews['Wave'].isin([1,3])]
+    for model in models:
+        interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+        interviews = interviews[interviews['Wave'].isin([1,3])]
 
-            loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN}])
-            loss['Model'] = model + ml
-            losses = [loss] + losses
+        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN}])
+        loss['Model'] = model
+        losses = [loss] + losses
 
     losses = pd.concat(losses, ignore_index=True)
     losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment', 'lg_multilabel':'SpaCy (ML)', 'bert_multilabel':'BERT (ML)', 'bart_multilabel':'BART (ML)', 'entail_multilabel':'Entailment (ML)'})
@@ -133,14 +131,15 @@ def plot_morality_evolution(interviews):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
-    interviews = pd.read_pickle('data/cache/morality_embeddings_entail.pkl')
+    models = ['entail-explained']
+    interviews = pd.read_pickle('data/cache/morality_embeddings_entail-explained.pkl')
     interviews = interviews[interviews['Wave'].isin([1,3])]
     interviews = merge_codings(interviews)
     temporal_interviews = pd.read_pickle('data/cache/temporal_morality_embeddings_entail.pkl')
 
     for c in config:
         if c == 1:
-            plot_model_comparison(interviews)
+            plot_model_comparison(interviews, models)
         elif c == 2:
             plot_coders_agreement(interviews)
         elif c == 3:

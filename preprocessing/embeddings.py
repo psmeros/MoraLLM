@@ -8,7 +8,7 @@ from sklearn.linear_model import Ridge
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
-from preprocessing.constants import MORALITY_ORIGIN
+from preprocessing.constants import MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
 from preprocessing.helpers import display_notification
 from preprocessing.metadata_parser import merge_matches
 from preprocessing.transcript_parser import wave_parser
@@ -110,28 +110,29 @@ def embed_eMFD(dictionary_file, model):
 
 #Locate morality section in interviews
 def locate_morality_section(interviews, section):
-    morality_origin_wave_1_2 = interviews[interviews['Wave'].isin([1,2])]['R:Morality:M4']
-    morality_origin_wave_3 = interviews[interviews['Wave'].isin([3])][['R:Morality:M5', 'R:Morality:M7']].apply(lambda l: ' '.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
+    morality_origin_wave_1_2 = interviews[interviews['Wave'].isin([1])]['R:Morality:M4']
+    morality_origin_wave_3 = interviews[interviews['Wave'].isin([3])][['R:Morality:M5', 'R:Morality:M7', 'R:Morality:M2']].apply(lambda l: NEWLINE.join([t for t in l if not pd.isna(t)]), axis=1).replace('', np.nan)
     morality_origin = pd.concat([morality_origin_wave_1_2, morality_origin_wave_3])
     interviews = interviews.join(morality_origin.rename(section))
     interviews = interviews.dropna(subset=[section]).reset_index(drop=True)
     return interviews
 
 #Compute morality origin of interviews
-def compute_morality_origin(interviews, model, section, multi_label, dictionary_file='data/misc/eMFD.pkl'):
+def compute_morality_origin(interviews, model, section, dictionary_file='data/misc/eMFD.pkl'):
     #Zero-shot model
-    if model == 'entail':
+    if model in ['entail', 'entail-ml', 'entail-explained']:
         #Premise and hypothesis templates
         hypothesis_template = 'This example is {}.'
         morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
-        nlp = spacy.load('en_core_web_lg')
+
+        #Model variants
+        multi_label = True if model == 'entail-ml' else False
+        morality_dictionary = MORALITY_ORIGIN_EXPLAINED if model == 'entail-explained' else {mo:mo for mo in MORALITY_ORIGIN}
 
         #Trasformation functions
-        sentencizer = lambda text: [sent.text.strip() for sent in nlp(text).sents]
-        classifier = lambda sentences: morality_pipeline(sentences, MORALITY_ORIGIN, hypothesis_template=hypothesis_template, multi_label=multi_label)
-        organizer = lambda l: pd.DataFrame([{l:s for l, s in zip(r['labels'], r['scores'])} for r in l])
-        aggregator = lambda r: pd.Series(r.max())
-        full_pipeline = lambda text: aggregator(organizer(classifier(sentencizer(text))))
+        classifier = lambda text: morality_pipeline(text.split(NEWLINE), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label)
+        aggregator = lambda l: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])} for r in l]).max()
+        full_pipeline = lambda text: aggregator(classifier(text))
 
         #Classify morality origin and join results
         morality_origin = interviews['Morality_Origin'].apply(full_pipeline)
@@ -155,29 +156,25 @@ def compute_morality_origin(interviews, model, section, multi_label, dictionary_
             interviews[mo] = interviews[section + '_Embeddings'].apply(lambda e: cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0])
         
         #Normalize similarity scores
-        if not multi_label:
-            interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].apply(lambda x: pd.Series({mo:p for mo, p in zip(MORALITY_ORIGIN, torch.nn.functional.softmax(torch.from_numpy(x.to_numpy()), dim=0).numpy())}), axis=1)
+        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].apply(lambda x: pd.Series({mo:p for mo, p in zip(MORALITY_ORIGIN, torch.nn.functional.softmax(torch.from_numpy(x.to_numpy()), dim=0).numpy())}), axis=1)
     
     return interviews
 
 if __name__ == '__main__':
     #Hyperparameters
     config = [1]
-    models = ['lg', 'bert', 'bart', 'entail']
+    models = ['entail-explained']
     section = 'Morality_Origin'
-    multi_label = [True,False]
 
     for model in models:
-        for ml in multi_label:
-            for c in config:
-                if c == 1:
-                    interviews = wave_parser(morality_breakdown=True)
-                    interviews = locate_morality_section(interviews, section)
-                    interviews = compute_morality_origin(interviews, model, section, ml)
-                    ml = '_multilabel' if ml else ''
-                    interviews.to_pickle('data/cache/morality_embeddings_'+model+ml+'.pkl')
-                    display_notification(model+ ml + ' Morality Embeddings Computed!')
-                elif c == 2:
-                    interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+ml+'.pkl')
-                    interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
-                    interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+ml+'.pkl')
+        for c in config:
+            if c == 1:
+                interviews = wave_parser(morality_breakdown=True)
+                interviews = locate_morality_section(interviews, section)
+                interviews = compute_morality_origin(interviews, model, section)
+                interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+                display_notification(model + ' Morality Origin Computed!')
+            elif c == 2:
+                interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+                interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
+                interviews.to_pickle('data/cache/temporal_morality_embeddings_'+model+'.pkl')

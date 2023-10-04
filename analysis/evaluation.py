@@ -42,6 +42,11 @@ def plot_model_comparison(interviews, models):
         loss['Model'] = model
         losses = [loss] + losses
 
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].apply(lambda l: pd.Series({mo:1 if x == l.max() else 0 for mo,x in zip(MORALITY_ORIGIN, l)}), axis=1)
+    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo].astype(int)) for mo in MORALITY_ORIGIN}])
+    loss['Model'] = 'Entailment (One-Hot)'
+    losses.insert(1, loss)
+
     losses = pd.concat(losses, ignore_index=True)
     losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment', 'entail-ml':'Entailment (Multi-Label)', 'entail-explained':'Entailment (Informed)', 'Baseline (Prior)':'Baseline (Prior)'})
 
@@ -52,12 +57,13 @@ def plot_model_comparison(interviews, models):
     line_1 = round(coder_A_loss, 1)
     line_2 = round(coder_B_loss, 1)
     line_3 = round(coders_agreement, 1)
-    line_4 = round(losses[MORALITY_ORIGIN].sum(axis=1).min(), 1)
+    min_loss = round(losses[MORALITY_ORIGIN].sum(axis=1).min(), 1)
+    max_loss = round(losses[MORALITY_ORIGIN].sum(axis=1).max(), 1)
     plt.axvline(x=line_1, linestyle='-.', linewidth=4, color='indianred', label='Coder A Error')
     plt.axvline(x=line_2, linestyle=':', linewidth=4, color='indianred', label='Coder B Error')
     plt.axvline(x=line_3, linestyle='-', linewidth=4, color='indianred', label='Coders Disagreement')
     plt.xlabel('Mean Squared Error')
-    plt.xticks([line_1, line_2, line_3, line_4], [str(line_1), str(line_2), str(line_3), str(line_4)])
+    plt.xticks([line_1, line_2, line_3, min_loss, max_loss], [str(line_1), str(line_2), str(line_3), str(min_loss), str(max_loss)])
     plt.title('Model Comparison')
     plt.legend(loc='upper right', bbox_to_anchor=(1.65, 1.03), fontsize='small')
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')

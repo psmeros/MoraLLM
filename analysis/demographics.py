@@ -5,36 +5,32 @@ import seaborn as sns
 from __init__ import *
 
 from preprocessing.constants import MORALITY_ORIGIN
-from preprocessing.metadata_parser import merge_matches
 
 
-#Plot morality evolution over waves
-def plot_morality_evolution(interviews):
-    #Merge waves
-    wave_1 = interviews[['Wave 1:' + mo for mo in MORALITY_ORIGIN]].rename(columns={'Wave 1:' + mo: mo for mo in MORALITY_ORIGIN})
-    wave_2 = interviews[['Wave 2:' + mo for mo in MORALITY_ORIGIN]].rename(columns={'Wave 2:' + mo: mo for mo in MORALITY_ORIGIN})
-    wave_3 = interviews[['Wave 3:' + mo for mo in MORALITY_ORIGIN]].rename(columns={'Wave 3:' + mo: mo for mo in MORALITY_ORIGIN})
-    wave_1['Wave'] = 1
-    wave_2['Wave'] = 2
-    wave_3['Wave'] = 3
-    interviews = pd.concat([wave_1, wave_2, wave_3])
+#Plot morality evolution by wave or age
+def plot_morality_evolution(interviews, attribute):
+    interviews = interviews.dropna(subset=[attribute, 'Gender'])
+    interviews[attribute] = interviews[attribute].astype(int)
+    if attribute == 'Age':
+        interviews[attribute] = interviews[attribute].apply(lambda x: '13-15' if x >= 13 and x <= 15 else '16-18' if x >= 16 and x <= 18  else '19-23' if x >= 19 and x <= 23 else '')
 
-    #Prepare for plotting
-    interviews = pd.melt(interviews, id_vars=['Wave'], value_vars=MORALITY_ORIGIN, var_name='Morality Origin', value_name='Value')
+    interviews = pd.melt(interviews, id_vars=[attribute, 'Gender'], value_vars=MORALITY_ORIGIN, var_name='Morality Origin', value_name='Value')
     interviews['Value'] = interviews['Value'] * 100
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    ax = sns.lineplot(data=interviews, y='Value', x='Wave', hue='Morality Origin', linewidth=4, palette='Set2')
+    g = sns.relplot(data=interviews, y='Value', x=attribute, hue='Morality Origin', col='Gender', kind='line', linewidth=4, palette='Set2')
+    g.fig.subplots_adjust(wspace=0.3)
+    ax = plt.gca()
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.ylabel('')
-    plt.xticks([1,2,3])
-    plt.title('Morality Evolution')
-    legend = plt.legend(loc='upper right', bbox_to_anchor=(1.7, 1.03))
+    g.set_ylabels('')
+    plt.xticks(interviews[attribute].unique())
+    plt.xlim(interviews[attribute].min(), interviews[attribute].max())
+    legend = g._legend
     for line in legend.get_lines():
         line.set_linewidth(4)
-    plt.savefig('data/plots/evaluation-morality_evolution.png', bbox_inches='tight')
+    plt.savefig('data/plots/demographics-morality_evolution_by_'+attribute.lower()+'.png', bbox_inches='tight')
     plt.show()
 
 
@@ -45,5 +41,5 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
-            interviews = merge_matches(interviews)
-            plot_morality_evolution(interviews)
+            for attribute in ['Wave', 'Age']:
+                plot_morality_evolution(interviews, attribute)

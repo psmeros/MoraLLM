@@ -1,11 +1,16 @@
 from itertools import combinations
+
 import numpy as np
 import pandas as pd
-from scipy.spatial.distance import pdist, squareform
 from __init__ import *
+from scipy.spatial.distance import pdist, squareform
 from sklearn.linear_model import LinearRegression
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers_interpret import ZeroShotClassificationExplainer
 
+from preprocessing.constants import MORALITY_ORIGIN
 from preprocessing.embeddings import transform_embeddings
+
 
 #Compute coefficients for transforming waves
 def regression(from_wave='Wave 1', to_wave='Wave 3', model='lg'):
@@ -59,3 +64,17 @@ def k_most_distant_embeddings(embeddings, k):
             optimal_combination = combination
 
     return list(optimal_combination)
+
+#Explain word-level attention for zero-shot models
+def explain_entailment(interviews):
+    pairs = [(interviews.iloc[interviews[mo + '_x'].idxmax()]['Morality_Origin'], [mo]) for mo in MORALITY_ORIGIN]
+
+    model_name = 'cross-encoder/nli-deberta-base'
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+    zero_shot_explainer = ZeroShotClassificationExplainer(model, tokenizer)
+
+    for text, labels in pairs:
+        zero_shot_explainer(text=text, hypothesis_template='The morality origin is {}.',labels=labels)
+        zero_shot_explainer.visualize('data/misc/zero_shot.html')

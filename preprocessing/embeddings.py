@@ -4,12 +4,13 @@ import spacy
 import torch
 from __init__ import *
 from pandarallel import pandarallel
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LinearRegression, Ridge
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
-from preprocessing.constants import MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
+from preprocessing.constants import CODERS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
 from preprocessing.helpers import display_notification
+from preprocessing.metadata_parser import merge_codings
 from preprocessing.transcript_parser import wave_parser
 
 
@@ -117,6 +118,20 @@ def locate_morality_section(interviews, section):
     interviews = interviews.dropna(subset=[section]).reset_index(drop=True)
     return interviews
 
+#Compute coefficients for more accurate morality origin estimation
+def compute_coefficients(interviews):
+    interviews = interviews[interviews['Wave'].isin([1,3])]
+    interviews = merge_codings(interviews)
+
+    golden_labels = interviews.apply(lambda i: pd.Series(i[mo + '_' + CODERS[0]] & i[mo + '_' + CODERS[1]] for mo in MORALITY_ORIGIN), axis=1).rename(columns={i:mo for i, mo in enumerate(MORALITY_ORIGIN)}).astype(int)
+    coefs = {}
+    for mo in MORALITY_ORIGIN:
+        regr = LinearRegression(fit_intercept=False)
+        regr.fit(interviews[mo].values.reshape(-1, 1), golden_labels[mo].values.reshape(-1, 1))
+        coefs[mo] = regr.coef_[0][0]
+    coefs = pd.Series(coefs)
+    return coefs
+
 #Compute morality origin of interviews
 def compute_morality_origin(interviews, model, section, dictionary_file='data/misc/eMFD.pkl'):
     #Zero-shot model
@@ -137,6 +152,11 @@ def compute_morality_origin(interviews, model, section, dictionary_file='data/mi
         #Classify morality origin and join results
         morality_origin = interviews['Morality_Origin'].apply(full_pipeline)
         interviews = interviews.join(morality_origin)
+
+        #Compute morality origin coefficients
+        if model == 'entail-explained':
+            coefs = compute_coefficients(interviews)
+            interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN] * coefs
     
     #Embeddings models
     else:

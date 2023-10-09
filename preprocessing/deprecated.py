@@ -9,7 +9,6 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers_interpret import ZeroShotClassificationExplainer
 
 from preprocessing.constants import MORALITY_ORIGIN
-from preprocessing.embeddings import transform_embeddings
 
 
 #Compute coefficients for transforming waves
@@ -21,11 +20,6 @@ def regression(from_wave='Wave 1', to_wave='Wave 3', model='lg'):
     #Load data
     moral_foundations = pd.read_pickle(moral_foundations_file)
     temporal_interviews = pd.read_pickle(temporal_embeddings_file)
-    
-    #Τransform embeddings
-    moral_foundations['Embeddings'] = transform_embeddings(moral_foundations['Embeddings'], transformation_matrix_file)
-    for wave in ['Wave 1', 'Wave 2', 'Wave 3']:
-        temporal_interviews[wave+':R:Morality_Embeddings'] = transform_embeddings(temporal_interviews[wave+':R:Morality_Embeddings'], transformation_matrix_file)
 
     #Compute coefficients
     samples = temporal_interviews[to_wave + ':R:Morality_Embeddings'] - temporal_interviews[from_wave + ':R:Morality_Embeddings']

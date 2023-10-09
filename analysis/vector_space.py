@@ -10,7 +10,6 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from preprocessing.constants import MORALITY_ORIGIN
-from preprocessing.embeddings import transform_embeddings
 
 
 #Plot morality embeddings of all waves
@@ -126,12 +125,6 @@ if __name__ == '__main__':
     interviews['Name'] = interviews['Name'].apply(lambda x: 'Wave ' + str(x))
     moral_foundations = pd.read_pickle(moral_foundations_file)
     temporal_interviews = pd.read_pickle(temporal_embeddings_file)
-    
-    #Τransform embeddings
-    interviews['Embeddings'] = transform_embeddings(interviews['Embeddings'], transformation_matrix_file)
-    moral_foundations['Embeddings'] = transform_embeddings(moral_foundations['Embeddings'], transformation_matrix_file)
-    for wave in ['Wave 1', 'Wave 2', 'Wave 3']:
-        temporal_interviews[wave+':R:Morality_Embeddings'] = transform_embeddings(temporal_interviews[wave+':R:Morality_Embeddings'], transformation_matrix_file)
 
     for c in config:
         if c == 1:

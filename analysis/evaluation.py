@@ -13,18 +13,27 @@ from preprocessing.metadata_parser import merge_codings
 #Plot mean-squared error for all models
 def plot_model_comparison(interviews, models):
 
-    #Coders agreement
-    coders_agreement = pd.Series({mo:mean_squared_error(interviews[mo + '_' + CODERS[0]].astype(int), interviews[mo + '_' + CODERS[1]].astype(int)) for mo in MORALITY_ORIGIN}).sum()
-    golden_labels = interviews.apply(lambda i: pd.Series(i[mo + '_' + CODERS[0]] & i[mo + '_' + CODERS[1]] for mo in MORALITY_ORIGIN), axis=1).rename(columns={i:mo for i, mo in enumerate(MORALITY_ORIGIN)})
-    coder_A_loss = pd.Series({mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo + '_' + CODERS[0]].astype(int)) for mo in MORALITY_ORIGIN}).sum()
-    coder_B_loss = pd.Series({mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo + '_' + CODERS[1]].astype(int)) for mo in MORALITY_ORIGIN}).sum()
+    #Compute golden labels
+    coder_A_labels = interviews[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[0]:mo for mo in MORALITY_ORIGIN})
+    coder_B_labels = interviews[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[1]:mo for mo in MORALITY_ORIGIN})
+    golden_labels = coder_A_labels.astype(int) + coder_B_labels.astype(int)
+    
+    #Transform labels to probabilities
+    golden_labels = golden_labels.div(golden_labels.sum(axis=1).apply(lambda x: 1 if x == 0 else x), axis=0)
+    coder_A_labels = coder_A_labels.div(coder_A_labels.sum(axis=1).apply(lambda x: 1 if x == 0 else x), axis=0)
+    coder_B_labels = coder_B_labels.div(coder_B_labels.sum(axis=1).apply(lambda x: 1 if x == 0 else x), axis=0)
+
+    #Compute coders agreement and individual loss
+    coders_agreement = pd.Series({mo:mean_squared_error(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}).sum()
+    coder_A_loss = pd.Series({mo:mean_squared_error(golden_labels[mo], coder_A_labels[mo]) for mo in MORALITY_ORIGIN}).sum()
+    coder_B_loss = pd.Series({mo:mean_squared_error(golden_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}).sum()
 
     #Baseline prior classifier
     origin_prior = golden_labels.sum()/golden_labels.sum().sum()
     prior_classifier = pd.DataFrame([origin_prior.tolist()] * len(interviews), columns=MORALITY_ORIGIN)
         
     #Compute mean squared error
-    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), prior_classifier[mo]) for mo in MORALITY_ORIGIN}])
+    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], prior_classifier[mo]) for mo in MORALITY_ORIGIN}])
     loss['Model'] = 'Baseline (Prior)'
     losses = [loss]
 
@@ -32,17 +41,17 @@ def plot_model_comparison(interviews, models):
         interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
         interviews = interviews[interviews['Wave'].isin([1,3])]
 
-        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), interviews[mo]) for mo in MORALITY_ORIGIN}])
+        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], interviews[mo]) for mo in MORALITY_ORIGIN}])
         loss['Model'] = model
         losses = [loss] + losses
 
     min_max = pd.DataFrame(minmax_scale(interviews[MORALITY_ORIGIN]), columns=MORALITY_ORIGIN)
-    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), min_max[mo].astype(int)) for mo in MORALITY_ORIGIN}])
+    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], min_max[mo]) for mo in MORALITY_ORIGIN}])
     loss['Model'] = 'Entailment (Min-Max)'
     losses.insert(1, loss)
 
     one_hot = interviews[MORALITY_ORIGIN].apply(lambda l: pd.Series({mo:1 if x == l.max() else 0 for mo,x in zip(MORALITY_ORIGIN, l)}), axis=1)
-    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo].astype(int), one_hot[mo].astype(int)) for mo in MORALITY_ORIGIN}])
+    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], one_hot[mo]) for mo in MORALITY_ORIGIN}])
     loss['Model'] = 'Entailment (One-Hot)'
     losses.insert(1, loss)
 

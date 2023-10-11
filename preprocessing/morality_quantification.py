@@ -157,6 +157,9 @@ def compute_morality_origin(interviews, model, section, dictionary_file='data/mi
         if model == 'entail-explained':
             coefs = compute_coefficients(interviews)
             interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN] * coefs
+
+        #Normalize scores
+        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0)
     
     #Embeddings models
     else:

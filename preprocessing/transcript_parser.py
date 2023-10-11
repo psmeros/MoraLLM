@@ -4,7 +4,7 @@ import re
 import pandas as pd
 from __init__ import *
 
-from preprocessing.constants import INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, TRANSCRIPT_ENCODING
+from preprocessing.constants import INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, TRANSCRIPT_ENCODING
 from preprocessing.helpers import error_handling
 
 
@@ -178,8 +178,9 @@ def wave_parser(waves_folder='data/waves', morality_breakdown=False):
 
     waves = pd.concat(waves, ignore_index=True)
     
-    #Clean Gender Metadata
+    #Clean Gender/Race Metadata
     waves['Gender'] = waves['Gender'].map(METADATA_GENDER_MAP)
+    waves['Race'] = waves['Race'].map(METADATA_RACE_MAP)
     
     return waves
 

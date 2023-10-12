@@ -11,7 +11,7 @@ from preprocessing.metadata_parser import merge_codings
 
 
 #Plot mean-squared error for all models
-def plot_model_comparison(codings, models):
+def plot_model_evaluation(codings, models):
 
     #Compute golden labels
     coder_A_labels = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[0]:mo for mo in MORALITY_ORIGIN})
@@ -106,6 +106,6 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
-            plot_model_comparison(codings, models)
+            plot_model_evaluation(codings, models)
         elif c == 2:
             plot_coders_agreement(codings)

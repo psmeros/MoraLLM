@@ -38,25 +38,25 @@ def plot_model_comparison(interviews, models):
     losses = [loss]
 
     for model in models:
-        interviews = pd.read_pickle('data/cache/morality_embeddings_'+model+'.pkl')
+        interviews = pd.read_pickle('data/cache/morality_model-'+model+'.pkl')
         interviews = interviews[interviews['Wave'].isin([1,3])]
 
         loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], interviews[mo]) for mo in MORALITY_ORIGIN}])
         loss['Model'] = model
         losses = [loss] + losses
 
-    min_max = pd.DataFrame(minmax_scale(interviews[MORALITY_ORIGIN]), columns=MORALITY_ORIGIN)
-    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], min_max[mo]) for mo in MORALITY_ORIGIN}])
-    loss['Model'] = 'Entailment (Min-Max)'
-    losses.insert(1, loss)
-
-    one_hot = interviews[MORALITY_ORIGIN].apply(lambda l: pd.Series({mo:1 if x == l.max() else 0 for mo,x in zip(MORALITY_ORIGIN, l)}), axis=1)
-    loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], one_hot[mo]) for mo in MORALITY_ORIGIN}])
-    loss['Model'] = 'Entailment (One-Hot)'
-    losses.insert(1, loss)
+    #Entailment alternatives
+    # min_max = pd.DataFrame(minmax_scale(interviews[MORALITY_ORIGIN]), columns=MORALITY_ORIGIN)
+    # loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], min_max[mo]) for mo in MORALITY_ORIGIN}])
+    # loss['Model'] = 'Entailment (Min-Max)'
+    # losses.insert(1, loss)
+    # one_hot = interviews[MORALITY_ORIGIN].apply(lambda l: pd.Series({mo:1 if x == l.max() else 0 for mo,x in zip(MORALITY_ORIGIN, l)}), axis=1)
+    # loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], one_hot[mo]) for mo in MORALITY_ORIGIN}])
+    # loss['Model'] = 'Entailment (One-Hot)'
+    # losses.insert(1, loss)
 
     losses = pd.concat(losses, ignore_index=True)
-    losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment (Vanilla)', 'entail-ml':'Entailment (Multi-Label)', 'entail-explained':'Entailment (Informed)', 'Baseline (Prior)':'Baseline (Prior)'})
+    losses['Model'] = losses['Model'].replace({'lg':'SpaCy (Labels)', 'bert':'BERT (Labels)', 'bart':'BART (Labels)', 'entail':'Entailment (Labels)', 'entail_explained':'Entailment (Labels+Notes)', 'top':'Entailment (Labels+Notes+Distro)', 'Baseline (Prior)':'Naive (Distro)'})
 
     #Plot model comparison
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
@@ -106,8 +106,8 @@ def plot_coders_agreement(interviews):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
-    models = ['lg', 'bert', 'bart', 'entail', 'entail-ml', 'entail-explained']
-    interviews = pd.read_pickle('data/cache/morality_embeddings_entail-explained.pkl')
+    models = ['lg', 'bert', 'bart', 'entail', 'entail_explained', 'top']
+    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = interviews[interviews['Wave'].isin([1,3])]
     interviews = merge_codings(interviews)
 

@@ -118,31 +118,41 @@ def locate_morality_section(interviews, section):
     interviews = interviews.dropna(subset=[section]).reset_index(drop=True)
     return interviews
 
-#Compute coefficients for more accurate morality origin estimation
-def compute_coefficients(interviews):
-    interviews = interviews[interviews['Wave'].isin([1,3])]
-    interviews = merge_codings(interviews)
+#Overfit model to codings
+def inform_morality_origin_model(interviews):
 
-    golden_labels = interviews.apply(lambda i: pd.Series(i[mo + '_' + CODERS[0]] & i[mo + '_' + CODERS[1]] for mo in MORALITY_ORIGIN), axis=1).rename(columns={i:mo for i, mo in enumerate(MORALITY_ORIGIN)}).astype(int)
+    #Compute golden labels
+    codings = merge_codings(interviews[interviews['Wave'].isin([1,3])])
+    coder_A_labels = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[0]:mo for mo in MORALITY_ORIGIN})
+    coder_B_labels = codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[1]:mo for mo in MORALITY_ORIGIN})
+    golden_labels = coder_A_labels.astype(int) + coder_B_labels.astype(int)
+    golden_labels = golden_labels.div(golden_labels.sum(axis=1).apply(lambda x: 1 if x == 0 else x), axis=0)
+
+    #Compute coefficients for more accurate morality origin estimation
     coefs = {}
     for mo in MORALITY_ORIGIN:
         regr = LinearRegression(fit_intercept=False)
-        regr.fit(interviews[mo].values.reshape(-1, 1), golden_labels[mo].values.reshape(-1, 1))
+        regr.fit(codings[mo].values.reshape(-1, 1), golden_labels[mo].values.reshape(-1, 1))
         coefs[mo] = regr.coef_[0][0]
     coefs = pd.Series(coefs)
-    return coefs
+
+    #Multiply with coefficients and normalize
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN] * coefs
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0)
+
+    return interviews
 
 #Compute morality origin of interviews
-def compute_morality_origin(interviews, model, section, dictionary_file='data/misc/eMFD.pkl'):
+def compute_morality_origin_model(interviews, model, section, dictionary_file='data/misc/eMFD.pkl'):
     #Zero-shot model
-    if model in ['entail', 'entail-ml', 'entail-explained']:
+    if model in ['entail', 'entail_ml', 'entail_explained']:
         #Premise and hypothesis templates
         hypothesis_template = 'This example is {}.'
         morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
 
         #Model variants
-        multi_label = True if model == 'entail-ml' else False
-        morality_dictionary = MORALITY_ORIGIN_EXPLAINED if model == 'entail-explained' else {mo:mo for mo in MORALITY_ORIGIN}
+        multi_label = True if model == 'entail_ml' else False
+        morality_dictionary = MORALITY_ORIGIN_EXPLAINED if model == 'entail_explained' else {mo:mo for mo in MORALITY_ORIGIN}
 
         #Trasformation functions
         classifier = lambda text: morality_pipeline(text.split(NEWLINE), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label)
@@ -152,11 +162,6 @@ def compute_morality_origin(interviews, model, section, dictionary_file='data/mi
         #Classify morality origin and join results
         morality_origin = interviews['Morality_Origin'].apply(full_pipeline)
         interviews = interviews.join(morality_origin)
-
-        #Compute morality origin coefficients
-        if model == 'entail-explained':
-            coefs = compute_coefficients(interviews)
-            interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN] * coefs
 
         #Normalize scores
         interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0)
@@ -185,12 +190,19 @@ def compute_morality_origin(interviews, model, section, dictionary_file='data/mi
 
 if __name__ == '__main__':
     #Hyperparameters
-    models = ['lg', 'bert', 'bart', 'entail', 'entail-ml', 'entail-explained']
+    config = [2]
+    models = ['lg', 'bert', 'bart', 'entail', 'entail_ml', 'entail_explained']
     section = 'Morality_Origin'
 
-    for model in models:
-        interviews = wave_parser(morality_breakdown=True)
-        interviews = locate_morality_section(interviews, section)
-        interviews = compute_morality_origin(interviews, model, section)
-        interviews.to_pickle('data/cache/morality_embeddings_'+model+'.pkl')
-        display_notification(model + ' Morality Origin Computed!')
+    for c in config:
+        if c == 1:
+            for model in models:
+                interviews = wave_parser(morality_breakdown=True)
+                interviews = locate_morality_section(interviews, section)
+                interviews = compute_morality_origin_model(interviews, model, section)
+                interviews.to_pickle('data/cache/morality_model-'+model+'.pkl')
+                display_notification(model + ' Morality Origin Computed!')
+        elif c == 2:
+            interviews = pd.read_pickle('data/cache/morality_model-entail_explained.pkl')
+            interviews = inform_morality_origin_model(interviews)
+            interviews.to_pickle('data/cache/morality_model-top.pkl')

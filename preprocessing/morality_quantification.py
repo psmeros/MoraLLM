@@ -120,7 +120,6 @@ def locate_morality_section(interviews, section):
 
 #Overfit model to codings
 def inform_morality_origin_model(interviews):
-
     #Compute golden labels
     codings = merge_codings(interviews[interviews['Wave'].isin([1,3])])
     coder_A_labels = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[0]:mo for mo in MORALITY_ORIGIN})

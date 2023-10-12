@@ -37,7 +37,7 @@ def plot_morality_evolution(interviews, col_attribute, x_attribute='Wave'):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1]
-    interviews = pd.read_pickle('data/cache/morality_embeddings_entail-explained.pkl')
+    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     for c in config:
         if c == 1:

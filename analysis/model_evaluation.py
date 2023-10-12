@@ -78,8 +78,8 @@ def plot_coders_agreement(codings):
     heatmap = np.zeros((len(MORALITY_ORIGIN), len(MORALITY_ORIGIN)))
     
     for mo_A in range(len(MORALITY_ORIGIN)):
-        for mo_1 in range(len(MORALITY_ORIGIN)):
-            heatmap[mo_A, mo_1] = cohen_kappa_score(coder_A[mo_A], coder_B[mo_1])
+        for mo_B in range(len(MORALITY_ORIGIN)):
+            heatmap[mo_A, mo_B] = cohen_kappa_score(coder_A[mo_A], coder_B[mo_B])
     heatmap = pd.DataFrame(heatmap, index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
 
     #Plot coders agreement

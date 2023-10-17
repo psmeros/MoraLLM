@@ -167,7 +167,7 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
         interviews = interviews.join(morality_origin)
 
         #Normalize scores
-        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0)
+        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0).fillna(0.0)
 
     #ChatGPT model
     elif model == 'chatgpt':
@@ -183,7 +183,7 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
         interviews = interviews.join(morality_origin)
 
         #Normalize scores
-        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0)
+        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0).fillna(0.0)
 
     #Embeddings models
     else:

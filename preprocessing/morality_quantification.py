@@ -1,4 +1,7 @@
+import os
+
 import numpy as np
+import openai
 import pandas as pd
 import spacy
 import torch
@@ -8,7 +11,7 @@ from sklearn.linear_model import LinearRegression, Ridge
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
-from preprocessing.constants import CODERS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
+from preprocessing.constants import CHATGPT_PROMPT, CODERS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
 from preprocessing.helpers import display_notification
 from preprocessing.metadata_parser import merge_codings
 from preprocessing.transcript_parser import wave_parser
@@ -159,12 +162,28 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
         full_pipeline = lambda text: aggregator(classifier(text))
 
         #Classify morality origin and join results
-        morality_origin = interviews['Morality_Origin'].apply(full_pipeline)
+        morality_origin = interviews[section].apply(full_pipeline)
         interviews = interviews.join(morality_origin)
 
         #Normalize scores
         interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0)
-    
+
+    #ChatGPT model
+    elif model == 'chatgpt':
+        #Call OpenAI API
+        openai.api_key = os.getenv('OPENAI_API_KEY')
+        tokenizer = lambda text, token_limit=128: ' '.join(text.split(' ')[:token_limit])
+        classifier = lambda text: openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=[{'role': 'system', 'content': CHATGPT_PROMPT},{'role': 'user','content': text}], temperature=0, max_tokens=64, top_p=1, frequency_penalty=0, presence_penalty=0)
+        aggregator = lambda response: pd.Series({i.split(':')[0]: float(i.split(':')[1]) for i in response['choices'][0]['message']['content'].split('\n')})
+        full_pipeline = lambda text: aggregator(classifier(tokenizer(text)))
+
+        #Classify morality origin and join results
+        morality_origin = interviews[section].apply(full_pipeline)
+        interviews = interviews.join(morality_origin)
+
+        #Normalize scores
+        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0)
+
     #Embeddings models
     else:
         #Compute embeddings
@@ -189,8 +208,8 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
-    models = ['lg', 'bert', 'bart', 'entail', 'entail_ml', 'entail_explained']
+    config = [1]
+    models = ['chatgpt']
     section = 'Morality_Origin'
 
     for c in config:

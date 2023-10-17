@@ -184,3 +184,5 @@ MORALITY_ORIGIN_EXPLAINED = {'Experience and Instinct and Feeling':'Experience',
 NEWLINE = '\n\n\n'
 
 CODERS = ['Leke', 'Tomas']
+
+CHATGPT_PROMPT = 'Estimate the probability of the following text belonging to the categories: Experience, Consequences, Family, Community, Friends, Media, Laws, Holy Scripture. Response in the form \"Category:Probability\".'

@@ -15,3 +15,5 @@ en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en
 wordcloud==1.9.2
 transformers-interpret==0.10.0
 openai==0.28.1
+plotly==5.17.0
+kaleido==0.2.1

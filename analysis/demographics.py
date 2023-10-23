@@ -6,8 +6,8 @@ import plotly.graph_objects as go
 import seaborn as sns
 from __init__ import *
 
-from preprocessing.constants import MORALITY_ORIGIN
-from preprocessing.metadata_parser import merge_matches
+from preprocessing.constants import CODERS, MORALITY_ORIGIN
+from preprocessing.metadata_parser import merge_codings, merge_matches
 
 
 #Plot morality evolution
@@ -37,26 +37,38 @@ def plot_morality_evolution(interviews, col_attribute, x_attribute='Wave'):
     plt.show()
 
 #Plot morality shift
-def plot_morality_shift(interviews, attribute, value, shift_threshold=0.01):
-    if value != 'Any':
-        interviews = interviews[interviews[attribute] == value]
-    interviews = merge_matches(interviews)
+def plot_morality_shift(interviews, source, shift_threshold=0.01):
+    if source == 'Model':
+        interviews = merge_matches(interviews, wave_list=['Wave 1', 'Wave 2', 'Wave 3'])
+        wave_combinations = [('Wave 1', 'Wave 2'), ('Wave 2', 'Wave 3')]
+    elif source == 'Coders':
+        interviews = merge_codings(interviews)
+        codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]]) + int(c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+        codings = codings.div(codings.sum(axis=1), axis=0)
+        interviews[MORALITY_ORIGIN] = codings
+        interviews = merge_matches(interviews, wave_list=['Wave 1', 'Wave 3'])
+        wave_combinations = [('Wave 1', 'Wave 3')]
 
     #Compute shift across waves
     shifts = []
-    for ws, wt in [('Wave 1', 'Wave 2'), ('Wave 2', 'Wave 3')]:
+    for ws, wt in wave_combinations:
         wave_source = interviews[[ws+':'+mo for mo in MORALITY_ORIGIN]]
         wave_target = interviews[[wt+':'+mo for mo in MORALITY_ORIGIN]]
         wave_source.columns = MORALITY_ORIGIN
         wave_target.columns = MORALITY_ORIGIN
 
-        #Outgoing percentage and incoming coeficients
-        outgoing = (wave_source - wave_target > 0) * abs(wave_source - wave_target) / wave_source
-        coefs = ((wave_source-wave_target < 0) * wave_target).div(((wave_source-wave_target < 0) * wave_target).sum(axis=1), axis=0)
+        #Combine outgoing percentage, incoming coeficients, and remaining percentage
+        outgoing = (wave_source - wave_target > 0) * abs(wave_source - wave_target)
+        incoming = (wave_source - wave_target < 0) * abs(wave_source - wave_target)
+
+        outgoing_percentage = (outgoing / wave_source).fillna(0)
+        coefs = incoming.div(incoming.sum(axis=1), axis=0).fillna(0)
+
+        remaining_percentage = (1 - outgoing_percentage)
+        remaining_percentage = pd.DataFrame(np.diag(remaining_percentage.sum()), index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
 
         #Normalize shift
-        shift = outgoing.T @ coefs/len(interviews)
-        shift = shift + pd.DataFrame(np.diag(1 - shift.sum(axis=1)), index=shift.index, columns=shift.columns)
+        shift = ((outgoing_percentage.T @ coefs) + remaining_percentage) / len(interviews)
 
         #Confirm shift from source to target
         assert(abs(round((wave_source @ shift - wave_target).sum(axis=1).sum(), 8)) == 0)
@@ -82,8 +94,8 @@ def plot_morality_shift(interviews, attribute, value, shift_threshold=0.01):
     node = dict(pad=15, thickness=30, line=dict(color='black', width=0.5), label=label, color=node_colors)
     link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=shifts['target'].apply(lambda x: node_colors[x]))
     fig = go.Figure(data=[go.Sankey(node=node, link=link)])
-    fig.update_layout(title_text='Morality Shift over Waves ('+ attribute + '=' + value + ')')
-    fig.write_image('data/plots/demographics-morality_shift-'+ attribute + '-' + value + '.png')
+    fig.update_layout(title_text='Morality Shift over Waves (' + source + ')')
+    fig.write_image('data/plots/demographics-morality_shift-' + source + '.png')
     fig.show()
 
 if __name__ == '__main__':
@@ -96,5 +108,5 @@ if __name__ == '__main__':
             for attribute in ['Gender', 'Race']:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
-            for gender in ['Any']:
-                plot_morality_shift(interviews, 'Gender', gender)
+            for source in ['Model', 'Coders']:
+                plot_morality_shift(interviews, source)

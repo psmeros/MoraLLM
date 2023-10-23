@@ -125,11 +125,10 @@ def locate_morality_section(interviews, section):
 #Overfit model to codings
 def inform_morality_origin_model(interviews):
     #Compute golden labels
-    codings = merge_codings(interviews[interviews['Wave'].isin([1,3])])
-    coder_A_labels = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[0]:mo for mo in MORALITY_ORIGIN})
-    coder_B_labels = codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[1]:mo for mo in MORALITY_ORIGIN})
-    golden_labels = coder_A_labels.astype(int) + coder_B_labels.astype(int)
-    golden_labels = golden_labels.div(golden_labels.sum(axis=1).apply(lambda x: 1 if x == 0 else x), axis=0)
+    codings = merge_codings(interviews)
+    golden_labels = codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]]) + int(c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    golden_labels = golden_labels.div(golden_labels.sum(axis=1), axis=0)
+    golden_labels.columns = MORALITY_ORIGIN
 
     #Compute coefficients for more accurate morality origin estimation
     coefs = {}

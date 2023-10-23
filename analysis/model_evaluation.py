@@ -14,14 +14,14 @@ from preprocessing.metadata_parser import merge_codings
 def plot_model_evaluation(codings, models):
 
     #Compute golden labels
-    coder_A_labels = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[0]:mo for mo in MORALITY_ORIGIN})
-    coder_B_labels = codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].rename(columns={mo + '_' + CODERS[1]:mo for mo in MORALITY_ORIGIN})
+    coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
     golden_labels = coder_A_labels.astype(int) + coder_B_labels.astype(int)
     
     #Transform labels to probabilities
-    golden_labels = golden_labels.div(golden_labels.sum(axis=1).apply(lambda x: 1 if x == 0 else x), axis=0)
-    coder_A_labels = coder_A_labels.div(coder_A_labels.sum(axis=1).apply(lambda x: 1 if x == 0 else x), axis=0)
-    coder_B_labels = coder_B_labels.div(coder_B_labels.sum(axis=1).apply(lambda x: 1 if x == 0 else x), axis=0)
+    golden_labels = golden_labels.div(golden_labels.sum(axis=1), axis=0)
+    coder_A_labels = coder_A_labels.div(coder_A_labels.sum(axis=1), axis=0).fillna(0)
+    coder_B_labels = coder_B_labels.div(coder_B_labels.sum(axis=1), axis=0).fillna(0)
 
     #Compute coders agreement and individual loss
     coders_agreement = pd.Series({mo:mean_squared_error(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}).sum()
@@ -33,17 +33,17 @@ def plot_model_evaluation(codings, models):
     for model in models:
         if model == 'baseline':
             origin_prior = golden_labels.sum()/golden_labels.sum().sum()
-            interviews = pd.DataFrame([origin_prior.tolist()] * len(codings), columns=MORALITY_ORIGIN).join(codings['Wave'])
+            interviews = pd.DataFrame([origin_prior.tolist()] * len(codings), columns=MORALITY_ORIGIN).join(codings[['Wave', 'Interview Code']])
         elif model == 'min_max':
             interviews = pd.read_pickle('data/cache/morality_model-entail.pkl')
-            interviews = pd.DataFrame(minmax_scale(interviews[MORALITY_ORIGIN]), columns=MORALITY_ORIGIN).join(interviews['Wave'])
+            interviews = pd.DataFrame(minmax_scale(interviews[MORALITY_ORIGIN]), columns=MORALITY_ORIGIN).join(interviews[['Wave', 'Interview Code']])
         elif model == 'one_hot':
             interviews = pd.read_pickle('data/cache/morality_model-entail.pkl')
-            interviews = pd.DataFrame(interviews[MORALITY_ORIGIN].apply(lambda l: pd.Series({mo:1 if x == l.max() else 0 for mo,x in zip(MORALITY_ORIGIN, l)}), axis=1)).join(interviews['Wave'])
+            interviews = pd.DataFrame(interviews[MORALITY_ORIGIN].apply(lambda l: pd.Series({mo:1 if x == l.max() else 0 for mo,x in zip(MORALITY_ORIGIN, l)}), axis=1)).join(interviews[['Wave', 'Interview Code']])
         else:
             interviews = pd.read_pickle('data/cache/morality_model-'+model+'.pkl')
         
-        interviews = interviews[interviews['Wave'].isin([1,3])]
+        interviews = merge_codings(interviews)[MORALITY_ORIGIN]
         loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], interviews[mo]) for mo in MORALITY_ORIGIN}])
         loss['Model'] = model
         losses.append(loss)
@@ -98,10 +98,9 @@ def plot_coders_agreement(codings):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [1,2]
     models = ['baseline', 'lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'top']
     codings = pd.read_pickle('data/cache/morality_model-top.pkl')[['Wave', 'Interview Code']]
-    codings = codings[codings['Wave'].isin([1,3])]
     codings = merge_codings(codings)
 
     for c in config:

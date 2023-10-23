@@ -200,7 +200,6 @@ if __name__ == '__main__':
         elif c == 2:
             plot_morality_wordiness(interviews_folder, eMFD_file)
         elif c == 3:
-            interviews = pd.read_pickle('data/cache/morality_embeddings_entail.pkl')
-            interviews = interviews[interviews['Wave'].isin([1,3])]
+            interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
             interviews = merge_codings(interviews)
             plot_morality_wordcloud(interviews)

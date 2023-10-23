@@ -46,14 +46,15 @@ def merge_codings(interviews, codings_folder = 'data/codings'):
     codings_wave_1 = codings_wave_1[0].join(codings_wave_1[1], lsuffix='_'+codings_wave_1[0].attrs['Coder'], rsuffix='_'+codings_wave_1[1].attrs['Coder'])
     codings_wave_3 = codings_wave_3[0].join(codings_wave_3[1], lsuffix='_'+codings_wave_3[0].attrs['Coder'], rsuffix='_'+codings_wave_3[1].attrs['Coder'])
     codings = pd.concat([codings_wave_1, codings_wave_3])
+    codings = codings[~(~codings).all(axis=1)]
     codings = codings.reset_index()
 
-    interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
+    interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
     
     return interviews
 
 
 if __name__ == '__main__':
     interviews = wave_parser()
-    interviews = merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'])
     interviews = merge_codings(interviews)
+    interviews = merge_matches(interviews)

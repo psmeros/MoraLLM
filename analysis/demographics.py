@@ -83,16 +83,17 @@ def plot_morality_shift(interviews, source, shift_threshold=0.01):
     shifts = shifts[shifts['value'] > shift_threshold]
 
     #Map nodes labels
-    mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(['Wave 1', 'Wave 2', 'Wave 3']) for j, mo in enumerate(MORALITY_ORIGIN)}
-    label = pd.Series(mapping.keys()).apply(lambda x: x.split(':')[-1])
+    waves = ['Wave 1', 'Wave 2', 'Wave 3']
+    sns.set_palette("Set2")
+    mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(waves) for j, mo in enumerate(MORALITY_ORIGIN)}
     shifts = shifts.replace(mapping)
-
+    label = pd.DataFrame([(i/(len(wave_combinations)),j/(len(MORALITY_ORIGIN))) for i, _ in enumerate(waves) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
+    label['name'] = pd.Series({v:k for k, v in mapping.items()}).apply(lambda x: x.split(':')[-1])
+    label['color'] = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex()) * len(waves)
 
     #Create the Sankey plot
-    sns.set_palette("Set2")
-    node_colors = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex())*3
-    node = dict(pad=15, thickness=30, line=dict(color='black', width=0.5), label=label, color=node_colors)
-    link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=shifts['target'].apply(lambda x: node_colors[x]))
+    node = dict(pad=15, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
+    link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=label['color'].iloc[shifts['target']])
     fig = go.Figure(data=[go.Sankey(node=node, link=link)])
     fig.update_layout(title_text='Morality Shift over Waves (' + source + ')')
     fig.write_image('data/plots/demographics-morality_shift-' + source + '.png')

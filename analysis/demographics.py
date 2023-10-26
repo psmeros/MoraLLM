@@ -36,20 +36,17 @@ def plot_morality_evolution(interviews, col_attribute, x_attribute='Wave'):
     plt.savefig('data/plots/demographics-morality_evolution_by_'+col_attribute.lower()+'.png', bbox_inches='tight')
     plt.show()
 
-#Plot morality shift
-def plot_morality_shift(interviews, source, shift_threshold=0.01):
-    if source == 'Model':
+#Compute morality shifts across waves
+def compute_morality_shifts(interviews, wave_combinations, method, shift_threshold=0.01):
+    if method == 'Model':
         interviews = merge_matches(interviews, wave_list=['Wave 1', 'Wave 2', 'Wave 3'])
-        wave_combinations = [('Wave 1', 'Wave 2'), ('Wave 2', 'Wave 3')]
-    elif source == 'Coders':
+    elif method == 'Coders':
         interviews = merge_codings(interviews)
         codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]]) + int(c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
         codings = codings.div(codings.sum(axis=1), axis=0)
         interviews[MORALITY_ORIGIN] = codings
         interviews = merge_matches(interviews, wave_list=['Wave 1', 'Wave 3'])
-        wave_combinations = [('Wave 1', 'Wave 3')]
 
-    #Compute shift across waves
     shifts = []
     for ws, wt in wave_combinations:
         wave_source = interviews[[ws+':'+mo for mo in MORALITY_ORIGIN]]
@@ -82,6 +79,14 @@ def plot_morality_shift(interviews, source, shift_threshold=0.01):
     #Apply threshold
     shifts = shifts[shifts['value'] > shift_threshold]
 
+    return shifts
+
+#Plot morality shift
+def plot_morality_shift(interviews, method):
+    
+    wave_combinations = [('Wave 1', 'Wave 2'), ('Wave 2', 'Wave 3')] if method == 'Model' else [('Wave 1', 'Wave 3')] if method == 'Coders' else []
+    shifts = compute_morality_shifts(interviews, wave_combinations, method)
+
     #Map nodes labels
     waves = ['Wave 1', 'Wave 2', 'Wave 3']
     sns.set_palette("Set2")
@@ -95,13 +100,44 @@ def plot_morality_shift(interviews, source, shift_threshold=0.01):
     node = dict(pad=15, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
     link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=label['color'].iloc[shifts['target']])
     fig = go.Figure(data=[go.Sankey(node=node, link=link)])
-    fig.update_layout(title_text='Morality Shift over Waves (' + source + ')')
-    fig.write_image('data/plots/demographics-morality_shift-' + source + '.png')
+    fig.update_layout(title_text='Morality Shift over Waves (' + method + ')')
+    fig.write_image('data/plots/demographics-morality_shift-' + method + '.png')
     fig.show()
+
+#Plot morality shift by attribute
+def plot_morality_shift_by_attribute(interviews, attribute):
+    #Prepare data
+    shifts = []
+    for method in ['Model', 'Coders']:
+        for a in interviews.dropna(subset=[attribute])[attribute].unique()[:3]:
+            shift = compute_morality_shifts(interviews[interviews[attribute] == a], wave_combinations=[('Wave 1', 'Wave 3')], method=method, shift_threshold=0)
+            shift[attribute] = a
+            shift['method'] = method
+            shifts.append(shift)
+    shifts = pd.concat(shifts)
+    shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
+    shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
+    shifts['target'] = shifts['target'].apply(lambda x: x.split(':')[-1])
+    shifts = shifts[shifts['source'] != shifts['target']]
+    shifts['value'] = shifts['value'] * 100
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=1)
+    plt.figure(figsize=(10, 10))
+    g = sns.FacetGrid(shifts, col=attribute)
+    g.map_dataframe(sns.barplot, x='value', y='target', hue='method', orient='h', order=MORALITY_ORIGIN, palette='Set2')
+    g.fig.subplots_adjust(wspace=0.3)
+    g.add_legend()
+    g.set_xlabels('')
+    g.set_ylabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/demographics-morality_shift_by_'+attribute.lower()+'.png', bbox_inches='tight')
+    plt.show()
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     for c in config:
@@ -109,5 +145,8 @@ if __name__ == '__main__':
             for attribute in ['Gender', 'Race']:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
-            for source in ['Model', 'Coders']:
-                plot_morality_shift(interviews, source)
+            for method in ['Model', 'Coders']:
+                plot_morality_shift(interviews, method)
+        elif c == 3:
+            for attribute in ['Gender', 'Race']:
+                plot_morality_shift_by_attribute(interviews, attribute)

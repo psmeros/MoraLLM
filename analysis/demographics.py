@@ -3,6 +3,7 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.subplots as sp
 import seaborn as sns
 from __init__ import *
 
@@ -82,26 +83,32 @@ def compute_morality_shifts(interviews, wave_combinations, method, shift_thresho
     return shifts
 
 #Plot morality shift
-def plot_morality_shift(interviews, method):
+def plot_morality_shift(interviews):
     
-    wave_combinations = [('Wave 1', 'Wave 2'), ('Wave 2', 'Wave 3')] if method == 'Model' else [('Wave 1', 'Wave 3')] if method == 'Coders' else []
-    shifts = compute_morality_shifts(interviews, wave_combinations, method)
+    figs = []
+    for method, position in zip(['Coders', 'Model'], [[0.53, 1.0], [0, 0.47]]):
+        wave_combinations = [('Wave 1', 'Wave 2'), ('Wave 2', 'Wave 3')] if method == 'Model' else [('Wave 1', 'Wave 3')] if method == 'Coders' else []
+        shifts = compute_morality_shifts(interviews, wave_combinations, method)
 
-    #Map nodes labels
-    waves = ['Wave 1', 'Wave 2', 'Wave 3']
-    sns.set_palette("Set2")
-    mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(waves) for j, mo in enumerate(MORALITY_ORIGIN)}
-    shifts = shifts.replace(mapping)
-    label = pd.DataFrame([(i/(len(wave_combinations)),j/(len(MORALITY_ORIGIN))) for i, _ in enumerate(waves) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
-    label['name'] = pd.Series({v:k for k, v in mapping.items()}).apply(lambda x: x.split(':')[-1])
-    label['color'] = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex()) * len(waves)
+        #Prepare data
+        waves = ['Wave 1', 'Wave 2', 'Wave 3']
+        sns.set_palette("Set2")
+        mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(waves) for j, mo in enumerate(MORALITY_ORIGIN)}
+        shifts = shifts.replace(mapping)
+        label = pd.DataFrame([(i/(len(wave_combinations)),j/(len(MORALITY_ORIGIN))) for i, _ in enumerate(waves) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
+        label['name'] = pd.Series({v:k for k, v in mapping.items()}).apply(lambda x: x.split(':')[-1])
+        label['color'] = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex()) * len(waves)
 
-    #Create the Sankey plot
-    node = dict(pad=15, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
-    link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=label['color'].iloc[shifts['target']])
-    fig = go.Figure(data=[go.Sankey(node=node, link=link)])
-    fig.update_layout(title_text='Morality Shift over Waves (' + method + ')')
-    fig.write_image('data/plots/demographics-morality_shift-' + method + '.png')
+        #Create Sankey
+        node = dict(pad=15, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
+        link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=label['color'].iloc[shifts['target']])
+        domain = dict(y=position)
+        fig = go.Sankey(node=node, link=link, domain=domain)
+        figs.append(fig)
+
+    #Plot
+    fig = go.Figure(data=figs, layout=go.Layout(height=800, width=800, title='Morality Shift by Coders (top) and Model (bottom)'))
+    fig.write_image('data/plots/demographics-morality_shift.png')
     fig.show()
 
 #Plot morality shift by attribute
@@ -137,7 +144,7 @@ def plot_morality_shift_by_attribute(interviews, attribute):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     for c in config:
@@ -145,8 +152,7 @@ if __name__ == '__main__':
             for attribute in ['Gender', 'Race']:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
-            for method in ['Model', 'Coders']:
-                plot_morality_shift(interviews, method)
+            plot_morality_shift(interviews)
         elif c == 3:
             for attribute in ['Gender', 'Race']:
                 plot_morality_shift_by_attribute(interviews, attribute)

@@ -86,7 +86,7 @@ def compute_morality_shifts(interviews, wave_combinations, method, shift_thresho
 def plot_morality_shift(interviews):
     
     figs = []
-    for method, position in zip(['Coders', 'Model'], [[0.53, 1.0], [0, 0.47]]):
+    for method, position in zip(['Coders', 'Model'], [[0, 0.47], [0.53, 1.0]]):
         wave_combinations = [('Wave 1', 'Wave 2'), ('Wave 2', 'Wave 3')] if method == 'Model' else [('Wave 1', 'Wave 3')] if method == 'Coders' else []
         shifts = compute_morality_shifts(interviews, wave_combinations, method)
 
@@ -102,12 +102,12 @@ def plot_morality_shift(interviews):
         #Create Sankey
         node = dict(pad=15, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
         link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=label['color'].iloc[shifts['target']])
-        domain = dict(y=position)
+        domain = dict(x=position)
         fig = go.Sankey(node=node, link=link, domain=domain)
         figs.append(fig)
 
     #Plot
-    fig = go.Figure(data=figs, layout=go.Layout(height=800, width=800, title='Morality Shift by Coders (top) and Model (bottom)'))
+    fig = go.Figure(data=figs, layout=go.Layout(height=500, width=1200, font_size=12, title='Morality Shift by Coders (left) and Model (right)'))
     fig.write_image('data/plots/demographics-morality_shift.png')
     fig.show()
 

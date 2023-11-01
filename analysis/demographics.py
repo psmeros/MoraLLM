@@ -43,7 +43,7 @@ def compute_morality_shifts(interviews, wave_combinations, method, shift_thresho
         interviews = merge_matches(interviews, wave_list=['Wave 1', 'Wave 2', 'Wave 3'])
     elif method == 'Coders':
         interviews = merge_codings(interviews)
-        codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]]) + int(c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+        codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
         codings = codings.div(codings.sum(axis=1), axis=0)
         interviews[MORALITY_ORIGIN] = codings
         interviews = merge_matches(interviews, wave_list=['Wave 1', 'Wave 3'])
@@ -83,19 +83,17 @@ def compute_morality_shifts(interviews, wave_combinations, method, shift_thresho
     return shifts
 
 #Plot morality shift
-def plot_morality_shift(interviews):
+def plot_morality_shift(interviews, wave_combinations, shift_threshold):
     
     figs = []
-    for method, position in zip(['Coders', 'Model'], [[0, 0.47], [0.53, 1.0]]):
-        wave_combinations = [('Wave 1', 'Wave 2'), ('Wave 2', 'Wave 3')] if method == 'Model' else [('Wave 1', 'Wave 3')] if method == 'Coders' else []
-        shifts = compute_morality_shifts(interviews, wave_combinations, method)
-
+    for wc, position in zip(wave_combinations.items(), [[0, 0.47], [0.53, 1.0]]):
+        shifts = compute_morality_shifts(interviews, wc[1], wc[0], shift_threshold)
         #Prepare data
         waves = ['Wave 1', 'Wave 2', 'Wave 3']
         sns.set_palette("Set2")
         mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(waves) for j, mo in enumerate(MORALITY_ORIGIN)}
         shifts = shifts.replace(mapping)
-        label = pd.DataFrame([(i/(len(wave_combinations)),j/(len(MORALITY_ORIGIN))) for i, _ in enumerate(waves) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
+        label = pd.DataFrame([(i/(len(wc[1])),j/(len(MORALITY_ORIGIN))) for i, _ in enumerate(waves) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
         label['name'] = pd.Series({v:k for k, v in mapping.items()}).apply(lambda x: x.split(':')[-1])
         label['color'] = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex()) * len(waves)
 
@@ -107,17 +105,18 @@ def plot_morality_shift(interviews):
         figs.append(fig)
 
     #Plot
-    fig = go.Figure(data=figs, layout=go.Layout(height=500, width=1200, font_size=12, title='Morality Shift by Coders (left) and Model (right)'))
+    fig = go.Figure(data=figs, layout=go.Layout(height=500, width=1200, font_size=12))
+    fig.update_layout(title=go.layout.Title(text='Morality Shift by Coders (left) and Model (right)<br><sup>Shift Threshold: '+str(int(shift_threshold*100))+'%</sup>', xref='paper', x=0))
     fig.write_image('data/plots/demographics-morality_shift.png')
     fig.show()
 
 #Plot morality shift by attribute
-def plot_morality_shift_by_attribute(interviews, attribute):
+def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold):
     #Prepare data
     shifts = []
     for method in ['Model', 'Coders']:
         for a in interviews.dropna(subset=[attribute])[attribute].unique()[:3]:
-            shift = compute_morality_shifts(interviews[interviews[attribute] == a], wave_combinations=[('Wave 1', 'Wave 3')], method=method, shift_threshold=0)
+            shift = compute_morality_shifts(interviews[interviews[attribute] == a], wave_combinations=[('Wave 1', 'Wave 3')], method=method, shift_threshold=shift_threshold)
             shift[attribute] = a
             shift['method'] = method
             shifts.append(shift)
@@ -125,14 +124,17 @@ def plot_morality_shift_by_attribute(interviews, attribute):
     shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
     shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
     shifts['target'] = shifts['target'].apply(lambda x: x.split(':')[-1])
-    shifts = shifts[shifts['source'] != shifts['target']]
+    source_shifts = shifts.drop('target', axis=1).rename(columns={'source':'morality'})
+    source_shifts['value'] = -source_shifts['value']
+    target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
+    shifts = pd.concat([source_shifts, target_shifts])
     shifts['value'] = shifts['value'] * 100
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=1)
     plt.figure(figsize=(10, 10))
     g = sns.FacetGrid(shifts, col=attribute)
-    g.map_dataframe(sns.barplot, x='value', y='target', hue='method', orient='h', order=MORALITY_ORIGIN, palette='Set2')
+    g.map_dataframe(sns.barplot, x='value', y='morality', hue='method', orient='h', order=MORALITY_ORIGIN, palette=sns.color_palette('Set2'), errorbar=None)
     g.fig.subplots_adjust(wspace=0.3)
     g.add_legend()
     g.set_xlabels('')
@@ -144,7 +146,7 @@ def plot_morality_shift_by_attribute(interviews, attribute):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [2,3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     for c in config:
@@ -152,7 +154,10 @@ if __name__ == '__main__':
             for attribute in ['Gender', 'Race']:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
-            plot_morality_shift(interviews)
+            shift_threshold = .05
+            wave_combinations = {'Coders' : [('Wave 1', 'Wave 3')], 'Model': [('Wave 1', 'Wave 3')]}
+            plot_morality_shift(interviews, wave_combinations, shift_threshold)
         elif c == 3:
             for attribute in ['Gender', 'Race']:
-                plot_morality_shift_by_attribute(interviews, attribute)
+                shift_threshold = 0
+                plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)

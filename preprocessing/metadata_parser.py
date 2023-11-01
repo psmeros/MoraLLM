@@ -53,10 +53,29 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
     
     return interviews
 
+#Merge interviews and surveys
+def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignment_file = 'data/interviews/alignments/interview-survey.csv'):
+    attributes = [['IDS', 'PINCOME'], ['IDS'], ['IDS', 'EARNINGS']]
+
+    surveys = []
+    for file in os.listdir(surveys_folder):
+        file = os.path.join(surveys_folder, file)
+        if os.path.isfile(file) and file.endswith('.csv'):
+            wave = int(file.split('_')[1].split('.')[0])
+            survey = pd.read_csv(file)[attributes[wave-1]].rename(columns = {'IDS': 'Survey Id'})
+            survey['Wave'] = wave
+            surveys.append(survey)
+    surveys = pd.concat(surveys)
+
+    alignment = pd.read_csv(alignment_file)
+    surveys = surveys.merge(alignment, on = ['Wave', 'Survey Id'], how = 'inner')
+    interviews = interviews.merge(surveys, on = ['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
+
+    return interviews
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2]
+    config = [3]
     interviews = wave_parser()
 
     for c in config:
@@ -64,3 +83,5 @@ if __name__ == '__main__':
             interviews = merge_codings(interviews)
         elif c == 2:
             interviews = merge_matches(interviews)
+        elif c == 3:
+            interviews = merge_surveys(interviews)

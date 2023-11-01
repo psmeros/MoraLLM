@@ -153,7 +153,7 @@ def get_raw_text(interview, morality_breakdown):
     return raw_text
 
 #parse folder of transcripts
-def wave_parser(waves_folder='data/waves', morality_breakdown=False):
+def wave_parser(waves_folder='data/interviews/waves', morality_breakdown=False):
     
     waves = []
     for foldername in os.listdir(waves_folder):

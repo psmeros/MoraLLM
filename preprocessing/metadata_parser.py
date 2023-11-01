@@ -4,7 +4,7 @@ from preprocessing.transcript_parser import wave_parser
 
 
 #Merge matched interviews from different waves
-def merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/waves/interview_matches.csv'):
+def merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/interviews/alignments/crosswave.csv'):
     matches = pd.read_csv(matches_file)[wave_list].dropna()
 
     for wave in wave_list:
@@ -17,7 +17,7 @@ def merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matche
     return matches
 
 #Merge codings from two coders for wave 1 and wave 3 of interviews
-def merge_codings(interviews, codings_folder = 'data/codings'):
+def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
     #Parse codings
     codings_wave_1 = []
     codings_wave_3 = []
@@ -55,6 +55,12 @@ def merge_codings(interviews, codings_folder = 'data/codings'):
 
 
 if __name__ == '__main__':
+    #Hyperparameters
+    config = [1,2]
     interviews = wave_parser()
-    interviews = merge_codings(interviews)
-    interviews = merge_matches(interviews)
+
+    for c in config:
+        if c == 1:
+            interviews = merge_codings(interviews)
+        elif c == 2:
+            interviews = merge_matches(interviews)

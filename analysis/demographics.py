@@ -8,7 +8,7 @@ import seaborn as sns
 from __init__ import *
 
 from preprocessing.constants import CODERS, MORALITY_ORIGIN
-from preprocessing.metadata_parser import merge_codings, merge_matches
+from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
 
 
 #Plot morality evolution
@@ -39,14 +39,15 @@ def plot_morality_evolution(interviews, col_attribute, x_attribute='Wave'):
 
 #Compute morality shifts across waves
 def compute_morality_shifts(interviews, wave_combinations, method, shift_threshold=0.01):
+    wave_list = list(set([w for p in wave_combinations for w in p]))
     if method == 'Model':
-        interviews = merge_matches(interviews, wave_list=['Wave 1', 'Wave 2', 'Wave 3'])
+        interviews = merge_matches(interviews, wave_list=wave_list)
     elif method == 'Coders':
         interviews = merge_codings(interviews)
         codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
         codings = codings.div(codings.sum(axis=1), axis=0)
         interviews[MORALITY_ORIGIN] = codings
-        interviews = merge_matches(interviews, wave_list=['Wave 1', 'Wave 3'])
+        interviews = merge_matches(interviews, wave_list=wave_list)
 
     shifts = []
     for ws, wt in wave_combinations:
@@ -146,8 +147,9 @@ def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2,3]
+    config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
+    interviews = merge_surveys(interviews)
 
     for c in config:
         if c == 1:
@@ -158,6 +160,6 @@ if __name__ == '__main__':
             wave_combinations = {'Coders' : [('Wave 1', 'Wave 3')], 'Model': [('Wave 1', 'Wave 3')]}
             plot_morality_shift(interviews, wave_combinations, shift_threshold)
         elif c == 3:
-            for attribute in ['Gender', 'Race']:
+            for attribute in ['Gender', 'Race', 'Income']:
                 shift_threshold = 0
                 plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)

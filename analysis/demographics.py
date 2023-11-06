@@ -116,9 +116,9 @@ def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold):
     #Prepare data
     shifts = []
     for method in ['Model', 'Coders']:
-        for a in interviews.dropna(subset=[attribute])[attribute].unique()[:3]:
-            shift = compute_morality_shifts(interviews[interviews[attribute] == a], wave_combinations=[('Wave 1', 'Wave 3')], method=method, shift_threshold=shift_threshold)
-            shift[attribute] = a
+        for a in attribute[1]:
+            shift = compute_morality_shifts(interviews[interviews[attribute[0]] == a], wave_combinations=[('Wave 1', 'Wave 3')], method=method, shift_threshold=shift_threshold)
+            shift[attribute[0]] = a
             shift['method'] = method
             shifts.append(shift)
     shifts = pd.concat(shifts)
@@ -130,19 +130,21 @@ def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold):
     target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
     shifts = pd.concat([source_shifts, target_shifts])
     shifts['value'] = shifts['value'] * 100
+    shifts[attribute[0]] = shifts[attribute[0]].apply(lambda a: a + ' (N = ' + str(len(shifts[shifts[attribute[0]] == a])) + ')')
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=1)
     plt.figure(figsize=(10, 10))
-    g = sns.FacetGrid(shifts, col=attribute)
+    g = sns.FacetGrid(shifts, col=attribute[0])
     g.map_dataframe(sns.barplot, x='value', y='morality', hue='method', orient='h', order=MORALITY_ORIGIN, palette=sns.color_palette('Set2'), errorbar=None)
     g.fig.subplots_adjust(wspace=0.3)
     g.add_legend()
     g.set_xlabels('')
     g.set_ylabels('')
+    g.set_titles(attribute[0] + ': {col_name}')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.savefig('data/plots/demographics-morality_shift_by_'+attribute.lower()+'.png', bbox_inches='tight')
+    plt.savefig('data/plots/demographics-morality_shift_by_'+attribute[0].lower()+'.png', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':
@@ -160,6 +162,7 @@ if __name__ == '__main__':
             wave_combinations = {'Coders' : [('Wave 1', 'Wave 3')], 'Model': [('Wave 1', 'Wave 3')]}
             plot_morality_shift(interviews, wave_combinations, shift_threshold)
         elif c == 3:
-            for attribute in ['Gender', 'Race', 'Income']:
-                shift_threshold = 0
+            shift_threshold = 0
+            attributes = {'Gender' : ['Male', 'Female'], 'Race' : ['White', 'Black', 'Hispanic'], 'Income' : ['Lower Class', 'Middle Class', 'Upper Class']}
+            for attribute in attributes.items():
                 plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)

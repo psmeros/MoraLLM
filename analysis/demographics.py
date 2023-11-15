@@ -175,9 +175,9 @@ if __name__ == '__main__':
             plot_morality_shift(interviews, wave_combinations, shift_threshold)
         elif c == 3:
             shift_threshold = 0
-            interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White', 'Black'] else 'Other')
+            interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
             attributes = [('Gender', [{'source' : 'Male', 'target' : 'Male'}, {'source' : 'Female', 'target' : 'Female'}]),
-                          ('Race', [{'source' : 'White', 'target' :  'White'}, {'source' : 'Black', 'target' : 'Black'}, {'source' : 'Other', 'target' : 'Other'}]),
+                          ('Race', [{'source' : 'White', 'target' :  'White'}, {'source' : 'Other', 'target' : 'Other'}]),
                           ('Income', [{'source' : 'Lower Class', 'target' : 'Lower Class'}, {'source' : 'Lower Class', 'target' : 'Upper Class'}, {'source' : 'Upper Class', 'target' : 'Lower Class'}, {'source' : 'Upper Class', 'target' : 'Upper Class'}]),
                           ('Parent Education', [{'source' : 'Basic', 'target' : None}, {'source' : 'Higher', 'target' : None}, {'source' : 'Advanced', 'target' : None}])]
             for attribute in attributes:

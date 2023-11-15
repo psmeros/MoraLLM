@@ -1,5 +1,5 @@
 from __init__ import *
-from preprocessing.constants import HOUSEHOLD_CLASS, SURVEY_ATTRIBUTES
+from preprocessing.constants import EDUCATION, HOUSEHOLD_CLASS, SURVEY_ATTRIBUTES
 
 from preprocessing.transcript_parser import wave_parser
 
@@ -71,7 +71,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     surveys = surveys.merge(alignment, on = ['Wave', 'Survey Id'], how = 'inner')
 
     surveys['Income'] = surveys['Income'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
-    surveys = surveys.dropna()
+    surveys['Father Education'] = surveys['Father Education'].apply(lambda x: EDUCATION.get(x, pd.NA))
 
     interviews = interviews.merge(surveys, on = ['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
 

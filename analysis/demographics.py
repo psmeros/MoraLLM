@@ -47,7 +47,12 @@ def compute_morality_shifts(interviews, wave_combinations, method, attribute_nam
         interviews[MORALITY_ORIGIN] = codings    
     interviews = merge_matches(interviews, wave_list=wave_list)
     if attribute_name is not None:
-        interviews = interviews[(interviews[wave_combinations[0][0] + ':' + attribute_name] == attribute_source) & (interviews[wave_combinations[0][1] + ':' + attribute_name] == attribute_target)]
+        if attribute_source is not None and attribute_target is not None:
+            interviews = interviews[(interviews[wave_combinations[0][0] + ':' + attribute_name] == attribute_source) & (interviews[wave_combinations[0][1] + ':' + attribute_name] == attribute_target)]
+        elif attribute_source is not None:
+            interviews = interviews[interviews[wave_combinations[0][0] + ':' + attribute_name] == attribute_source]
+        elif attribute_target is not None:
+            interviews = interviews[interviews[wave_combinations[0][1] + ':' + attribute_name] == attribute_target]
     N = len(interviews)
 
     shifts = []
@@ -119,7 +124,12 @@ def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold):
     for method in ['Model', 'Coders']:
         for a in attribute[1]:
             shift, N = compute_morality_shifts(interviews, wave_combinations=[('Wave 1', 'Wave 3')], method=method, attribute_name=attribute[0], attribute_source=a['source'], attribute_target=a['target'], shift_threshold=shift_threshold)
-            shift[attribute[0]] = a['source'] + '->' + a['target']
+            if a['source'] is not None and a['target'] is not None:
+                shift[attribute[0]] = a['source'] + '->' + a['target']
+            elif a['source'] is not None:
+                shift[attribute[0]] = a['source']
+            elif a['target'] is not None:
+                shift[attribute[0]] = a['target']
             shift['method'] = method
             shift['N'] = str(N)
             shifts.append(shift)
@@ -167,7 +177,8 @@ if __name__ == '__main__':
             shift_threshold = 0
             interviews['Race'] = interviews['Race'].apply(lambda x: x if x == 'White' else 'Other')
             attributes = [('Gender', [{'source' : 'Male', 'target' : 'Male'}, {'source' : 'Female', 'target' : 'Female'}]),
-                          ('Race', [{'source' :  'White', 'target' :  'White'}, {'source' :  'Other', 'target' :  'Other'}]),
-                          ('Income', [{'source' :  'Lower Class', 'target' :  'Lower Class'}, {'source' :  'Lower Class', 'target' :  'Upper Class'}, {'source' :  'Upper Class', 'target' :  'Lower Class'}, {'source' :  'Upper Class', 'target' :  'Upper Class'}])]
+                          ('Race', [{'source' : 'White', 'target' :  'White'}, {'source' : 'Other', 'target' : 'Other'}]),
+                          ('Income', [{'source' : 'Lower Class', 'target' : 'Lower Class'}, {'source' : 'Lower Class', 'target' : 'Upper Class'}, {'source' : 'Upper Class', 'target' : 'Lower Class'}, {'source' : 'Upper Class', 'target' : 'Upper Class'}]),
+                          ('Father Education', [{'source' : 'Basic', 'target' : None}, {'source' : 'Higher', 'target' : None}, {'source' : 'Advanced', 'target' : None}])]
             for attribute in attributes:
                 plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)

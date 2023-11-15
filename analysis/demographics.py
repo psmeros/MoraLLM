@@ -179,6 +179,6 @@ if __name__ == '__main__':
             attributes = [('Gender', [{'source' : 'Male', 'target' : 'Male'}, {'source' : 'Female', 'target' : 'Female'}]),
                           ('Race', [{'source' : 'White', 'target' :  'White'}, {'source' : 'Other', 'target' : 'Other'}]),
                           ('Income', [{'source' : 'Lower Class', 'target' : 'Lower Class'}, {'source' : 'Lower Class', 'target' : 'Upper Class'}, {'source' : 'Upper Class', 'target' : 'Lower Class'}, {'source' : 'Upper Class', 'target' : 'Upper Class'}]),
-                          ('Parent Education', [{'source' : 'Basic', 'target' : None}, {'source' : 'Higher', 'target' : None}, {'source' : 'Advanced', 'target' : None}])]
+                          ('Parent Education', [{'source' : 'Primary', 'target' : None}, {'source' : 'Secondary', 'target' : None}, {'source' : 'Tertiary', 'target' : None}])]
             for attribute in attributes:
                 plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)

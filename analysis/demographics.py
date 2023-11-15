@@ -167,6 +167,7 @@ if __name__ == '__main__':
             shift_threshold = 0
             interviews['Race'] = interviews['Race'].apply(lambda x: x if x == 'White' else 'Other')
             attributes = [('Gender', [{'source' : 'Male', 'target' : 'Male'}, {'source' : 'Female', 'target' : 'Female'}]),
-                          ('Race', [{'source' :  'White', 'target' :  'White'}, {'source' :  'Other', 'target' :  'Other'}])]
+                          ('Race', [{'source' :  'White', 'target' :  'White'}, {'source' :  'Other', 'target' :  'Other'}]),
+                          ('Income', [{'source' :  'Lower Class', 'target' :  'Lower Class'}, {'source' :  'Lower Class', 'target' :  'Upper Class'}, {'source' :  'Upper Class', 'target' :  'Lower Class'}, {'source' :  'Upper Class', 'target' :  'Upper Class'}])]
             for attribute in attributes:
                 plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)

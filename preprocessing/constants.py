@@ -187,7 +187,7 @@ CODERS = ['Leke', 'Tomas']
 
 CHATGPT_PROMPT = 'Estimate the probability of the following text belonging to the categories: Experience, Consequences, Family, Community, Friends, Media, Laws, Holy Scripture. Response in the form \"Category:Probability\".'
 
-SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id', 'PINCOME':'Income', 'PDADEDUC':'Father Education'},
+SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id', 'PINCOME':'Income', 'PDADEDUC':'Father Education', 'PMOMEDUC': 'Mother Education'},
                      'Wave 2':{'IDS':'Survey Id'},
                      'Wave 3':{'IDS':'Survey Id', 'EARNINGS':'Income'}}
 
@@ -205,7 +205,7 @@ HOUSEHOLD_CLASS = {1:'Lower Class',
                    11:'Upper Class'}
 
 
-#Education
+#Education: Basic < College < Higher < PhD < Advanced
 EDUCATION = {1:'Basic',
              2:'Basic',
              3:'Basic',

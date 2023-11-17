@@ -192,17 +192,17 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id', 'PINCOME':'Income', 'PDADEDUC'
                      'Wave 3':{'IDS':'Survey Id', 'EARNINGS':'Income'}}
 
 #Income: Lower Class < 40K < Upper Class
-HOUSEHOLD_CLASS = {1:'Lower Class',
-                   2:'Lower Class',
-                   3:'Lower Class',
-                   4:'Lower Class',
-                   5:'Upper Class',
-                   6:'Upper Class',
-                   7:'Upper Class',
-                   8:'Upper Class',
-                   9:'Upper Class',
-                   10:'Upper Class',
-                   11:'Upper Class'}
+HOUSEHOLD_CLASS = {1:'Lower',
+                   2:'Lower',
+                   3:'Middle',
+                   4:'Middle',
+                   5:'Middle',
+                   6:'Middle',
+                   7:'Middle',
+                   8:'Upper',
+                   9:'Upper',
+                   10:'Upper',
+                   11:'Upper'}
 
 
 #Education: Basic < College < Higher < PhD < Advanced

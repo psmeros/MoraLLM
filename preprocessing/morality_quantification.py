@@ -158,7 +158,7 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
 
         #Trasformation functions
         classifier = lambda text: morality_pipeline(text.split(NEWLINE), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label)
-        aggregator = lambda l: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])} for r in l]).max()
+        aggregator = lambda l: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])} for r in l]).mean()
         full_pipeline = lambda text: aggregator(classifier(text))
 
         #Classify morality origin and join results
@@ -208,8 +208,8 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
-    models = ['chatgpt']
+    config = [1,2]
+    models = ['entail_explained']
     section = 'Morality_Origin'
 
     for c in config:

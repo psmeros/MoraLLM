@@ -91,36 +91,39 @@ def compute_morality_shifts(interviews, input, shift_threshold, wave_list=['Wave
     shift = pd.DataFrame(shift.values, index=[wave_list[0] + ':' + mo for mo in MORALITY_ORIGIN], columns=[wave_list[1] + ':' + mo for mo in MORALITY_ORIGIN])
     shift = shift.stack().reset_index().rename(columns={'level_0':'source', 'level_1':'target', 0:'value'})
 
+    #Compute the prior shift
+    shift = shift.merge(pd.DataFrame(interviews[[wave_list[0] + ':' + mo for mo in MORALITY_ORIGIN]].mean().reset_index().values, columns=['source', 'prior']))
+    shift['value'] = shift['value'] * shift['prior']
+
     #Apply threshold
     shift = shift[shift['value'] > shift_threshold]
 
     return shift, N
 
 #Plot morality shift
-def plot_morality_shift(interviews, shift_threshold, inputs = ['Model', 'Coders']):
+def plot_morality_shift(interviews, shift_threshold, waves = ['Wave 1', 'Wave 3'], inputs = ['Model', 'Coders']):
     
     figs = []
-    for input, position in zip(inputs, [[0, .2], [.25, .45]]):
+    for input, position in zip(inputs, [[0, .45], [.55, 1]]):
         shifts, _ = compute_morality_shifts(interviews, input, shift_threshold)
         #Prepare data
-        waves = ['Wave 1', 'Wave 2', 'Wave 3']
         sns.set_palette("Set2")
         mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(waves) for j, mo in enumerate(MORALITY_ORIGIN)}
         shifts = shifts.replace(mapping)
-        label = pd.DataFrame([(i,j/(len(MORALITY_ORIGIN))) for i, _ in enumerate(waves) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
+        label = pd.DataFrame([(i,j/(.69*len(MORALITY_ORIGIN))) for i, _ in enumerate(waves) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
         label['name'] = pd.Series({v:k for k, v in mapping.items()}).apply(lambda x: x.split(':')[-1])
         label['color'] = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex()) * len(waves)
 
         #Create Sankey
-        node = dict(pad=15, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
+        node = dict(pad=10, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
         link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=label['color'].iloc[shifts['target']])
         domain = dict(x=position)
         fig = go.Sankey(node=node, link=link, domain=domain)
         figs.append(fig)
 
     #Plot
-    fig = go.Figure(data=figs, layout=go.Layout(height=500, width=1200, font_size=12))
-    fig.update_layout(title=go.layout.Title(text='Morality Shift by Coders (left) and Model (right)<br><sup>Shift Threshold: '+str(int(shift_threshold*100))+'%</sup>', xref='paper', x=0))
+    fig = go.Figure(data=figs, layout=go.Layout(height=400, width=800, font_size=14))
+    fig.update_layout(title=go.layout.Title(text='Morality Shift by Coders (left) and Model (right)<br><sup>Shift Threshold: '+str(int(shift_threshold*100))+'%</sup>', x=0.08, xanchor='left'))
     fig.write_image('data/plots/demographics-morality_shift.png')
     fig.show()
 
@@ -161,7 +164,7 @@ def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold, inp
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3]
+    config = [2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
 
@@ -176,7 +179,7 @@ if __name__ == '__main__':
             for attribute in attributes:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
-            shift_threshold = .05
+            shift_threshold = .01
             plot_morality_shift(interviews, shift_threshold)
         elif c == 3:
             shift_threshold = 0

@@ -131,12 +131,15 @@ def plot_morality_shift(interviews, shift_threshold, waves = ['Wave 1', 'Wave 3'
 def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold, inputs = ['Model', 'Coders']):
     #Prepare data
     shifts = []
+    col_order = []
     for input in inputs:
         for attribute_value in attribute['values']:
             shift, N = compute_morality_shifts(interviews, input=input, shift_threshold=shift_threshold, attribute_name=attribute['name'], attribute_value=attribute_value)
-            shift[attribute['name']] = attribute_value + ' (N = ' + str(N) + ')'
-            shift['input'] = input
-            shifts.append(shift)
+            if not shift.empty:
+                shift[attribute['name']] = attribute_value + ' (N = ' + str(N) + ')'
+                col_order.append(shift[attribute['name']].loc[0])
+                shift['input'] = input
+                shifts.append(shift)
     shifts = pd.concat(shifts)
     shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
     shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
@@ -145,13 +148,14 @@ def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold, inp
     source_shifts['value'] = -source_shifts['value']
     target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
     shifts = pd.concat([source_shifts, target_shifts])
+    shifts = shifts.groupby(['morality', 'input', attribute['name']])['value'].sum().reset_index()
     shifts['value'] = shifts['value'] * 100
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=1)
     plt.figure(figsize=(10, 10))
-    g = sns.FacetGrid(shifts, col=attribute['name'])
-    g.map_dataframe(sns.barplot, x='value', y='morality', hue='input', orient='h', order=MORALITY_ORIGIN, palette=sns.color_palette('Set2'), errorbar=None)
+    g = sns.FacetGrid(shifts, col=attribute['name'], col_order=pd.Series(col_order).drop_duplicates())
+    g.map_dataframe(sns.barplot, x='value', y='morality', hue='input', hue_order=inputs, orient='h', order=MORALITY_ORIGIN, palette=sns.color_palette('Set2'), errorbar=None)
     g.fig.subplots_adjust(wspace=0.3)
     g.add_legend()
     g.set_xlabels('')
@@ -164,7 +168,7 @@ def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold, inp
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
 

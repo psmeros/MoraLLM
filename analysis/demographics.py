@@ -166,9 +166,37 @@ def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold, inp
     plt.savefig('data/plots/demographics-morality_shift_by_'+attribute['name'].lower()+'.png', bbox_inches='tight')
     plt.show()
 
+def plot_distributions(interviews):
+    interviews = merge_codings(interviews)
+    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    codings = codings.div(codings.sum(axis=1), axis=0)
+
+    codings = pd.DataFrame(codings.values, columns=MORALITY_ORIGIN).unstack().reset_index().rename(columns={'level_0':'Morality Origin', 0:'Value'}).drop('level_1', axis=1)
+    codings['Input'] = 'Coders'
+
+    interviews = interviews[MORALITY_ORIGIN].unstack().reset_index().rename(columns={'level_0':'Morality Origin', 0:'Value'}).drop('level_1', axis=1)
+    interviews['Input'] = 'Model'
+
+    interviews = pd.concat([interviews, codings])
+    interviews['Value'] = interviews['Value'] * 100
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(10, 10))
+
+    ax = sns.violinplot(data=interviews, x='Value', y='Morality Origin', hue='Input', orient='h', split=True, density_norm = 'width', common_norm=True, cut=0.5, bw_adjust=0, inner='quart', palette=sns.color_palette('Set2'))
+
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    plt.xlim(0, 100)
+    ax.legend(bbox_to_anchor=(1.3, 1.02))
+    plt.savefig('data/plots/demographics-morality_distributions.png', bbox_inches='tight')
+    plt.show()
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [4]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
 
@@ -189,3 +217,5 @@ if __name__ == '__main__':
             shift_threshold = 0
             for attribute in attributes:
                 plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)
+        elif c == 4:
+            plot_distributions(interviews)

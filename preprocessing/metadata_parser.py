@@ -55,7 +55,7 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
     return interviews
 
 #Merge interviews and surveys
-def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignment_file = 'data/interviews/alignments/interview-survey.csv'):
+def merge_surveys(interviews, quantize_classes = True, surveys_folder = 'data/interviews/surveys', alignment_file = 'data/interviews/alignments/interview-survey.csv'):
 
     surveys = []
     for file in os.listdir(surveys_folder):
@@ -70,9 +70,12 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     alignment = pd.read_csv(alignment_file)
     surveys = surveys.merge(alignment, on = ['Wave', 'Survey Id'], how = 'inner')
 
-    surveys['Income'] = surveys['Income'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
-    surveys['Parent Education'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x[0], x[1]) if (x[0] <= max(EDUCATION.keys())) and (x[1] <= max(EDUCATION.keys())) else min(x[0], x[1]), axis=1)    
-    surveys['Parent Education'] = surveys['Parent Education'].apply(lambda x: EDUCATION.get(x, pd.NA))  
+    surveys['Parent Education'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x[0], x[1]) if (x[0] <= max(EDUCATION.keys())) and (x[1] <= max(EDUCATION.keys())) else min(x[0], x[1]), axis=1)
+
+    if quantize_classes:
+        surveys['Income'] = surveys['Income'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
+        surveys['Parent Education'] = surveys['Parent Education'].apply(lambda x: EDUCATION.get(x, pd.NA))  
+    
     interviews = interviews.merge(surveys, on = ['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
 
     return interviews

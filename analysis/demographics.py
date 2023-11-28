@@ -3,7 +3,6 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.subplots as sp
 import seaborn as sns
 from __init__ import *
 

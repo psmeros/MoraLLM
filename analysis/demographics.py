@@ -7,7 +7,7 @@ import plotly.subplots as sp
 import seaborn as sns
 from __init__ import *
 
-from preprocessing.constants import CODERS, MORALITY_ORIGIN
+from preprocessing.constants import CODERS, HOUSEHOLD_CLASS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
 
 
@@ -182,11 +182,38 @@ def plot_ecdf(interviews):
     plt.savefig('data/plots/demographics-morality_ecdf.png', bbox_inches='tight')
     plt.show()
 
+def plot_class_movement(interviews, wave_list = ['Wave 1', 'Wave 3'], inputs = ['Model', 'Coders']):
+    #Prepare data
+    interviews = merge_codings(interviews)
+    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    interviews[[mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
+    interviews[[mo + '_' + inputs[1] for mo in MORALITY_ORIGIN]] = codings
+    interviews['Income'] = interviews['Income'].apply(lambda i: i if i in HOUSEHOLD_CLASS.keys() else np.nan)
+    interviews = merge_matches(interviews, wave_list=wave_list)
+    interviews['Household Income Diff'] = (interviews[wave_list[1] + ':Income'] - interviews[wave_list[0] + ':Income'])
+
+    interviews = pd.concat([pd.melt(interviews, id_vars=['Household Income Diff'], value_vars=[wave_list[0] + ':' + mo + '_' + i for mo in MORALITY_ORIGIN], var_name='Morality Origin', value_name='Value').dropna() for i in inputs])
+    interviews['Input'] = interviews['Morality Origin'].apply(lambda x: x.split('_')[1])
+    interviews['Morality Origin'] = interviews['Morality Origin'].apply(lambda x: x.split('_')[0].split(':')[1])
+    interviews['Value'] = interviews['Value'] * 100
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(15, 10))
+    g = sns.lmplot(data=interviews, x='Household Income Diff', y='Value', hue='Input', col='Morality Origin', col_wrap=4, truncate=False, x_jitter=.3, seed=42, palette=sns.color_palette('Set2'))
+    g.set_ylabels('')
+    g.set_titles('Morality: {col_name}')
+    g.fig.subplots_adjust(wspace=0.1)
+    ax = plt.gca()
+    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    ax.set_xlim(-abs(interviews['Household Income Diff']).max(), abs(interviews['Household Income Diff']).max())
+    plt.savefig('data/plots/demographics-class_movement.png', bbox_inches='tight')
+    plt.show()
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [5]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
-    interviews = merge_surveys(interviews)
 
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
@@ -196,14 +223,21 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
+            interviews = merge_surveys(interviews)
             for attribute in attributes:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
             shift_threshold = .01
+            interviews = merge_surveys(interviews)
             plot_morality_shift(interviews, shift_threshold)
         elif c == 3:
             shift_threshold = 0
+            interviews = merge_surveys(interviews)
             for attribute in attributes:
                 plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)
         elif c == 4:
+            interviews = merge_surveys(interviews)
             plot_ecdf(interviews)
+        elif c == 5:
+            interviews = merge_surveys(interviews, quantize_classes=False)
+            plot_class_movement(interviews)

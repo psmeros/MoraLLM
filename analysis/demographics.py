@@ -69,7 +69,7 @@ def compute_morality_shifts(interviews, input, shift_threshold, wave_list=['Wave
     wave_source.columns = MORALITY_ORIGIN
     wave_target.columns = MORALITY_ORIGIN
 
-    #Combine outgoing percentage, incoming coeficients, and remaining percentage
+    #Combine outgoing percentage, incoming coefficients, and remaining percentage
     outgoing = (wave_source - wave_target > 0) * abs(wave_source - wave_target)
     incoming = (wave_source - wave_target < 0) * abs(wave_source - wave_target)
 

@@ -287,7 +287,7 @@ if __name__ == '__main__':
             interviews = merge_surveys(interviews, quantize_classes=False)
             plot_class_movement(interviews)
         elif c == 6:
-            actions = ['Pot', 'Drink']
+            actions = ['Pot', 'Drink', 'Cheat']
             n_clusters = 2
             interviews = merge_surveys(interviews, quantize_classes=False)
             plot_action_probability(interviews, actions=actions, n_clusters=n_clusters)

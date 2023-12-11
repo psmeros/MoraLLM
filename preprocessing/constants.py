@@ -187,7 +187,7 @@ CODERS = ['Leke', 'Tomas']
 
 CHATGPT_PROMPT = 'Estimate the probability of the following text belonging to the categories: Experience, Consequences, Family, Community, Friends, Media, Laws, Holy Scripture. Response in the form \"Category:Probability\".'
 
-SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id', 'PINCOME':'Income', 'PDADEDUC':'Father Education', 'PMOMEDUC':'Mother Education', 'POT':'Pot', 'DRINK':'Drink'},
+SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id', 'PINCOME':'Income', 'PDADEDUC':'Father Education', 'PMOMEDUC':'Mother Education', 'POT':'Pot', 'DRINK':'Drink', 'CHEATED':'Cheat'},
                      'Wave 2':{'IDS':'Survey Id'},
                      'Wave 3':{'IDS':'Survey Id', 'EARNINGS':'Income'}}
 
@@ -221,5 +221,6 @@ EDUCATION = {0:'Primary',
              13:'Tertiary',
              14:'Tertiary'}
 
-#Survey value for drinking
+#Survey value for drinking and cheating
 MAX_DRINK_VALUE = 7
+MAX_CHEAT_VALUE = 6

@@ -252,7 +252,7 @@ def plot_action_probability(interviews, n_clusters, actions, wave_list = ['Wave 
     for ax in g.axes.flat:
         ax.yaxis.set_major_locator(mtick.MaxNLocator(nbins=4))
     g.set_titles('Input: {row_name}' + '\n' + 'Action: {col_name}')
-    plt.savefig('data/plots/action_probability', bbox_inches='tight')
+    plt.savefig('data/plots/demographics-action_probability', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':

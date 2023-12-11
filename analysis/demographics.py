@@ -4,6 +4,10 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
+from sklearn.cluster import DBSCAN, KMeans
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import minmax_scale
 from __init__ import *
 
 from preprocessing.constants import CODERS, HOUSEHOLD_CLASS, MORALITY_ORIGIN
@@ -209,9 +213,48 @@ def plot_class_movement(interviews, wave_list = ['Wave 1', 'Wave 3'], inputs = [
     plt.savefig('data/plots/demographics-class_movement.png', bbox_inches='tight')
     plt.show()
 
+def plot_action_probability(interviews, n_clusters, action, wave_list = ['Wave 1', 'Wave 3'], inputs = ['Model', 'Coders']):
+    #Prepare data
+    interviews = merge_codings(interviews)
+    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    interviews[[mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
+    interviews[[mo + '_' + inputs[1] for mo in MORALITY_ORIGIN]] = codings
+    interviews['Income'] = interviews['Income'].apply(lambda i: i if i in HOUSEHOLD_CLASS.keys() else np.nan)
+    interviews = merge_matches(interviews, wave_list=wave_list)
+
+    embeddings = interviews[[wave_list[0] + ':' + mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]].values
+
+    # Perform clustering, dimensionality reduction, and assign cluster labels
+    # clusters = DBSCAN(eps=0.01, metric='cosine').fit_predict(embeddings)
+    clusters = KMeans(n_clusters=n_clusters, random_state=42).fit_predict(embeddings)
+
+    dim_reduction_alg = TSNE(n_components=2, random_state=42, metric='cosine', perplexity=50)
+    # dim_reduction_alg = PCA(n_components=2, random_state=42)
+
+    embeddings = pd.DataFrame(dim_reduction_alg.fit_transform(embeddings))
+    embeddings['clusters'] = clusters
+    embeddings[action] = minmax_scale(interviews[wave_list[0] + ':' + action])
+    embeddings[action] = embeddings['clusters'].apply(lambda c: embeddings.groupby('clusters')[action].mean()[c])
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(20, 20))
+    color_palette = sns.color_palette('coolwarm', as_cmap=True)
+    sns.kdeplot(data=embeddings, x=0, y=1, hue=action, hue_norm=(0,1), fill=True, thresh=0.25, alpha=.5, n_levels=10, legend=False, palette=color_palette)
+
+    cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=color_palette), ax=plt.gca())
+    cbar.ax.get_yaxis().set_ticks([])
+    cbar.ax.get_yaxis().set_ticks([0, 1])
+    cbar.ax.get_yaxis().set_ticklabels(['Low', 'High'])
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Probability of ' + action)
+    # plt.savefig('data/plots/morality-embeddings.png', bbox_inches='tight')
+    plt.show()
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [6]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
@@ -240,3 +283,6 @@ if __name__ == '__main__':
         elif c == 5:
             interviews = merge_surveys(interviews, quantize_classes=False)
             plot_class_movement(interviews)
+        elif c == 6:
+            interviews = merge_surveys(interviews, quantize_classes=False)
+            plot_action_probability(interviews, n_clusters=2, action='Drink')

@@ -213,7 +213,7 @@ def plot_class_movement(interviews, wave_list = ['Wave 1', 'Wave 3'], inputs = [
     plt.savefig('data/plots/demographics-class_movement.png', bbox_inches='tight')
     plt.show()
 
-def plot_action_probability(interviews, n_clusters, action, wave_list = ['Wave 1', 'Wave 3'], inputs = ['Model', 'Coders']):
+def plot_action_probability(interviews, n_clusters, actions, wave_list = ['Wave 1', 'Wave 3'], inputs = ['Model', 'Coders']):
     #Prepare data
     interviews = merge_codings(interviews)
     codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
@@ -222,34 +222,37 @@ def plot_action_probability(interviews, n_clusters, action, wave_list = ['Wave 1
     interviews['Income'] = interviews['Income'].apply(lambda i: i if i in HOUSEHOLD_CLASS.keys() else np.nan)
     interviews = merge_matches(interviews, wave_list=wave_list)
 
-    embeddings = interviews[[wave_list[0] + ':' + mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]].values
-
-    # Perform clustering, dimensionality reduction, and assign cluster labels
-    # clusters = DBSCAN(eps=0.01, metric='cosine').fit_predict(embeddings)
-    clusters = KMeans(n_clusters=n_clusters, random_state=42).fit_predict(embeddings)
-
-    dim_reduction_alg = TSNE(n_components=2, random_state=42, metric='cosine', perplexity=50)
-    # dim_reduction_alg = PCA(n_components=2, random_state=42)
-
-    embeddings = pd.DataFrame(dim_reduction_alg.fit_transform(embeddings))
-    embeddings['clusters'] = clusters
-    embeddings[action] = minmax_scale(interviews[wave_list[0] + ':' + action])
-    embeddings[action] = embeddings['clusters'].apply(lambda c: embeddings.groupby('clusters')[action].mean()[c])
+    # Perform clustering, dimensionality reduction, and probability estimation
+    embeddings_list = []
+    for action in actions:
+        for input in inputs:
+            embeddings = interviews[[wave_list[0] + ':' + mo + '_' + input for mo in MORALITY_ORIGIN]].values
+            clusters = KMeans(n_clusters=n_clusters, n_init='auto', random_state=42).fit_predict(embeddings)
+            embeddings = pd.DataFrame(TSNE(n_components=2, random_state=42, perplexity=50).fit_transform(embeddings))
+            embeddings['Clusters'] = clusters
+            embeddings['Value'] = minmax_scale(interviews[wave_list[0] + ':' + action])
+            embeddings['Value'] = embeddings['Clusters'].apply(lambda c: embeddings.groupby('Clusters')['Value'].mean()[c])
+            embeddings['Input'] = input
+            embeddings['Action'] = action
+            embeddings_list.append(embeddings)
+    embeddings = pd.concat(embeddings_list)
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
-    plt.figure(figsize=(20, 20))
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(10, 10))
     color_palette = sns.color_palette('coolwarm', as_cmap=True)
-    sns.kdeplot(data=embeddings, x=0, y=1, hue=action, hue_norm=(0,1), fill=True, thresh=0.25, alpha=.5, n_levels=10, legend=False, palette=color_palette)
+    g = sns.displot(data=embeddings, col='Action', row='Input', kind='kde', facet_kws=dict(sharex=False, sharey=False), common_norm=False, x=0, y=1, hue='Value', hue_norm=(0, .25), fill=True, thresh=.2, alpha=.5, legend=False, palette=color_palette)
 
-    cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=color_palette), ax=plt.gca())
+    cbar_ax = g.fig.add_axes([1.0, 0.15, 0.02, 0.7])
+    cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=color_palette), cax=cbar_ax)
     cbar.ax.get_yaxis().set_ticks([])
     cbar.ax.get_yaxis().set_ticks([0, 1])
     cbar.ax.get_yaxis().set_ticklabels(['Low', 'High'])
-    plt.xlabel('')
-    plt.ylabel('')
-    plt.title('Probability of ' + action)
-    # plt.savefig('data/plots/morality-embeddings.png', bbox_inches='tight')
+    g.set_axis_labels('', '')
+    for ax in g.axes.flat:
+        ax.yaxis.set_major_locator(mtick.MaxNLocator(nbins=4))
+    g.set_titles('Input: {row_name}' + '\n' + 'Action: {col_name}')
+    plt.savefig('data/plots/action_probability', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':
@@ -284,5 +287,7 @@ if __name__ == '__main__':
             interviews = merge_surveys(interviews, quantize_classes=False)
             plot_class_movement(interviews)
         elif c == 6:
+            actions = ['Pot', 'Drink']
+            n_clusters = 2
             interviews = merge_surveys(interviews, quantize_classes=False)
-            plot_action_probability(interviews, n_clusters=2, action='Drink')
+            plot_action_probability(interviews, actions=actions, n_clusters=n_clusters)

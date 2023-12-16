@@ -1,56 +1,57 @@
-from matplotlib import pyplot as plt
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.feature_selection import f_classif, f_regression, r_regression
-from __init__ import *
-
 import pandas as pd
-from sklearn.linear_model import LinearRegression, Ridge, RidgeCV
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.preprocessing import PolynomialFeatures, minmax_scale
-from preprocessing.constants import CODERS, HOUSEHOLD_CLASS, MORALITY_ORIGIN
+import seaborn as sns
+from __init__ import *
+from matplotlib import pyplot as plt
+from sklearn.discriminant_analysis import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV
 
+from preprocessing.constants import CODERS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
+
+def action_prediction(interviews, actions, wave_list=['Wave 1', 'Wave 3'], inputs=['Model', 'Coders']):
+    #Prepare data
+    interviews = merge_codings(interviews)
+    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    interviews[[mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
+    interviews[[mo + '_' + inputs[1] for mo in MORALITY_ORIGIN]] = codings
+    interviews = merge_matches(interviews, wave_list=wave_list)
+
+    #Train Classifier
+    action_prediction = []
+    for action in actions:
+        for input in inputs:
+            input_interviews = interviews[[wave_list[0] + ':' + mo + '_' + input  for mo in MORALITY_ORIGIN]+[wave_list[0] + ':' + action]].dropna()
+            y = input_interviews[wave_list[0] + ':' + action].apply(lambda d: False if d == 1 else True).values
+            X = StandardScaler().fit_transform(input_interviews.drop([wave_list[0] + ':' + action], axis=1).values)
+        
+            clf = GridSearchCV(RandomForestClassifier(random_state=42), {'n_estimators': [1, 2, 3, 4, 5, 10, 20, 30], 'max_depth': [1, 2, 3, 4, 5]}, scoring='f1', cv=2)
+            clf.fit(X, y)
+
+            feature_importances = RandomForestClassifier(**clf.best_params_, random_state=42).fit(X, y).feature_importances_
+            feature_importances = {item[0]:item[1] for item in sorted(zip(MORALITY_ORIGIN, feature_importances), key=lambda x: x[1], reverse=True)}
+            action_prediction.append({'Action' : action, 'Input' : input, 'F1 Score' : clf.best_score_, 'Feature_Importances' : feature_importances})
+    action_prediction = pd.DataFrame(action_prediction)
+
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(10, 10))
+    ax = sns.barplot(action_prediction, x='F1 Score', y='Action', hue='Input', hue_order=inputs, orient='h', palette=sns.color_palette('Set2'))
+    plt.savefig('data/plots/predictors-action_prediction.png', bbox_inches='tight')
+    plt.show()
+
+    print(action_prediction.groupby('Action')['Feature_Importances'].apply(list).apply(lambda l: (pd.Series(l[0]) + pd.Series(l[1])).idxmax()))
+
 
 if __name__ == '__main__':
     #Hyperparameters
     config = [1]
+    actions=['Pot', 'Drink', 'Cheat']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews, quantize_classes=False)
 
     for c in config:
         if c == 1:
-            pass
-
-
-inputs=['Model', 'Coders']
-wave_list=['Wave 1', 'Wave 3']
-
-#Prepare data
-interviews = merge_codings(interviews)
-codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-interviews[[mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-interviews[[mo + '_' + inputs[1] for mo in MORALITY_ORIGIN]] = codings
-interviews['Income'] = interviews['Income'].apply(lambda i: i if i in HOUSEHOLD_CLASS.keys() else np.nan)
-interviews = merge_matches(interviews, wave_list=wave_list)
-interviews['Household Income Diff'] = (interviews[wave_list[1] + ':Income'] - interviews[wave_list[0] + ':Income'])
-
-for input in inputs:
-    input_interviews = pd.DataFrame(interviews[[wave_list[0] + ':' + mo + '_' + input  for mo in MORALITY_ORIGIN]+[wave_list[0] + ':Income', wave_list[0] + ':Parent Education', wave_list[1] + ':Income']].values, columns=MORALITY_ORIGIN+['Income', 'Parent Education', 'Income Prediction']).dropna()
-    input_interviews[['Income', 'Parent Education', 'Income Prediction']] = minmax_scale(input_interviews[['Income', 'Parent Education', 'Income Prediction']])
-
-    X = input_interviews[MORALITY_ORIGIN+['Income', 'Parent Education']]
-    y = input_interviews['Income Prediction']
-
-    # ridge = RidgeCV(alphas=[1e-3, 1e-2, 1e-1, 1, 10], cv=2).fit(X, y) 
-    # print(input, ' Score:', ridge.best_score_)
-
-    # anova = f_classif(X, y)
-    # for i, mo in enumerate(MORALITY_ORIGIN+['Income', 'Parent Education']):
-    #     importance =  '***' if float(anova[1][i])<.005 else '**' if float(anova[1][i])<.01 else '*' if float(anova[1][i])<.05 else None
-    #     if importance:
-    #         print(input, mo, importance)
-    
-
-    print(input, 'Accuracy:', cross_val_score(RandomForestRegressor(n_estimators=20, max_depth=1, random_state=42), X, y, cv=5).mean())
+            action_prediction(interviews, actions=actions)

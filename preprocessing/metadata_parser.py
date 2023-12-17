@@ -1,5 +1,5 @@
 from __init__ import *
-from preprocessing.constants import EDUCATION, HOUSEHOLD_CLASS, MAX_CHEAT_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_HELP_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, SURVEY_ATTRIBUTES
+from preprocessing.constants import EDUCATION, HOUSEHOLD_CLASS, MAX_CHEAT_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, SURVEY_ATTRIBUTES
 
 from preprocessing.transcript_parser import wave_parser
 
@@ -71,6 +71,7 @@ def merge_surveys(interviews, quantize_classes = True, surveys_folder = 'data/in
     surveys = surveys.merge(alignment, on = ['Wave', 'Survey Id'], how = 'inner')
 
     surveys['Parent Education'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x[0], x[1]) if (x[0] <= max(EDUCATION.keys())) and (x[1] <= max(EDUCATION.keys())) else min(x[0], x[1]), axis=1)
+    surveys['Pot'] = surveys['Pot'].apply(lambda x: x if x in range(1, MAX_POT_VALUE + 1) else pd.NA)
     surveys['Drink'] = surveys['Drink'].apply(lambda x: MAX_DRINK_VALUE + 1 - x if x in range(1, MAX_DRINK_VALUE + 1) else pd.NA)
     surveys['Cheat'] = surveys['Cheat'].apply(lambda x: MAX_CHEAT_VALUE + 1 - x if x in range(1, MAX_CHEAT_VALUE + 1) else pd.NA)
     surveys['Cutclass'] = surveys['Cutclass'].apply(lambda x: x if x in range(1, MAX_CUTCLASS_VALUE + 1) else pd.NA)

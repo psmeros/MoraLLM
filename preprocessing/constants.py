@@ -222,6 +222,7 @@ EDUCATION = {0:'Primary',
              14:'Tertiary'}
 
 #Survey value for drinking and cheating
+MAX_POT_VALUE = 4
 MAX_DRINK_VALUE = 7
 MAX_CHEAT_VALUE = 6
 MAX_CUTCLASS_VALUE = 4

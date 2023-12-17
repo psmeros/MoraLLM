@@ -34,21 +34,22 @@ def action_prediction(interviews, actions, wave_list=['Wave 1', 'Wave 3'], input
             action_prediction.append({'Action' : action, 'Input' : input, 'F1 Score' : clf.best_score_, 'Feature_Importances' : feature_importances})
     action_prediction = pd.DataFrame(action_prediction)
 
-
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
     ax = sns.barplot(action_prediction, x='F1 Score', y='Action', hue='Input', hue_order=inputs, orient='h', palette=sns.color_palette('Set2'))
+    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
     plt.savefig('data/plots/predictors-action_prediction.png', bbox_inches='tight')
     plt.show()
 
-    print(action_prediction.groupby('Action')['Feature_Importances'].apply(list).apply(lambda l: (pd.Series(l[0]) + pd.Series(l[1])).idxmax()))
-
+    action_prediction = action_prediction.groupby('Action')['Feature_Importances'].apply(list).apply(lambda l: (pd.Series(l[0]) + pd.Series(l[1])).idxmax())
+    action_prediction = pd.DataFrame(action_prediction.reindex(actions).reset_index().values, columns=['Action', 'Key Morality Origin'])
+    print(action_prediction)
 
 if __name__ == '__main__':
     #Hyperparameters
     config = [1]
-    actions=['Pot', 'Drink', 'Cheat']
+    actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews, quantize_classes=False)
 

@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import seaborn as sns
 from __init__ import *
@@ -9,6 +8,7 @@ from sklearn.model_selection import GridSearchCV
 
 from preprocessing.constants import CODERS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
+from scipy.stats import pearsonr
 
 def action_prediction(interviews, actions, wave_list=['Wave 1', 'Wave 3'], inputs=['Model', 'Coders']):
     #Prepare data
@@ -46,9 +46,30 @@ def action_prediction(interviews, actions, wave_list=['Wave 1', 'Wave 3'], input
     action_prediction = pd.DataFrame(action_prediction.reindex(actions).reset_index().values, columns=['Action', 'Key Morality Origin'])
     print(action_prediction)
 
+def moral_consciousness(interviews, wave_list=['Wave 1', 'Wave 3'], inputs=['Model', 'Coders']):
+    interviews = merge_codings(interviews)
+    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    interviews[[mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
+    interviews[[mo + '_' + inputs[1] for mo in MORALITY_ORIGIN]] = codings
+    interviews = merge_matches(interviews, wave_list=wave_list)
+
+    compute_correlation = lambda x: str(round(x[0], 3)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+
+    correlations = pd.DataFrame(columns=wave_list, index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social'])
+    for wave in wave_list:
+        Intuitive = interviews[wave + ':Experience_' + inputs[1]]
+        Consequentialist = interviews[wave + ':Consequences_' + inputs[1]]
+        Social = interviews[[wave + ':' + mo + '_' + inputs[1] for mo in ['Family', 'Community', 'Friends']]].any(axis=1).astype(int)
+
+        correlations[wave].loc['Intuitive - Consequentialist'] = compute_correlation(pearsonr(Intuitive, Consequentialist))
+        correlations[wave].loc['Social - Consequentialist'] = compute_correlation(pearsonr(Social, Consequentialist))
+        correlations[wave].loc['Intuitive - Social'] = compute_correlation(pearsonr(Intuitive, Social))
+
+    print(correlations)
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [2]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews, quantize_classes=False)
@@ -56,3 +77,5 @@ if __name__ == '__main__':
     for c in config:
         if c == 1:
             action_prediction(interviews, actions=actions)
+        elif c == 2:
+            moral_consciousness(interviews)

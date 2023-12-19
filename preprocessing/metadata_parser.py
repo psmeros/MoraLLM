@@ -1,5 +1,5 @@
 from __init__ import *
-from preprocessing.constants import EDUCATION, HOUSEHOLD_CLASS, MAX_CHEAT_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, SURVEY_ATTRIBUTES
+from preprocessing.constants import DECISION_TAKING, EDUCATION, HOUSEHOLD_CLASS, MAX_CHEAT_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, SURVEY_ATTRIBUTES
 
 from preprocessing.transcript_parser import wave_parser
 
@@ -81,7 +81,8 @@ def merge_surveys(interviews, quantize_classes = True, surveys_folder = 'data/in
 
     if quantize_classes:
         surveys['Income'] = surveys['Income'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
-        surveys['Parent Education'] = surveys['Parent Education'].apply(lambda x: EDUCATION.get(x, pd.NA))  
+        surveys['Parent Education'] = surveys['Parent Education'].apply(lambda x: EDUCATION.get(x, pd.NA))
+        surveys['Decision Taking'] = surveys['Decision Taking'].apply(lambda x: DECISION_TAKING.get(x, pd.NA))
     
     interviews = interviews.merge(surveys, on = ['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
 

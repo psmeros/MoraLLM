@@ -53,10 +53,17 @@ def moral_consciousness(interviews, wave_list=['Wave 1', 'Wave 3'], inputs=['Mod
     interviews[[mo + '_' + inputs[1] for mo in MORALITY_ORIGIN]] = codings
     interviews = merge_matches(interviews, wave_list=wave_list)
     desicion_taking = pd.get_dummies(interviews[wave_list[0] + ':' + 'Decision Taking'])
+    Age = interviews[wave_list[0] + ':Age'].dropna().astype(int)
+    Grades = interviews[wave_list[0] + ':Grades'].dropna().astype(int)
+    Gender = pd.factorize(interviews[wave_list[0] + ':Gender'])[0]
+    Race = pd.factorize(interviews[wave_list[0] + ':Race'])[0]
+    Church_Attendance = interviews[wave_list[0] + ':Church Attendance'].dropna()
+    Parent_Education = interviews[wave_list[0] + ':Parent Education'].dropna()
+    Parent_Income = interviews[wave_list[0] + ':Income'].dropna()
 
     compute_correlation = lambda x: str(round(x[0], 3)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
 
-    correlations = pd.DataFrame(columns=wave_list, index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic'])
+    correlations = pd.DataFrame(columns=wave_list, index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic', 'Intuitive - Age', 'Intuitive - GPA', 'Intuitive - Gender', 'Intuitive - Race', 'Intuitive - Church Attendance', 'Intuitive - Parent Education', 'Intuitive - Parent Income'])
     for wave in wave_list:
         Intuitive = interviews[wave + ':Experience_' + inputs[1]]
         Consequentialist = interviews[wave + ':Consequences_' + inputs[1]]
@@ -69,7 +76,15 @@ def moral_consciousness(interviews, wave_list=['Wave 1', 'Wave 3'], inputs=['Mod
         correlations[wave].loc['Intuitive - Expressive Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Expressive Individualist']))
         correlations[wave].loc['Intuitive - Utilitarian Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Utilitarian Individualist']))
         correlations[wave].loc['Intuitive - Relational'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Relational']))
-        correlations[wave].loc['Intuitive - Theistic'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Theistic']))        
+        correlations[wave].loc['Intuitive - Theistic'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Theistic']))
+
+        correlations[wave].loc['Intuitive - Age'] = compute_correlation(pearsonr(Intuitive.loc[Age.index], Age))
+        correlations[wave].loc['Intuitive - GPA'] = compute_correlation(pearsonr(Intuitive.loc[Grades.index], Grades))
+        correlations[wave].loc['Intuitive - Gender'] = compute_correlation(pearsonr(Intuitive, Gender))
+        correlations[wave].loc['Intuitive - Race'] = compute_correlation(pearsonr(Intuitive, Race))
+        correlations[wave].loc['Intuitive - Church Attendance'] = compute_correlation(pearsonr(Intuitive.loc[Church_Attendance.index], Church_Attendance))
+        correlations[wave].loc['Intuitive - Parent Education'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Education.index], Parent_Education))
+        correlations[wave].loc['Intuitive - Parent Income'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Income.index], Parent_Income))
 
     print(correlations)
 
@@ -78,11 +93,10 @@ if __name__ == '__main__':
     config = [2]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
+    interviews = merge_surveys(interviews, quantize_classes=False)
 
     for c in config:
         if c == 1:
-            interviews = merge_surveys(interviews, quantize_classes=False)
             action_prediction(interviews, actions=actions)
         elif c == 2:
-            interviews = merge_surveys(interviews)
             moral_consciousness(interviews)

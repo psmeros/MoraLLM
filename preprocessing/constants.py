@@ -198,7 +198,9 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'SECRET':'Secret',
                                'VOLUNTER':'Volunteer',
                                'HELPED':'Help',
-                               'HOWDECID':'Decision Taking'},
+                               'HOWDECID':'Decision Taking',
+                               'GRADES':'Grades',
+                               'ATTEND':'Church Attendance'},
                      'Wave 2':{'IDS':'Survey Id'},
                      'Wave 3':{'IDS':'Survey Id',
                                'EARNINGS':'Income'}}
@@ -233,7 +235,7 @@ EDUCATION = {0:'Primary',
              13:'Tertiary',
              14:'Tertiary'}
 
-#Survey value for drinking and cheating
+#Survey max values
 MAX_POT_VALUE = 4
 MAX_DRINK_VALUE = 7
 MAX_CHEAT_VALUE = 6
@@ -241,6 +243,8 @@ MAX_CUTCLASS_VALUE = 4
 MAX_SECRET_VALUE = 6
 MAX_VOLUNTEER_VALUE = 4
 MAX_HELP_VALUE = 4
+MAX_GRADES_VALUE = 10
+MAX_CHURCH_ATTENDANCE_VALUE = 6
 
 #Decision taking map
 DECISION_TAKING = {1:'Expressive Individualist',

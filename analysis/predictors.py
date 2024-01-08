@@ -10,6 +10,18 @@ from preprocessing.constants import CODERS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
 from scipy.stats import pearsonr
 
+def probability_mass_reallocation(prob, factor, nprobs):
+    if factor is not None:
+        max_prob = prob.max() + (1.0 - prob.max()) * factor
+        max_prob_index = prob.idxmax()
+        prob = prob - prob * factor
+        prob[max_prob_index] = max_prob
+    elif nprobs is not None:
+        index = prob.nlargest(nprobs).index
+        prob.loc[:] = 0
+        prob.loc[index] = 1.0
+    return prob
+
 def action_prediction(interviews, actions, wave_list=['Wave 1', 'Wave 3'], inputs=['Model', 'Coders']):
     #Prepare data
     interviews = merge_codings(interviews)
@@ -46,10 +58,10 @@ def action_prediction(interviews, actions, wave_list=['Wave 1', 'Wave 3'], input
     action_prediction = pd.DataFrame(action_prediction.reindex(actions).reset_index().values, columns=['Action', 'Key Morality Origin'])
     print(action_prediction)
 
-def moral_consciousness(interviews, wave_list=['Wave 1', 'Wave 3'], inputs=['Model', 'Coders']):
+def moral_consciousness(interviews, factor, nprobs, wave_list=['Wave 1', 'Wave 3'], inputs=['Model', 'Coders']):
     interviews = merge_codings(interviews)
     codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-    interviews[[mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
+    interviews[[mo + '_' + inputs[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN].apply(lambda mo: probability_mass_reallocation(mo, factor=factor, nprobs=nprobs), axis=1)
     interviews[[mo + '_' + inputs[1] for mo in MORALITY_ORIGIN]] = codings
     interviews = merge_matches(interviews, wave_list=wave_list)
     desicion_taking = pd.get_dummies(interviews[wave_list[0] + ':' + 'Decision Taking'])
@@ -102,4 +114,4 @@ if __name__ == '__main__':
         if c == 1:
             action_prediction(interviews, actions=actions)
         elif c == 2:
-            moral_consciousness(interviews)
+            moral_consciousness(interviews, factor=None, nprobs=None)

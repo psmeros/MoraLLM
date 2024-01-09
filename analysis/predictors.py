@@ -75,18 +75,23 @@ def moral_consciousness(interviews, factor, nprobs, wave_list=['Wave 1', 'Wave 3
 
     compute_correlation = lambda x: str(round(x[0], 3)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
 
+    data = []
     for input in inputs:
         correlations = pd.DataFrame(columns=wave_list, index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic', 'Intuitive - Age', 'Intuitive - GPA', 'Intuitive - Gender', 'Intuitive - Race', 'Intuitive - Church Attendance', 'Intuitive - Parent Education', 'Intuitive - Parent Income'])
         for wave in wave_list:
             Intuitive = interviews[wave + ':Experience_' + input]
             Consequentialist = interviews[wave + ':Consequences_' + input]
             Social = interviews[[wave + ':' + mo + '_' + input for mo in ['Family', 'Community', 'Friends']]]
-            Social = Social.mean(axis=1) if input == 'Model' else Social.any(axis=1) if input == 'Coders' else None
+            Social = Social.max(axis=1) if input == 'Model' else Social.any(axis=1) if input == 'Coders' else None
 
             correlations[wave].loc['Intuitive - Consequentialist'] = compute_correlation(pearsonr(Intuitive, Consequentialist))
             correlations[wave].loc['Social - Consequentialist'] = compute_correlation(pearsonr(Social, Consequentialist))
             correlations[wave].loc['Intuitive - Social'] = compute_correlation(pearsonr(Intuitive, Social))
 
+            data.append(pd.concat([pd.Series(Intuitive.values), pd.Series(Consequentialist.values), pd.Series(['Intuitive - Consequentialist']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([input]*len(interviews))], axis=1))
+            data.append(pd.concat([pd.Series(Social.values), pd.Series(Consequentialist.values), pd.Series(['Social - Consequentialist']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([input]*len(interviews))], axis=1))
+            data.append(pd.concat([pd.Series(Intuitive.values), pd.Series(Social.values), pd.Series(['Intuitive - Social']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([input]*len(interviews))], axis=1))
+            
             correlations[wave].loc['Intuitive - Expressive Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Expressive Individualist']))
             correlations[wave].loc['Intuitive - Utilitarian Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Utilitarian Individualist']))
             correlations[wave].loc['Intuitive - Relational'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Relational']))
@@ -102,6 +107,19 @@ def moral_consciousness(interviews, factor, nprobs, wave_list=['Wave 1', 'Wave 3
 
         print(input)
         print(correlations)
+    data = pd.concat(data, axis=0, ignore_index=True)
+    data.columns = ['x', 'y', 'Correlation', 'Wave', 'Input']
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(10, 10))
+    g = sns.lmplot(data=data[data['Input'] == 'Model'], x='x', y='y', col='Correlation', row='Wave')
+    g.set_titles('{row_name}' + '\n' + '{col_name}')
+    g.fig.subplots_adjust(wspace=0.1)
+    plt.xlim(0, .8)
+    plt.ylim(0, .8)
+    plt.savefig('data/plots/predictors-correlations', bbox_inches='tight')
+    plt.show()
 
 if __name__ == '__main__':
     #Hyperparameters

@@ -2,13 +2,14 @@ import pandas as pd
 import seaborn as sns
 from __init__ import *
 from matplotlib import pyplot as plt
+from scipy.stats import pearsonr
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 
 from preprocessing.constants import CODERS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
-from scipy.stats import pearsonr
+
 
 def probability_mass_reallocation(prob, factor, nprobs):
     if factor is not None:
@@ -82,7 +83,7 @@ def moral_consciousness(interviews, factor, nprobs, wave_list=['Wave 1', 'Wave 3
             Intuitive = interviews[wave + ':Experience_' + input]
             Consequentialist = interviews[wave + ':Consequences_' + input]
             Social = interviews[[wave + ':' + mo + '_' + input for mo in ['Family', 'Community', 'Friends']]]
-            Social = Social.max(axis=1) if input == 'Model' else Social.any(axis=1) if input == 'Coders' else None
+            Social = Social.mean(axis=1) if input == 'Model' else Social.any(axis=1) if input == 'Coders' else None
 
             correlations[wave].loc['Intuitive - Consequentialist'] = compute_correlation(pearsonr(Intuitive, Consequentialist))
             correlations[wave].loc['Social - Consequentialist'] = compute_correlation(pearsonr(Social, Consequentialist))
@@ -113,11 +114,10 @@ def moral_consciousness(interviews, factor, nprobs, wave_list=['Wave 1', 'Wave 3
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data[data['Input'] == 'Model'], x='x', y='y', col='Correlation', row='Wave')
-    g.set_titles('{row_name}' + '\n' + '{col_name}')
-    g.fig.subplots_adjust(wspace=0.1)
-    plt.xlim(0, .8)
-    plt.ylim(0, .8)
+    g = sns.lmplot(data=data[data['Input'] == 'Model'], x='x', y='y', col='Correlation', hue='Wave', facet_kws={'sharex':False, 'sharey':False}, robust=True, palette=sns.color_palette('Set2'))
+    g.set_titles('{col_name}')
+    g.set_xlabels('')
+    g.set_ylabels('')
     plt.savefig('data/plots/predictors-correlations', bbox_inches='tight')
     plt.show()
 
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [2]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
-    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
+    interviews = pd.read_pickle('data/cache/morality_model-ml-top.pkl')
     interviews = merge_surveys(interviews, quantize_classes=False)
 
     for c in config:

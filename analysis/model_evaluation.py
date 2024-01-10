@@ -49,7 +49,7 @@ def plot_model_evaluation(codings, models):
         losses.append(loss)
 
     losses = pd.concat(losses, ignore_index=True).iloc[::-1]
-    losses['Model'] = losses['Model'].replace({'lg':'SpaCy (Labels)', 'bert':'BERT (Labels)', 'bart':'BART (Labels)', 'entail':'Entailment (Labels)', 'entail_explained':'Entailment (Labels+Notes)', 'top':'Entailment (Labels+Notes+Distro)', 'baseline':'Naive (Distro)', 'chatgpt':'GPT-3.5 (Labels)'})
+    losses['Model'] = losses['Model'].replace({'lg':'SpaCy (Labels)', 'bert':'BERT (Labels)', 'bart':'BART (Labels)', 'entail':'Entailment (Labels)', 'entail_explained':'Entailment (Labels+Notes)', 'top':'Entailment (Labels+Notes+Distro)', 'ml-top':'Entailment-ML (Labels+Notes+Distro)', 'baseline':'Naive (Distro)', 'chatgpt':'GPT-3.5 (Labels)'})
 
     #Plot model comparison
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
@@ -99,7 +99,7 @@ def plot_coders_agreement(codings):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
-    models = ['baseline', 'lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'top']
+    models = ['baseline', 'lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'top', 'ml-top']
     codings = pd.read_pickle('data/cache/morality_model-top.pkl')[['Wave', 'Interview Code']]
     codings = merge_codings(codings)
 

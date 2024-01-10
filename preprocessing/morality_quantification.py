@@ -154,7 +154,7 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
 
         #Model variants
         multi_label = True if model == 'entail_ml' else False
-        morality_dictionary = MORALITY_ORIGIN_EXPLAINED if model == 'entail_explained' else {mo:mo for mo in MORALITY_ORIGIN}
+        morality_dictionary = MORALITY_ORIGIN_EXPLAINED if model in ['entail_ml', 'entail_explained'] else {mo:mo for mo in MORALITY_ORIGIN}
 
         #Trasformation functions
         classifier = lambda text: morality_pipeline(text.split(NEWLINE), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label)
@@ -209,7 +209,7 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
-    models = ['entail_explained']
+    models = ['entail_ml']
     section = 'Morality_Origin'
 
     for c in config:
@@ -221,6 +221,6 @@ if __name__ == '__main__':
                 interviews.to_pickle('data/cache/morality_model-'+model+'.pkl')
                 display_notification(model + ' Morality Origin Computed!')
         elif c == 2:
-            interviews = pd.read_pickle('data/cache/morality_model-entail_explained.pkl')
+            interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
             interviews = inform_morality_origin_model(interviews)
-            interviews.to_pickle('data/cache/morality_model-top.pkl')
+            interviews.to_pickle('data/cache/morality_model-ml-top.pkl')

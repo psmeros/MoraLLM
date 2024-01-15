@@ -55,7 +55,7 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
     return interviews
 
 #Merge interviews and surveys
-def merge_surveys(interviews, quantize_classes = True, surveys_folder = 'data/interviews/surveys', alignment_file = 'data/interviews/alignments/interview-survey.csv'):
+def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignment_file = 'data/interviews/alignments/interview-survey.csv'):
 
     surveys = []
     for file in os.listdir(surveys_folder):
@@ -70,7 +70,8 @@ def merge_surveys(interviews, quantize_classes = True, surveys_folder = 'data/in
     alignment = pd.read_csv(alignment_file)
     surveys = surveys.merge(alignment, on = ['Wave', 'Survey Id'], how = 'inner')
 
-    surveys['Parent Education'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x[0], x[1]) if (x[0] <= max(EDUCATION.keys())) and (x[1] <= max(EDUCATION.keys())) else min(x[0], x[1]), axis=1)
+    surveys['Parent Education (raw)'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x[0], x[1]) if (x[0] <= max(EDUCATION.keys())) and (x[1] <= max(EDUCATION.keys())) else min(x[0], x[1]), axis=1)
+    surveys['Parent Education'] = surveys['Parent Education (raw)'].apply(lambda x: EDUCATION.get(x, pd.NA))
     surveys['Pot'] = surveys['Pot'].apply(lambda x: x if x in range(1, MAX_POT_VALUE + 1) else pd.NA)
     surveys['Drink'] = surveys['Drink'].apply(lambda x: MAX_DRINK_VALUE + 1 - x if x in range(1, MAX_DRINK_VALUE + 1) else pd.NA)
     surveys['Cheat'] = surveys['Cheat'].apply(lambda x: MAX_CHEAT_VALUE + 1 - x if x in range(1, MAX_CHEAT_VALUE + 1) else pd.NA)
@@ -82,10 +83,9 @@ def merge_surveys(interviews, quantize_classes = True, surveys_folder = 'data/in
     surveys['Decision Taking'] = surveys['Decision Taking'].apply(lambda x: DECISION_TAKING.get(x, pd.NA))
     surveys['Grades'] = surveys['Grades'].apply(lambda x: x if x in range(1, MAX_GRADES_VALUE + 1) else pd.NA)
     surveys['Church Attendance'] = surveys['Church Attendance'].apply(lambda x: x if x in range(1, MAX_CHURCH_ATTENDANCE_VALUE + 1) else pd.NA)
-
-    if quantize_classes:
-        surveys['Income'] = surveys['Income'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
-        surveys['Parent Education'] = surveys['Parent Education'].apply(lambda x: EDUCATION.get(x, pd.NA))
+    
+    surveys['Income (raw)'] = surveys['Income (raw)'].apply(lambda i: i if i in HOUSEHOLD_CLASS.keys() else pd.NA)
+    surveys['Income'] = surveys['Income (raw)'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
     
     interviews = interviews.merge(surveys, on = ['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
 

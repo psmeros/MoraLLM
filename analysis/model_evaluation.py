@@ -53,7 +53,7 @@ def plot_model_evaluation(codings, models, prefix):
     min_loss = losses[MORALITY_ORIGIN].sum(axis=1).min()
     plt.axvline(x=coders_agreement, linestyle='-', linewidth=4, color='indianred', label='Coders Disagreement')
     plt.axvline(x=min_loss, linestyle='--', linewidth=1, color='grey')
-    plt.xlabel('Mean Squared Error')
+    plt.xlabel('Normalized Mean Squared Error')
     plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 2))[1:], str(round(min_loss, 2))[1:]])
     plt.title('Model Comparison')
     plt.legend(loc='upper right', bbox_to_anchor=(1.65, 1.03), fontsize='small')

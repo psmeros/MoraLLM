@@ -12,21 +12,16 @@ from preprocessing.metadata_parser import merge_codings
 
 #Plot mean-squared error for all models
 def plot_model_evaluation(codings, models, prefix):
-
     #Compute golden labels
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
     coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    golden_labels = coder_A_labels + coder_B_labels
-    
-    #Transform labels to probabilities
-    golden_labels = golden_labels.div(golden_labels.sum(axis=1), axis=0)
-    coder_A_labels = coder_A_labels.div(coder_A_labels.sum(axis=1), axis=0).fillna(0)
-    coder_B_labels = coder_B_labels.div(coder_B_labels.sum(axis=1), axis=0).fillna(0)
+    golden_labels = (coder_A_labels & coder_B_labels)
 
-    #Compute coders agreement and individual loss
-    coders_agreement = pd.Series({mo:mean_squared_error(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}).sum()
-    coder_A_loss = pd.Series({mo:mean_squared_error(golden_labels[mo], coder_A_labels[mo]) for mo in MORALITY_ORIGIN}).sum()
-    coder_B_loss = pd.Series({mo:mean_squared_error(golden_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}).sum()
+    #Loss weights
+    weights = golden_labels.sum()/golden_labels.sum().sum()
+
+    #Compute coders agreement
+    coders_agreement = (pd.Series({mo:mean_squared_error(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}) * weights).sum()
 
     #Compute mean squared error for all models
     losses = []
@@ -44,7 +39,7 @@ def plot_model_evaluation(codings, models, prefix):
             interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-'+model+'.pkl')
         
         interviews = merge_codings(interviews)[MORALITY_ORIGIN]
-        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], interviews[mo]) for mo in MORALITY_ORIGIN}])
+        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], interviews[mo]) for mo in MORALITY_ORIGIN}]) * weights
         loss['Model'] = model
         losses.append(loss)
 
@@ -54,17 +49,12 @@ def plot_model_evaluation(codings, models, prefix):
     #Plot model comparison
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    losses.plot(kind='barh', x = 'Model', stacked=True, colormap='Set2')
-    line_1 = round(coder_A_loss, 2)
-    line_2 = round(coder_B_loss, 2)
-    line_3 = round(coders_agreement, 2)
-    min_loss = round(losses[MORALITY_ORIGIN].sum(axis=1).min(), 2)
-    plt.axvline(x=line_1, linestyle='-.', linewidth=4, color='indianred', label='Coder A Error')
-    plt.axvline(x=line_2, linestyle=':', linewidth=4, color='indianred', label='Coder B Error')
-    plt.axvline(x=line_3, linestyle='-', linewidth=4, color='indianred', label='Coders Disagreement')
-    plt.axvline(x=min_loss, linestyle='--', linewidth=1, color='indianred')
+    losses.plot(kind='barh', x = 'Model', stacked=True, color=list(sns.color_palette('Set2')))
+    min_loss = losses[MORALITY_ORIGIN].sum(axis=1).min()
+    plt.axvline(x=coders_agreement, linestyle='-', linewidth=4, color='indianred', label='Coders Disagreement')
+    plt.axvline(x=min_loss, linestyle='--', linewidth=1, color='grey')
     plt.xlabel('Mean Squared Error')
-    plt.xticks([line_1, line_2, line_3, min_loss], [str(line_1)[1:], str(line_2)[1:], str(line_3)[1:], str(min_loss)[1:]])
+    plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 2))[1:], str(round(min_loss, 2))[1:]])
     plt.title('Model Comparison')
     plt.legend(loc='upper right', bbox_to_anchor=(1.65, 1.03), fontsize='small')
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')
@@ -88,6 +78,7 @@ def plot_coders_agreement(codings):
     ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=6), vmin=-0.2, vmax=1)
     plt.ylabel('Coder A')
     plt.xlabel('Coder B')
+    plt.xticks(rotation=45, ha='right')
     colorbar = ax.collections[0].colorbar
     colorbar.set_ticks([n/10 for n in range(-1, 10, 2)]) 
     colorbar.set_ticklabels(['Poor', 'Slight', 'Fair', 'Moderate', 'Substantial', 'Perfect'])
@@ -99,7 +90,7 @@ def plot_coders_agreement(codings):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
-    models = ['baseline', 'lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'top', 'ml-top']
+    models = ['lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'top', 'ml-top']
     prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
     codings = pd.read_pickle('data/cache/'+prefix+'morality_model-top.pkl')[['Wave', 'Interview Code']]
     codings = merge_codings(codings)

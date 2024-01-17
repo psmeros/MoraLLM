@@ -12,7 +12,7 @@ from sklearn.linear_model import LinearRegression, Ridge
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
-from preprocessing.constants import CHATGPT_PROMPT, CODERS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
+from preprocessing.constants import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
 from preprocessing.helpers import display_notification
 from preprocessing.metadata_parser import merge_codings
 from preprocessing.transcript_parser import wave_parser
@@ -217,7 +217,7 @@ def merge_morality_origins(interviews):
 if __name__ == '__main__':
     #Hyperparameters
     config = [3]
-    models = ['lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'top', 'ml-top']
+    models = ['lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'entail_ml']
     section = 'Morality_Origin'
 
     for c in config:
@@ -229,11 +229,17 @@ if __name__ == '__main__':
                 interviews.to_pickle('data/cache/morality_model-'+model+'.pkl')
                 display_notification(model + ' Morality Origin Computed!')
         elif c == 2:
-            interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
-            interviews = inform_morality_origin_model(interviews)
-            interviews.to_pickle('data/cache/morality_model-ml-top.pkl')
-        elif c == 3:
             for model in models:
                 interviews = pd.read_pickle('data/cache/morality_model-'+model+'.pkl')
                 interviews = merge_morality_origins(interviews)
                 interviews.to_pickle('data/cache/sm-morality_model-'+model+'.pkl')
+        elif c == 3:
+            prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
+
+            interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-entail_explained.pkl')
+            interviews = inform_morality_origin_model(interviews)
+            interviews.to_pickle('data/cache/'+prefix+'morality_model-top.pkl')
+
+            interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-entail_ml.pkl')
+            interviews = inform_morality_origin_model(interviews)
+            interviews.to_pickle('data/cache/'+prefix+'morality_model-ml-top.pkl')

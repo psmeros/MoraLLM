@@ -7,7 +7,7 @@ from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 
-from preprocessing.constants import CODERS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
+from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
 
 
@@ -32,7 +32,7 @@ def action_prediction(interviews, actions):
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
     ax = sns.barplot(action_prediction, x='F1 Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette=sns.color_palette('Set2'))
-    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    ax.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Estimator')
     plt.savefig('data/plots/predictors-action_prediction.png', bbox_inches='tight')
     plt.show()
 
@@ -56,10 +56,15 @@ def moral_consciousness(interviews):
     for estimator in MORALITY_ESTIMATORS:
         correlations = pd.DataFrame(columns=CODED_WAVES, index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic', 'Intuitive - Age', 'Intuitive - GPA', 'Intuitive - Gender', 'Intuitive - Race', 'Intuitive - Church Attendance', 'Intuitive - Parent Education', 'Intuitive - Parent Income'])
         for wave in CODED_WAVES:
-            Intuitive = interviews[wave + ':Experience_' + estimator]
-            Consequentialist = interviews[wave + ':Consequences_' + estimator]
-            Social = interviews[[wave + ':' + mo + '_' + estimator for mo in ['Family', 'Community', 'Friends']]]
-            Social = Social.mean(axis=1) if estimator == 'Model' else Social.any(axis=1) if estimator == 'Coders' else None
+            if MERGE_MORALITY_ORIGINS:
+                Intuitive = interviews[wave + ':Intuitive_' + estimator]
+                Consequentialist = interviews[wave + ':Consequentialist_' + estimator]
+                Social = interviews[wave + ':Social_' + estimator]
+            else:
+                Intuitive = interviews[wave + ':Experience_' + estimator]
+                Consequentialist = interviews[wave + ':Consequences_' + estimator]
+                Social = interviews[[wave + ':' + mo + '_' + estimator for mo in ['Family', 'Community', 'Friends']]]
+                Social = Social.mean(axis=1) if estimator == 'Model' else Social.any(axis=1) if estimator == 'Coders' else None
 
             correlations[wave].loc['Intuitive - Consequentialist'] = compute_correlation(pearsonr(Intuitive, Consequentialist))
             correlations[wave].loc['Social - Consequentialist'] = compute_correlation(pearsonr(Social, Consequentialist))
@@ -101,7 +106,8 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
-    interviews = pd.read_pickle('data/cache/morality_model-ml-top.pkl')
+    prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
+    interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-ml-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
     codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)

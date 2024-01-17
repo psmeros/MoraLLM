@@ -9,7 +9,7 @@ from sklearn.manifold import TSNE
 from sklearn.preprocessing import minmax_scale
 from __init__ import *
 
-from preprocessing.constants import CODERS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
+from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
 
 
@@ -108,7 +108,7 @@ def plot_morality_shift(interviews, shift_threshold):
     for estimator, position in zip(MORALITY_ESTIMATORS, [[0, .45], [.55, 1]]):
         shifts, _ = compute_morality_shifts(interviews, estimator, shift_threshold)
         #Prepare data
-        sns.set_palette("Set2")
+        sns.set_palette('Set2')
         mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(CODED_WAVES) for j, mo in enumerate(MORALITY_ORIGIN)}
         shifts = shifts.replace(mapping)
         label = pd.DataFrame([(i,j/(.69*len(MORALITY_ORIGIN))) for i, _ in enumerate(CODED_WAVES) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
@@ -124,7 +124,8 @@ def plot_morality_shift(interviews, shift_threshold):
 
     #Plot
     fig = go.Figure(data=figs, layout=go.Layout(height=400, width=800, font_size=14))
-    fig.update_layout(title=go.layout.Title(text='Morality Shift by Coders (left) and Model (right)<br><sup>Shift Threshold: '+str(int(shift_threshold*100))+'%</sup>', x=0.08, xanchor='left'))
+    subtitle = '<br><sup>Shift Threshold: '+str(int(shift_threshold*100))+'%</sup>' if shift_threshold > 0 else ''
+    fig.update_layout(title=go.layout.Title(text='Morality Shift by Model (left) and Coders (right)'+subtitle, x=0.08, xanchor='left'))
     fig.write_image('data/plots/demographics-morality_shift.png')
     fig.show()
 
@@ -171,16 +172,16 @@ def plot_ecdf(interviews):
     interviews = merge_codings(interviews)
     codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
 
-    codings = pd.DataFrame(codings.values, columns=MORALITY_ORIGIN).unstack().reset_index().rename(columns={'level_0':'Morality Origin', 0:'Value'}).drop('level_1', axis=1)
+    codings = pd.DataFrame(codings.values, columns=MORALITY_ORIGIN).unstack().reset_index().rename(columns={'level_0':'Morality', 0:'Value'}).drop('level_1', axis=1)
     codings['Estimator'] = 'Coders'
-    interviews = interviews[MORALITY_ORIGIN].unstack().reset_index().rename(columns={'level_0':'Morality Origin', 0:'Value'}).drop('level_1', axis=1)
+    interviews = interviews[MORALITY_ORIGIN].unstack().reset_index().rename(columns={'level_0':'Morality', 0:'Value'}).drop('level_1', axis=1)
     interviews['Estimator'] = 'Model'
     interviews = pd.concat([interviews, codings])
     
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(15, 10))
-    sns.displot(data=interviews, x='Value', hue='Morality Origin', col='Estimator', kind='ecdf', linewidth=3, palette=sns.color_palette('Set2'))
+    sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=3, palette=sns.color_palette('Set2'))
     plt.savefig('data/plots/demographics-morality_ecdf.png', bbox_inches='tight')
     plt.show()
 
@@ -202,7 +203,7 @@ def plot_class_movement(interviews):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(15, 10))
-    g = sns.lmplot(data=interviews, x='Household Income Diff', y='Value', hue='Estimator', col='Morality Origin', col_wrap=4, truncate=False, x_jitter=.3, seed=42, palette=sns.color_palette('Set2'))
+    g = sns.lmplot(data=interviews, x='Household Income Diff', y='Value', hue='Estimator', col='Morality Origin', col_wrap=3, truncate=False, x_jitter=.3, seed=42, palette=sns.color_palette('Set2'))
     g.set_ylabels('')
     g.set_titles('Morality: {col_name}')
     g.fig.subplots_adjust(wspace=0.1)
@@ -256,7 +257,8 @@ def plot_action_probability(interviews, n_clusters, actions):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2,3,4,5,6]
-    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
+    prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
+    interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-ml-top.pkl')
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
     interviews = merge_surveys(interviews)
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
@@ -269,7 +271,7 @@ if __name__ == '__main__':
             for attribute in attributes:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
-            shift_threshold = .01
+            shift_threshold = 0
             plot_morality_shift(interviews, shift_threshold)
         elif c == 3:
             shift_threshold = 0

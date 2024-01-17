@@ -254,3 +254,6 @@ DECISION_TAKING = {1:'Expressive Individualist',
 
 CODED_WAVES = ['Wave 1', 'Wave 3']
 MORALITY_ESTIMATORS = ['Model', 'Coders']
+
+MERGE_MORALITY_ORIGINS = True
+MORALITY_ORIGIN = ['Intuitive', 'Consequentialist', 'Social'] if MERGE_MORALITY_ORIGINS else MORALITY_ORIGIN

@@ -1,5 +1,5 @@
 from __init__ import *
-from preprocessing.constants import DECISION_TAKING, EDUCATION, HOUSEHOLD_CLASS, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, SURVEY_ATTRIBUTES
+from preprocessing.constants import DECISION_TAKING, EDUCATION, HOUSEHOLD_CLASS, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, MERGE_MORALITY_ORIGINS, SURVEY_ATTRIBUTES
 
 from preprocessing.transcript_parser import wave_parser
 
@@ -38,6 +38,12 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
             coding['Family'] = coding['Family'] | coding['Parents']
             coding = coding.drop(['Intrinsic', 'Parents'], axis=1)
 
+            if MERGE_MORALITY_ORIGINS:
+                coding['Intuitive'] = coding['Experience']
+                coding['Consequentialist'] = coding['Consequences']
+                coding['Social'] = coding[['Family', 'Community', 'Friends']].any(axis=1)
+                coding = coding.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
+                
             if coding.attrs['Wave'] == 1:
                 codings_wave_1.append(coding)
             elif coding.attrs['Wave'] == 3:

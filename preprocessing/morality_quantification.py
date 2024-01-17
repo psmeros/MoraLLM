@@ -206,10 +206,18 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
     
     return interviews
 
+#Merge morality origins
+def merge_morality_origins(interviews):
+    interviews['Intuitive'] = interviews['Experience']
+    interviews['Consequentialist'] = interviews['Consequences']
+    interviews['Social'] = interviews[['Family', 'Community', 'Friends']].max(axis=1)
+    interviews = interviews.drop(MORALITY_ORIGIN, axis=1)
+    return interviews
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2]
-    models = ['entail_ml']
+    config = [3]
+    models = ['lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'top', 'ml-top']
     section = 'Morality_Origin'
 
     for c in config:
@@ -224,3 +232,8 @@ if __name__ == '__main__':
             interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
             interviews = inform_morality_origin_model(interviews)
             interviews.to_pickle('data/cache/morality_model-ml-top.pkl')
+        elif c == 3:
+            for model in models:
+                interviews = pd.read_pickle('data/cache/morality_model-'+model+'.pkl')
+                interviews = merge_morality_origins(interviews)
+                interviews.to_pickle('data/cache/sm-morality_model-'+model+'.pkl')

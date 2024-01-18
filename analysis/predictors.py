@@ -95,8 +95,8 @@ def moral_consciousness(interviews):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', col='Correlation', hue='Wave', facet_kws={'sharex':False, 'sharey':False}, robust=True, palette=sns.color_palette('Set2'))
-    g.set_titles('{col_name}')
+    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', row='Correlation', hue='Wave', facet_kws={'sharex':False, 'sharey':False}, seed=42, palette=sns.color_palette('Set2'))
+    g.set_titles('{row_name}')
     g.set_xlabels('')
     g.set_ylabels('')
     plt.savefig('data/plots/predictors-correlations', bbox_inches='tight')

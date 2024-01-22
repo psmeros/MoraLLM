@@ -18,7 +18,7 @@ def plot_model_evaluation(codings, models, prefix):
     golden_labels = (coder_A_labels & coder_B_labels)
 
     #Loss weights
-    weights = golden_labels.sum()/golden_labels.sum().sum()
+    weights = 1 - golden_labels.sum()/golden_labels.sum().sum()
 
     #Compute coders agreement
     coders_agreement = (pd.Series({mo:mean_squared_error(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}) * weights).sum()

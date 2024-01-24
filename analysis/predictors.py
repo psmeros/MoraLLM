@@ -2,7 +2,7 @@ import pandas as pd
 import seaborn as sns
 from __init__ import *
 from matplotlib import pyplot as plt
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, zscore
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
@@ -114,6 +114,11 @@ if __name__ == '__main__':
     interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
     interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
     interviews = merge_matches(interviews, wave_list=CODED_WAVES)
+
+    #Filter outliers
+    z_threshold = 2
+    outliers = pd.DataFrame([abs(zscore(interviews[wave + ':' + morality + '_' + MORALITY_ESTIMATORS[0]])) > z_threshold for wave in CODED_WAVES for morality in ['Intuitive', 'Consequentialist', 'Social']]).any()
+    interviews = interviews[~outliers]
 
     for c in config:
         if c == 1:

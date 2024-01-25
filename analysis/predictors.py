@@ -1,11 +1,11 @@
+import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.linear_model import LogisticRegressionCV
+from sklearn.metrics import f1_score, make_scorer
 from __init__ import *
 from matplotlib import pyplot as plt
 from scipy.stats import pearsonr, zscore
-from sklearn.discriminant_analysis import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
 
 from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
@@ -18,26 +18,26 @@ def action_prediction(interviews, actions):
         for estimator in MORALITY_ESTIMATORS:
             input_interviews = interviews[[CODED_WAVES[0] + ':' + mo + '_' + estimator  for mo in MORALITY_ORIGIN]+[CODED_WAVES[0] + ':' + action]].dropna()
             y = input_interviews[CODED_WAVES[0] + ':' + action].apply(lambda d: False if d == 1 else True).values
-            X = StandardScaler().fit_transform(input_interviews.drop([CODED_WAVES[0] + ':' + action], axis=1).values)
-        
-            clf = GridSearchCV(RandomForestClassifier(random_state=42), {'n_estimators': [1, 2, 3, 4, 5, 10, 20, 30], 'max_depth': [1, 2, 3, 4, 5]}, scoring='f1', cv=2)
-            clf.fit(X, y)
+            X = input_interviews.drop([CODED_WAVES[0] + ':' + action], axis=1).values
 
-            feature_importances = RandomForestClassifier(**clf.best_params_, random_state=42).fit(X, y).feature_importances_
-            feature_importances = {item[0]:item[1] for item in sorted(zip(MORALITY_ORIGIN, feature_importances), key=lambda x: x[1], reverse=True)}
-            action_prediction.append({'Action' : action, 'Estimator' : estimator, 'F1 Score' : clf.best_score_, 'Feature_Importances' : feature_importances})
-    action_prediction = pd.DataFrame(action_prediction)
+            classifier = LogisticRegressionCV(cv=5, random_state=42, fit_intercept=False, scoring=make_scorer(lambda y_true, y_pred: f1_score(y_true, y_pred, average='weighted')))
+            classifier.fit(X, y)
+            score = np.asarray(list(classifier.scores_.values())).reshape(-1)
+            coefs = {mo:coef for mo, coef in zip(MORALITY_ORIGIN, classifier.coef_[0])}
+            
+            action_prediction.append(pd.DataFrame({'F1-Weighted Score' : score, 'Coefs' : [coefs] * len(score), 'Action' : action, 'Estimator' : estimator}))
+    action_prediction = pd.concat(action_prediction)
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
-    ax = sns.barplot(action_prediction, x='F1 Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette=sns.color_palette('Set2'))
+    ax = sns.barplot(action_prediction, x='F1-Weighted Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette=sns.color_palette('Set2'))
     ax.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Estimator')
     plt.savefig('data/plots/predictors-action_prediction.png', bbox_inches='tight')
     plt.show()
 
-    action_prediction = action_prediction.groupby('Action')['Feature_Importances'].apply(list).apply(lambda l: (pd.Series(l[0]) + pd.Series(l[1])).idxmax())
-    action_prediction = pd.DataFrame(action_prediction.reindex(actions).reset_index().values, columns=['Action', 'Key Morality Origin'])
+    action_prediction = action_prediction.drop_duplicates(subset=['Action', 'Estimator', 'F1-Weighted Score']).groupby('Action')['Coefs'].apply(list).apply(lambda l: (pd.Series(l[0]) + pd.Series(l[1])).idxmax())
+    action_prediction = pd.DataFrame(action_prediction.reindex(actions).reset_index().values, columns=['Action', 'Key Morality'])
     print(action_prediction)
 
 def moral_consciousness(interviews):
@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     #Filter outliers
     z_threshold = 2
-    outliers = pd.DataFrame([abs(zscore(interviews[wave + ':' + morality + '_' + MORALITY_ESTIMATORS[0]])) > z_threshold for wave in CODED_WAVES for morality in ['Intuitive', 'Consequentialist', 'Social']]).any()
+    outliers = pd.DataFrame([abs(zscore(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]])) > z_threshold for wave in CODED_WAVES for mo in MORALITY_ORIGIN]).any()
     interviews = interviews[~outliers]
 
     for c in config:

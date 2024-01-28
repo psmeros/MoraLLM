@@ -126,8 +126,7 @@ def locate_morality_section(interviews, section):
 def inform_morality_origin_model(interviews):
     #Compute golden labels
     codings = merge_codings(interviews)
-    golden_labels = codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]]) + int(c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-    golden_labels = golden_labels.div(golden_labels.sum(axis=1), axis=0)
+    golden_labels = codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
     golden_labels.columns = MORALITY_ORIGIN
 
     #Compute coefficients for more accurate morality origin estimation

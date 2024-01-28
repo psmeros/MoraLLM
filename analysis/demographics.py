@@ -258,7 +258,7 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [1,2,3,4,5,6]
     prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
-    interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-ml-top.pkl')
+    interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-top.pkl')
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
     interviews = merge_surveys(interviews)
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},

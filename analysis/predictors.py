@@ -40,7 +40,10 @@ def action_prediction(interviews, actions):
     action_prediction = pd.DataFrame(action_prediction.reindex(actions).reset_index().values, columns=['Action', 'Key Morality'])
     print(action_prediction)
 
-def moral_consciousness(interviews):
+def moral_consciousness(interviews, outlier_threshold):
+    if outlier_threshold:
+        outliers = pd.DataFrame([abs(zscore(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]])) > outlier_threshold for wave in CODED_WAVES for mo in MORALITY_ORIGIN]).any()
+        interviews = interviews[~outliers]
     desicion_taking = pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Decision Taking'])
     Age = interviews[CODED_WAVES[0] + ':Age'].dropna().astype(int)
     Grades = interviews[CODED_WAVES[0] + ':Grades'].dropna().astype(int)
@@ -95,19 +98,35 @@ def moral_consciousness(interviews):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', row='Correlation', hue='Wave', facet_kws={'sharex':False, 'sharey':False}, seed=42, palette=sns.color_palette('Set2'))
-    g.set_titles('{row_name}')
+    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', col='Correlation', hue='Wave', robust=True, seed=42, palette=sns.color_palette('Set2'))
+    g.set_titles('{col_name}')
     g.set_xlabels('')
     g.set_ylabels('')
     plt.savefig('data/plots/predictors-correlations', bbox_inches='tight')
     plt.show()
 
+def compare_deviations(interviews):
+    data = []
+    data.append(pd.DataFrame([{'Standard Deviation' : np.std(interviews[CODED_WAVES[1] + ':Intuitive_' + estimator]) - np.std(interviews[CODED_WAVES[0] + ':Intuitive_' + estimator]), 'Morality' : 'Intuitive', 'Estimator' : estimator} for estimator in MORALITY_ESTIMATORS]))
+    data.append(pd.DataFrame([{'Standard Deviation' : np.std(interviews[CODED_WAVES[1] + ':Consequentialist_' + estimator]) - np.std(interviews[CODED_WAVES[0] + ':Consequentialist_' + estimator]), 'Morality' : 'Consequentialist', 'Estimator' : estimator} for estimator in MORALITY_ESTIMATORS]))
+    data.append(pd.DataFrame([{'Standard Deviation' : np.std(interviews[CODED_WAVES[1] + ':Social_' + estimator]) - np.std(interviews[CODED_WAVES[0] + ':Social_' + estimator]), 'Morality' : 'Social', 'Estimator' : estimator} for estimator in MORALITY_ESTIMATORS]))
+    data = pd.concat(data)
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    plt.figure(figsize=(20, 10))
+    ax = sns.boxplot(data, y='Estimator', x='Standard Deviation', orient='h', palette=sns.color_palette('Set2'))
+    ax.set_xlabel('Standard Deviation Difference')
+    plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
+    plt.show()
+
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2]
+    config = [2,3]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
-    interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-ml-top.pkl')
+    interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
     codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
@@ -115,13 +134,11 @@ if __name__ == '__main__':
     interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
     interviews = merge_matches(interviews, wave_list=CODED_WAVES)
 
-    #Filter outliers
-    z_threshold = 2
-    outliers = pd.DataFrame([abs(zscore(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]])) > z_threshold for wave in CODED_WAVES for mo in MORALITY_ORIGIN]).any()
-    interviews = interviews[~outliers]
-
     for c in config:
         if c == 1:
             action_prediction(interviews, actions=actions)
         elif c == 2:
-            moral_consciousness(interviews)
+            outlier_threshold = 2
+            moral_consciousness(interviews, outlier_threshold=outlier_threshold)
+        elif c == 3:
+            compare_deviations(interviews)

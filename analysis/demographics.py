@@ -56,7 +56,7 @@ def plot_morality_evolution(interviews, attribute):
     plt.show()
 
 #Compute morality shifts across waves
-def compute_morality_shifts(interviews, estimator, shift_threshold, attribute_name=None, attribute_value=None):
+def compute_morality_shifts(interviews, estimator, attribute_name=None, attribute_value=None):
     interviews = merge_codings(interviews)
     if estimator == 'Coders':
         codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
@@ -92,17 +92,14 @@ def compute_morality_shifts(interviews, estimator, shift_threshold, attribute_na
     shift = shift.merge(pd.DataFrame(interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].mean().reset_index().values, columns=['source', 'prior']))
     shift['value'] = shift['value'] * shift['prior']
 
-    #Apply threshold
-    shift = shift[shift['value'] > shift_threshold]
-
     return shift, N
 
 #Plot morality shift
-def plot_morality_shift(interviews, shift_threshold):
+def plot_morality_shift(interviews):
     
     figs = []
     for estimator, position in zip(MORALITY_ESTIMATORS, [[0, .45], [.55, 1]]):
-        shifts, _ = compute_morality_shifts(interviews, estimator, shift_threshold)
+        shifts, _ = compute_morality_shifts(interviews, estimator)
         #Prepare data
         sns.set_palette('Set2')
         mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(CODED_WAVES) for j, mo in enumerate(MORALITY_ORIGIN)}
@@ -120,19 +117,18 @@ def plot_morality_shift(interviews, shift_threshold):
 
     #Plot
     fig = go.Figure(data=figs, layout=go.Layout(height=400, width=800, font_size=14))
-    subtitle = '<br><sup>Shift Threshold: '+str(int(shift_threshold*100))+'%</sup>' if shift_threshold > 0 else ''
-    fig.update_layout(title=go.layout.Title(text='Morality Shift by Model (left) and Coders (right)'+subtitle, x=0.08, xanchor='left'))
+    fig.update_layout(title=go.layout.Title(text='Morality Shift by Model (left) and Coders (right)', x=0.08, xanchor='left'))
     fig.write_image('data/plots/demographics-morality_shift.png')
     fig.show()
 
 #Plot morality shift by attribute
-def plot_morality_shift_by_attribute(interviews, attribute, shift_threshold):
+def plot_morality_shift_by_attribute(interviews, attribute):
     #Prepare data
     shifts = []
     col_order = []
     for estimator in MORALITY_ESTIMATORS:
         for attribute_value in attribute['values']:
-            shift, N = compute_morality_shifts(interviews, estimator=estimator, shift_threshold=shift_threshold, attribute_name=attribute['name'], attribute_value=attribute_value)
+            shift, N = compute_morality_shifts(interviews, estimator=estimator, attribute_name=attribute['name'], attribute_value=attribute_value)
             if not shift.empty:
                 shift[attribute['name']] = attribute_value + ' (N = ' + str(N) + ')'
                 col_order.append(shift[attribute['name']].loc[0])
@@ -266,12 +262,10 @@ if __name__ == '__main__':
             for attribute in attributes:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
-            shift_threshold = 0
-            plot_morality_shift(interviews, shift_threshold)
+            plot_morality_shift(interviews)
         elif c == 3:
-            shift_threshold = 0
             for attribute in attributes:
-                plot_morality_shift_by_attribute(interviews, attribute, shift_threshold)
+                plot_morality_shift_by_attribute(interviews, attribute)
         elif c == 4:
             plot_ecdf(interviews)
         elif c == 5:

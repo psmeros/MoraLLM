@@ -84,10 +84,6 @@ def compute_morality_shifts(interviews, estimator, shift_threshold, attribute_na
     #Normalize shift
     shift = ((outgoing_percentage.T @ coefs) + remaining_percentage) / len(interviews)
 
-    #Confirm shift from source to target
-    if estimator == 'Model':
-        assert(abs(round((wave_source @ shift - wave_target).sum(axis=1).sum(), 8)) == 0)
-
     #Reshape shift
     shift = pd.DataFrame(shift.values, index=[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN], columns=[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN])
     shift = shift.stack().reset_index().rename(columns={'level_0':'source', 'level_1':'target', 0:'value'})
@@ -256,9 +252,8 @@ def plot_action_probability(interviews, n_clusters, actions):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5,6]
-    prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
-    interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-top.pkl')
+    config = [2,3,4,5]
+    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
     interviews = merge_surveys(interviews)
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},

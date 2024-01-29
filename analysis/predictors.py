@@ -125,8 +125,7 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [2,3]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
-    prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
-    interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-top.pkl')
+    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
     codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)

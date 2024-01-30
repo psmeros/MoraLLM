@@ -96,7 +96,6 @@ def compute_morality_shifts(interviews, estimator, attribute_name=None, attribut
 
 #Plot morality shift
 def plot_morality_shift(interviews):
-    
     figs = []
     for estimator, position in zip(MORALITY_ESTIMATORS, [[0, .45], [.55, 1]]):
         shifts, _ = compute_morality_shifts(interviews, estimator)
@@ -122,18 +121,20 @@ def plot_morality_shift(interviews):
     fig.show()
 
 #Plot morality shift by attribute
-def plot_morality_shift_by_attribute(interviews, attribute):
+def plot_morality_shift_by_attribute(interviews, attributes):
     #Prepare data
     shifts = []
-    col_order = []
     for estimator in MORALITY_ESTIMATORS:
-        for attribute_value in attribute['values']:
-            shift, N = compute_morality_shifts(interviews, estimator=estimator, attribute_name=attribute['name'], attribute_value=attribute_value)
-            if not shift.empty:
-                shift[attribute['name']] = attribute_value + ' (N = ' + str(N) + ')'
-                col_order.append(shift[attribute['name']].loc[0])
-                shift['estimator'] = estimator
-                shifts.append(shift)
+        for i, attribute in enumerate(attributes):
+            attributes[i]['N'] = {}
+            for j, attribute_value in enumerate(attribute['values']):
+                shift, N = compute_morality_shifts(interviews, estimator=estimator, attribute_name=attribute['name'], attribute_value=attribute_value)
+                if not shift.empty:
+                    shift['Attribute'] = attribute['name']
+                    attributes[i]['N'][j] = attribute_value + ' (N = ' + str(N) + ')'
+                    shift['Attribute Position'] = j
+                    shift['Estimator'] = estimator
+                    shifts.append(shift)
     shifts = pd.concat(shifts)
     shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
     shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
@@ -142,22 +143,23 @@ def plot_morality_shift_by_attribute(interviews, attribute):
     source_shifts['value'] = -source_shifts['value']
     target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
     shifts = pd.concat([source_shifts, target_shifts])
-    shifts = shifts.groupby(['morality', 'estimator', attribute['name']])['value'].sum().reset_index()
+    shifts = shifts.groupby(['morality', 'Estimator', 'Attribute', 'Attribute Position'])['value'].sum().reset_index()
     shifts['value'] = shifts['value'] * 100
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=1)
-    plt.figure(figsize=(10, 10))
-    g = sns.FacetGrid(shifts, col=attribute['name'], col_order=pd.Series(col_order).drop_duplicates())
-    g.map_dataframe(sns.barplot, x='value', y='morality', hue='estimator', hue_order=MORALITY_ESTIMATORS, orient='h', order=MORALITY_ORIGIN, palette=sns.color_palette('Set2'), errorbar=None)
-    g.fig.subplots_adjust(wspace=0.3)
-    g.add_legend()
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(20, 10))
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Attribute Position', col_order=[attribute['name'] for attribute in attributes], kind='bar', errorbar=None, seed=42, palette=sns.color_palette('Set2'))
+    g.fig.subplots_adjust(hspace=.2)
+    g.set(xlim=(-12, 12))
     g.set_xlabels('')
     g.set_ylabels('')
-    g.set_titles(attribute['name'] + ': {col_name}')
+    for i, _ in enumerate(g.row_names):
+        for j, attribute in enumerate(g.col_names):
+            g.axes[i,j].set_title(attribute + '\n' + attributes[j]['N'][i])
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.savefig('data/plots/demographics-morality_shift_by_'+attribute['name'].lower()+'.png', bbox_inches='tight')
+    plt.savefig('data/plots/demographics-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
 def plot_ecdf(interviews):
@@ -172,8 +174,8 @@ def plot_ecdf(interviews):
     
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(15, 10))
-    sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=3, palette=sns.color_palette('Set2'))
+    plt.figure(figsize=(20, 10))
+    sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=3, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
     plt.savefig('data/plots/demographics-morality_ecdf.png', bbox_inches='tight')
     plt.show()
 
@@ -194,7 +196,7 @@ def plot_class_movement(interviews):
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(15, 10))
+    plt.figure(figsize=(20, 10))
     g = sns.lmplot(data=interviews, x='Household Income Diff', y='Value', hue='Estimator', col='Morality Origin', col_wrap=3, truncate=False, x_jitter=.3, seed=42, palette=sns.color_palette('Set2'))
     g.set_ylabels('')
     g.set_titles('Morality: {col_name}')
@@ -254,8 +256,8 @@ if __name__ == '__main__':
     interviews = merge_surveys(interviews)
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                   {'name' : 'Race', 'values' : ['White', 'Other']},
-                  {'name' : 'Income', 'values' : ['Lower', 'Middle', 'Upper']},
-                  {'name' : 'Parent Education', 'values' : ['Primary', 'Secondary', 'Tertiary']}]
+                  {'name' : 'Income', 'values' : ['Upper', 'Lower']},
+                  {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']}]
 
     for c in config:
         if c == 1:
@@ -264,8 +266,7 @@ if __name__ == '__main__':
         elif c == 2:
             plot_morality_shift(interviews)
         elif c == 3:
-            for attribute in attributes:
-                plot_morality_shift_by_attribute(interviews, attribute)
+            plot_morality_shift_by_attribute(interviews, attributes)
         elif c == 4:
             plot_ecdf(interviews)
         elif c == 5:

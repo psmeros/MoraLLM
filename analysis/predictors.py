@@ -5,6 +5,7 @@ from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import f1_score, make_scorer
 from __init__ import *
 from matplotlib import pyplot as plt
+import matplotlib.ticker as mtick
 from scipy.stats import pearsonr, zscore
 
 from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
@@ -100,16 +101,12 @@ def moral_consciousness(interviews, outlier_threshold):
     plt.show()
 
 def compare_deviations(interviews):
-    data = []
-    data.append(pd.DataFrame([{'Standard Deviation' : np.std(interviews[CODED_WAVES[1] + ':Intuitive_' + estimator]) - np.std(interviews[CODED_WAVES[0] + ':Intuitive_' + estimator]), 'Morality' : 'Intuitive', 'Estimator' : estimator} for estimator in MORALITY_ESTIMATORS]))
-    data.append(pd.DataFrame([{'Standard Deviation' : np.std(interviews[CODED_WAVES[1] + ':Consequentialist_' + estimator]) - np.std(interviews[CODED_WAVES[0] + ':Consequentialist_' + estimator]), 'Morality' : 'Consequentialist', 'Estimator' : estimator} for estimator in MORALITY_ESTIMATORS]))
-    data.append(pd.DataFrame([{'Standard Deviation' : np.std(interviews[CODED_WAVES[1] + ':Social_' + estimator]) - np.std(interviews[CODED_WAVES[0] + ':Social_' + estimator]), 'Morality' : 'Social', 'Estimator' : estimator} for estimator in MORALITY_ESTIMATORS]))
-    data = pd.concat(data)
-
+    data = pd.concat([pd.DataFrame([{'Standard Deviation' : ((np.std(interviews[CODED_WAVES[1] + ':' + mo + '_' + estimator]) - np.std(interviews[CODED_WAVES[0] + ':' + mo + '_' + estimator])) / np.std(interviews[CODED_WAVES[0] + ':' + mo + '_' + estimator])) * 100, 'Morality' : mo, 'Estimator' : estimator} for estimator in MORALITY_ESTIMATORS]) for mo in MORALITY_ORIGIN])
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(20, 10))
     ax = sns.boxplot(data, y='Estimator', x='Standard Deviation', orient='h', palette=sns.color_palette('Set2'))
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     ax.set_xlabel('Standard Deviation Difference')
     plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
     plt.show()

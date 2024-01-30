@@ -137,23 +137,24 @@ def inform_morality_origin_model(interviews):
         coefs[mo] = regr.coef_[0][0]
     coefs = pd.Series(coefs)
 
-    #Multiply with coefficients and normalize
+    #Multiply with coefficients and add random gaussian noise
     interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN] * coefs
-    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0)
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].clip(lower=0.0, upper=1.0)
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN] - pd.DataFrame(abs(np.random.default_rng(42).normal(0, 1e-1, interviews[MORALITY_ORIGIN].shape)), columns=MORALITY_ORIGIN) * (interviews[MORALITY_ORIGIN] > .99).astype(int)
 
     return interviews
 
 #Compute morality origin of interviews
 def compute_morality_origin_model(interviews, model, section, dictionary_file='data/misc/eMFD.pkl'):
     #Zero-shot model
-    if model in ['entail', 'entail_ml', 'entail_explained']:
+    if model in ['entail', 'entail_ml', 'entail_explained', 'entail_ml_explained']:
         #Premise and hypothesis templates
         hypothesis_template = 'This example is {}.'
         morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
 
         #Model variants
-        multi_label = True if model == 'entail_ml' else False
-        morality_dictionary = MORALITY_ORIGIN_EXPLAINED if model in ['entail_ml', 'entail_explained'] else {mo:mo for mo in MORALITY_ORIGIN}
+        multi_label = True if model in ['entail_ml', 'entail_ml_explained'] else False
+        morality_dictionary = MORALITY_ORIGIN_EXPLAINED if model in ['entail_explained', 'entail_ml_explained'] else {mo:mo for mo in MORALITY_ORIGIN}
 
         #Trasformation functions
         classifier = lambda text: morality_pipeline(text.split(NEWLINE), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label)
@@ -205,18 +206,11 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
     
     return interviews
 
-#Merge morality origins
-def merge_morality_origins(interviews):
-    interviews['Intuitive'] = interviews['Experience']
-    interviews['Consequentialist'] = interviews['Consequences']
-    interviews['Social'] = interviews[['Family', 'Community', 'Friends']].max(axis=1)
-    interviews = interviews.drop(MORALITY_ORIGIN, axis=1)
-    return interviews
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
-    models = ['lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'entail_ml']
+    config = [2]
+    models = ['lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'entail_ml', 'entail_ml_explained']
     section = 'Morality_Origin'
 
     for c in config:
@@ -228,17 +222,11 @@ if __name__ == '__main__':
                 interviews.to_pickle('data/cache/morality_model-'+model+'.pkl')
                 display_notification(model + ' Morality Origin Computed!')
         elif c == 2:
-            for model in models:
-                interviews = pd.read_pickle('data/cache/morality_model-'+model+'.pkl')
-                interviews = merge_morality_origins(interviews)
-                interviews.to_pickle('data/cache/sm-morality_model-'+model+'.pkl')
-        elif c == 3:
-            prefix = 'sm-' if MERGE_MORALITY_ORIGINS else ''
-
-            interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-entail_explained.pkl')
+            interviews = pd.read_pickle('data/cache/morality_model-entail_ml_explained.pkl')
+            if MERGE_MORALITY_ORIGINS:
+                interviews['Intuitive'] = interviews['Experience']
+                interviews['Consequentialist'] = interviews['Consequences']
+                interviews['Social'] = interviews[['Family', 'Community', 'Friends']].max(axis=1)
+                interviews = interviews.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
             interviews = inform_morality_origin_model(interviews)
-            interviews.to_pickle('data/cache/'+prefix+'morality_model-top.pkl')
-
-            interviews = pd.read_pickle('data/cache/'+prefix+'morality_model-entail_ml.pkl')
-            interviews = inform_morality_origin_model(interviews)
-            interviews.to_pickle('data/cache/'+prefix+'morality_model-ml-top.pkl')
+            interviews.to_pickle('data/cache/morality_model-top.pkl')

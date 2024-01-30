@@ -56,49 +56,43 @@ def moral_consciousness(interviews, outlier_threshold):
     compute_correlation = lambda x: str(round(x[0], 3)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
 
     data = []
+    correlations = pd.DataFrame(columns=[estimator + ':' + wave for estimator in MORALITY_ESTIMATORS for wave in CODED_WAVES], index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic', 'Intuitive - Age', 'Intuitive - GPA', 'Intuitive - Gender', 'Intuitive - Race', 'Intuitive - Church Attendance', 'Intuitive - Parent Education', 'Intuitive - Parent Income'])
     for estimator in MORALITY_ESTIMATORS:
-        correlations = pd.DataFrame(columns=CODED_WAVES, index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic', 'Intuitive - Age', 'Intuitive - GPA', 'Intuitive - Gender', 'Intuitive - Race', 'Intuitive - Church Attendance', 'Intuitive - Parent Education', 'Intuitive - Parent Income'])
         for wave in CODED_WAVES:
-            if MERGE_MORALITY_ORIGINS:
-                Intuitive = interviews[wave + ':Intuitive_' + estimator]
-                Consequentialist = interviews[wave + ':Consequentialist_' + estimator]
-                Social = interviews[wave + ':Social_' + estimator]
-            else:
-                Intuitive = interviews[wave + ':Experience_' + estimator]
-                Consequentialist = interviews[wave + ':Consequences_' + estimator]
-                Social = interviews[[wave + ':' + mo + '_' + estimator for mo in ['Family', 'Community', 'Friends']]]
-                Social = Social.mean(axis=1) if estimator == 'Model' else Social.any(axis=1) if estimator == 'Coders' else None
-
-            correlations[wave].loc['Intuitive - Consequentialist'] = compute_correlation(pearsonr(Intuitive, Consequentialist))
-            correlations[wave].loc['Social - Consequentialist'] = compute_correlation(pearsonr(Social, Consequentialist))
-            correlations[wave].loc['Intuitive - Social'] = compute_correlation(pearsonr(Intuitive, Social))
+            Intuitive = interviews[wave + ':Intuitive_' + estimator]
+            Consequentialist = interviews[wave + ':Consequentialist_' + estimator]
+            Social = interviews[wave + ':Social_' + estimator]
 
             data.append(pd.concat([pd.Series(Intuitive.values), pd.Series(Consequentialist.values), pd.Series(['Intuitive - Consequentialist']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([estimator]*len(interviews))], axis=1))
             data.append(pd.concat([pd.Series(Social.values), pd.Series(Consequentialist.values), pd.Series(['Social - Consequentialist']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([estimator]*len(interviews))], axis=1))
             data.append(pd.concat([pd.Series(Intuitive.values), pd.Series(Social.values), pd.Series(['Intuitive - Social']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([estimator]*len(interviews))], axis=1))
+
+            correlations[estimator + ':' + wave].loc['Intuitive - Consequentialist'] = compute_correlation(pearsonr(Intuitive, Consequentialist))
+            correlations[estimator + ':' + wave].loc['Social - Consequentialist'] = compute_correlation(pearsonr(Social, Consequentialist))
+            correlations[estimator + ':' + wave].loc['Intuitive - Social'] = compute_correlation(pearsonr(Intuitive, Social))
             
-            correlations[wave].loc['Intuitive - Expressive Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Expressive Individualist']))
-            correlations[wave].loc['Intuitive - Utilitarian Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Utilitarian Individualist']))
-            correlations[wave].loc['Intuitive - Relational'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Relational']))
-            correlations[wave].loc['Intuitive - Theistic'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Theistic']))
+            correlations[estimator + ':' + wave].loc['Intuitive - Expressive Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Expressive Individualist']))
+            correlations[estimator + ':' + wave].loc['Intuitive - Utilitarian Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Utilitarian Individualist']))
+            correlations[estimator + ':' + wave].loc['Intuitive - Relational'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Relational']))
+            correlations[estimator + ':' + wave].loc['Intuitive - Theistic'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Theistic']))
 
-            correlations[wave].loc['Intuitive - Age'] = compute_correlation(pearsonr(Intuitive.loc[Age.index], Age))
-            correlations[wave].loc['Intuitive - GPA'] = compute_correlation(pearsonr(Intuitive.loc[Grades.index], Grades))
-            correlations[wave].loc['Intuitive - Gender'] = compute_correlation(pearsonr(Intuitive, Gender))
-            correlations[wave].loc['Intuitive - Race'] = compute_correlation(pearsonr(Intuitive, Race))
-            correlations[wave].loc['Intuitive - Church Attendance'] = compute_correlation(pearsonr(Intuitive.loc[Church_Attendance.index], Church_Attendance))
-            correlations[wave].loc['Intuitive - Parent Education'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Education.index], Parent_Education))
-            correlations[wave].loc['Intuitive - Parent Income'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Income.index], Parent_Income))
+            correlations[estimator + ':' + wave].loc['Intuitive - Age'] = compute_correlation(pearsonr(Intuitive.loc[Age.index], Age))
+            correlations[estimator + ':' + wave].loc['Intuitive - GPA'] = compute_correlation(pearsonr(Intuitive.loc[Grades.index], Grades))
+            correlations[estimator + ':' + wave].loc['Intuitive - Gender'] = compute_correlation(pearsonr(Intuitive, Gender))
+            correlations[estimator + ':' + wave].loc['Intuitive - Race'] = compute_correlation(pearsonr(Intuitive, Race))
+            correlations[estimator + ':' + wave].loc['Intuitive - Church Attendance'] = compute_correlation(pearsonr(Intuitive.loc[Church_Attendance.index], Church_Attendance))
+            correlations[estimator + ':' + wave].loc['Intuitive - Parent Education'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Education.index], Parent_Education))
+            correlations[estimator + ':' + wave].loc['Intuitive - Parent Income'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Income.index], Parent_Income))
 
-        print(estimator)
-        print(correlations)
+    correlations.astype(str).to_csv('data/plots/predictors-correlations.csv')
+    print(correlations)
     data = pd.concat(data, axis=0, ignore_index=True)
     data.columns = ['x', 'y', 'Correlation', 'Wave', 'Estimator']
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', col='Correlation', hue='Wave', robust=True, seed=42, palette=sns.color_palette('Set2'))
+    plt.figure(figsize=(20, 10))
+    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', col='Correlation', hue='Wave', seed=42, palette=sns.color_palette('Set2'))
     g.set_titles('{col_name}')
     g.set_xlabels('')
     g.set_ylabels('')
@@ -123,7 +117,7 @@ def compare_deviations(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2,3]
+    config = [1,2,3]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)

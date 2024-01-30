@@ -4,12 +4,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
+from __init__ import *
 from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import minmax_scale
-from __init__ import *
 
-from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
+from preprocessing.constants import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
 
 
@@ -149,7 +149,7 @@ def plot_morality_shift_by_attribute(interviews, attributes):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(20, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Attribute Position', col_order=[attribute['name'] for attribute in attributes], kind='bar', errorbar=None, seed=42, palette=sns.color_palette('Set2'))
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Attribute Position', col_order=[attribute['name'] for attribute in attributes], kind='bar', seed=42, palette=sns.color_palette('Set2'))
     g.fig.subplots_adjust(hspace=.2)
     g.set(xlim=(-12, 12))
     g.set_xlabels('')

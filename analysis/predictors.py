@@ -108,6 +108,7 @@ def compare_deviations(interviews):
     ax = sns.boxplot(data, y='Estimator', x='Standard Deviation', orient='h', palette=sns.color_palette('Set2'))
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     ax.set_xlabel('Standard Deviation Difference')
+    ax.set_ylabel('')
     plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
     plt.show()
 

@@ -50,7 +50,6 @@ def plot_model_evaluation(codings, models):
     plt.xlabel('Normalized Mean Squared Error')
     plt.ylabel('')
     plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 2))[1:], str(round(min_loss, 2))[1:]])
-    plt.title('Model Comparison')
     plt.legend(loc='upper right', bbox_to_anchor=(1.65, 1.03), fontsize='small')
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')
     plt.show()
@@ -68,17 +67,15 @@ def plot_coders_agreement(codings):
     heatmap = pd.DataFrame(heatmap, index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
 
     #Plot coders agreement
-    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
     ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=6), vmin=-0.2, vmax=1)
     plt.ylabel('')
     plt.xlabel('')
-    plt.xticks(rotation=35, ha='right')
     colorbar = ax.collections[0].colorbar
     colorbar.set_ticks([n/10 for n in range(-1, 10, 2)]) 
     colorbar.set_ticklabels(['Poor', 'Slight', 'Fair', 'Moderate', 'Substantial', 'Perfect'])
-
-    plt.title('Coders Agreement')
+    plt.title('Cohen\'s Kappa Agreement between Coders')
     plt.savefig('data/plots/evaluation-coders_agreement.png', bbox_inches='tight')
     plt.show()
 

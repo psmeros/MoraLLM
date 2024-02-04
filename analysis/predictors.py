@@ -32,7 +32,7 @@ def action_prediction(interviews, actions):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
-    ax = sns.barplot(action_prediction, x='F1-Weighted Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette=sns.color_palette('Set2'))
+    ax = sns.barplot(action_prediction, x='F1-Weighted Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette=sns.color_palette('Set1'))
     ax.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Estimator')
     plt.savefig('data/plots/predictors-action_prediction.png', bbox_inches='tight')
     plt.show()
@@ -112,7 +112,7 @@ def compare_deviations(interviews):
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
-    g = sns.displot(data, y='Wave', x='Value', col='Morality', bins=20)
+    g = sns.displot(data, y='Wave', x='Value', col='Morality', hue='Wave', bins=20, legend=False, palette=sns.color_palette('Set1'))
     g.set_titles('{col_name}')
     g.set_ylabels('')
     g.set_xlabels('')

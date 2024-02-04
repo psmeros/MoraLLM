@@ -91,24 +91,33 @@ def moral_consciousness(interviews, outlier_threshold):
     data.columns = ['x', 'y', 'Correlation', 'Wave', 'Estimator']
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(20, 10))
-    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', col='Correlation', hue='Wave', seed=42, palette=sns.color_palette('Set2'))
-    g.set_titles('{col_name}')
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 20))
+    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', row='Correlation', hue='Wave', seed=42, palette=sns.color_palette('Set1'))
+    g.set_titles('{row_name}')
     g.set_xlabels('')
     g.set_ylabels('')
     plt.savefig('data/plots/predictors-correlations', bbox_inches='tight')
     plt.show()
 
 def compare_deviations(interviews):
-    data = pd.concat([pd.DataFrame([{'Standard Deviation' : ((np.std(interviews[CODED_WAVES[1] + ':' + mo + '_' + estimator]) - np.std(interviews[CODED_WAVES[0] + ':' + mo + '_' + estimator])) / np.std(interviews[CODED_WAVES[0] + ':' + mo + '_' + estimator])) * 100, 'Morality' : mo, 'Estimator' : estimator} for estimator in MORALITY_ESTIMATORS]) for mo in MORALITY_ORIGIN])
+    data = interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
+    stds = pd.Series([(np.std(interviews[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) - np.std(interviews[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]])) / np.std(interviews[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN)
+    stds = stds.apply(lambda x: str(round(x * 100, 1)) + '%')
+    data = data.melt(value_vars=[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
+    data['Wave'] = data['Morality'].apply(lambda x: x.split(':')[0])
+    data['Morality'] = data['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
+    data['Morality'] = data['Morality'].apply(lambda x: x + ' (σ: ' + stds[x] + ')')
+    data['Value'] = data['Value'] * 100
+
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
-    plt.figure(figsize=(20, 10))
-    ax = sns.boxplot(data, y='Estimator', x='Standard Deviation', orient='h', palette=sns.color_palette('Set2'))
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    g = sns.displot(data, y='Wave', x='Value', col='Morality', bins=20)
+    g.set_titles('{col_name}')
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    ax.set_xlabel('Standard Deviation Difference')
-    ax.set_ylabel('')
     plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
     plt.show()
 

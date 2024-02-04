@@ -147,18 +147,20 @@ def plot_morality_shift_by_attribute(interviews, attributes):
     shifts['value'] = shifts['value'] * 100
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(20, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Attribute Position', col_order=[attribute['name'] for attribute in attributes], kind='bar', seed=42, palette=sns.color_palette('Set2'))
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Estimator', col_order=[attribute['name'] for attribute in attributes], row_order=MORALITY_ESTIMATORS, kind='bar', legend=False, seed=42, palette=sns.color_palette('Set1'))
     g.fig.subplots_adjust(hspace=.2)
     g.set(xlim=(-12, 12))
     g.set_xlabels('')
-    g.set_ylabels('')
-    for i, _ in enumerate(g.row_names):
-        for j, attribute in enumerate(g.col_names):
-            g.axes[i,j].set_title(attribute + '\n' + attributes[j]['N'][i])
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    handles, _ = ax.get_legend_handles_labels()
+    g.set_titles('')
+    for (j, attribute), pos in zip(enumerate(g.col_names), [.24, .43, .62, .79]):
+        g = g.add_legend(title=attribute, legend_data={v:h for h, v in zip(handles, attributes[j]['N'].values())}, bbox_to_anchor=(pos, 1.1), loc='upper center')
+    for i, label in enumerate(MORALITY_ESTIMATORS):
+        g.facet_axis(i, 0).set_ylabel(label)
     plt.savefig('data/plots/demographics-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
@@ -197,7 +199,7 @@ def plot_class_movement(interviews):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(20, 10))
-    g = sns.lmplot(data=interviews, x='Household Income Diff', y='Value', hue='Estimator', col='Morality Origin', col_wrap=3, truncate=False, x_jitter=.3, seed=42, palette=sns.color_palette('Set2'))
+    g = sns.lmplot(data=interviews, x='Household Income Diff', y='Value', hue='Estimator', col='Morality Origin', col_wrap=3, truncate=False, x_jitter=.3, seed=42, palette=sns.color_palette('Set1'))
     g.set_ylabels('')
     g.set_titles('Morality: {col_name}')
     g.fig.subplots_adjust(wspace=0.1)

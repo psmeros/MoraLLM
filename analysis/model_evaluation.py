@@ -50,7 +50,7 @@ def plot_model_evaluation(codings, models):
     plt.xlabel('Normalized Mean Squared Error')
     plt.ylabel('')
     plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 2))[1:], str(round(min_loss, 2))[1:]])
-    plt.legend(loc='upper right', bbox_to_anchor=(1.65, 1.03), fontsize='small')
+    plt.legend( bbox_to_anchor=(0.14, 1))
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')
     plt.show()
 

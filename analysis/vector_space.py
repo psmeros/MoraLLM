@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 from preprocessing.constants import MORALITY_ORIGIN
+from preprocessing.metadata_parser import merge_codings, merge_surveys
 
 
 #Plot morality embeddings of all waves
@@ -89,7 +90,7 @@ def plot_silhouette_score(interviews):
     interviews = interviews.reset_index().rename_axis(None, axis=1).drop(columns=['id'])
 
     #Compute Silhouette score
-    interviews['b'] = interviews.apply(lambda i: min([i[w] for w in set(['Wave 1', 'Wave 2', 'Wave 3']) - set([i['Name']])]), axis=1)
+    interviews['b'] = interviews.apply(lambda i: min([i[w] for w in set(['Wave 1', 'Wave 3']) - set([i['Name']])]), axis=1)
     interviews['a'] = interviews.apply(lambda i: i[i['Name']], axis=1)
     interviews['Silhouette Score'] = (interviews['b'] - interviews['a']) / interviews[['a', 'b']].max(axis=1)
     interviews = interviews.sort_values(by='Name')
@@ -97,7 +98,7 @@ def plot_silhouette_score(interviews):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 5))
-    ax = sns.boxplot(data=interviews, y='Name', x='Silhouette Score', orient='h', palette='Set2')
+    ax = sns.boxplot(data=interviews, y='Name', x='Silhouette Score', orient='h', palette='Set1')
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Silhouette Score')
@@ -107,13 +108,12 @@ def plot_silhouette_score(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4]
+    config = [3]
     model = 'lg'
 
-    embeddings_file = 'data/cache/morality_embeddings_'+model+'.pkl'
+    embeddings_file = 'data/cache/morality_model-'+model+'.pkl'
     moral_foundations_file = 'data/cache/moral_foundations_'+model+'.pkl'
     transformation_matrix_file = 'data/cache/transformation_matrix_'+model+'.pkl'
-    
     temporal_embeddings_file = 'data/cache/temporal_morality_embeddings_'+model+'.pkl'
 
     dim_reduction = 'TSNE'
@@ -121,17 +121,19 @@ if __name__ == '__main__':
 
     #Load data
     interviews = pd.read_pickle(embeddings_file)
-    interviews = interviews[['Wave', 'R:Morality_Embeddings']].dropna().rename(columns={'Wave': 'Name', 'R:Morality_Embeddings': 'Embeddings'})
+    interviews = merge_surveys(interviews)
+    interviews = merge_codings(interviews)
+    interviews = interviews[['Wave', 'Morality_Origin_Embeddings']].dropna().rename(columns={'Wave': 'Name', 'Morality_Origin_Embeddings': 'Embeddings'})
     interviews['Name'] = interviews['Name'].apply(lambda x: 'Wave ' + str(x))
-    moral_foundations = pd.read_pickle(moral_foundations_file)
-    temporal_interviews = pd.read_pickle(temporal_embeddings_file)
 
     for c in config:
         if c == 1:
             plot_morality_embeddings(interviews, dim_reduction, perplexity)
         elif c == 2:
+            moral_foundations = pd.read_pickle(moral_foundations_file)
             plot_moral_foundations(interviews, moral_foundations)
         elif c == 3:
             plot_silhouette_score(interviews)
         elif c == 4:
+            temporal_interviews = pd.read_pickle(temporal_embeddings_file)
             plot_semantic_shift(temporal_interviews)

@@ -6,9 +6,9 @@ from sklearn.metrics import f1_score, make_scorer
 from __init__ import *
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
-from scipy.stats import pearsonr, zscore
+from scipy.stats import pearsonr, zscore, entropy
 
-from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
+from preprocessing.constants import CODERS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
 
 
@@ -122,10 +122,23 @@ def compare_deviations(interviews):
     plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
     plt.show()
 
+def compare_entropies(interviews):
+    data = pd.DataFrame({wave : entropy(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]], axis=1) for wave in CODED_WAVES})
+    data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Entropy')
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(10, 5))
+    ax = sns.boxplot(data, y='Wave', x='Entropy', orient='h', palette='Set1')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Entropy by Wave')
+    plt.savefig('data/plots/predictors-entropy_comparison.png', bbox_inches='tight')
+    plt.show()
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3]
+    config = [4]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -143,3 +156,5 @@ if __name__ == '__main__':
             moral_consciousness(interviews, outlier_threshold=outlier_threshold)
         elif c == 3:
             compare_deviations(interviews)
+        elif c == 4:
+            compare_entropies(interviews)

@@ -123,7 +123,8 @@ def compare_deviations(interviews):
     plt.show()
 
 def compare_entropies(interviews):
-    data = pd.DataFrame({wave : entropy(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]], axis=1) for wave in CODED_WAVES})
+    normalized_entropy = lambda x: entropy(x, axis=1) / np.linalg.norm(x, ord=1, axis=1)    
+    data = pd.DataFrame({wave : normalized_entropy(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]]) for wave in CODED_WAVES})
     data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Entropy')
 
     #Plot

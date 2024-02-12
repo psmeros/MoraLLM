@@ -123,17 +123,17 @@ def compare_deviations(interviews):
     plt.show()
 
 def compare_entropies(interviews):
-    normalized_entropy = lambda x: entropy(x, axis=1) / np.linalg.norm(x, ord=1, axis=1)    
+    normalized_entropy = lambda x: entropy(x, axis=1) / np.linalg.norm(x, ord=1, axis=1)
     data = pd.DataFrame({wave : normalized_entropy(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]]) for wave in CODED_WAVES})
     data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Entropy')
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 5))
     ax = sns.boxplot(data, y='Wave', x='Entropy', orient='h', palette='Set1')
     plt.xlabel('')
     plt.ylabel('')
-    plt.title('Entropy by Wave')
+    plt.title('Normalized Entropy')
     plt.savefig('data/plots/predictors-entropy_comparison.png', bbox_inches='tight')
     plt.show()
 

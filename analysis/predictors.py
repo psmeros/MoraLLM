@@ -3,6 +3,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import f1_score, make_scorer
+from sklearn.preprocessing import minmax_scale
 from __init__ import *
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
@@ -123,8 +124,9 @@ def compare_deviations(interviews):
     plt.show()
 
 def compare_entropies(interviews):
-    normalized_entropy = lambda x: entropy(x, axis=1) / np.linalg.norm(x, ord=1, axis=1)
-    data = pd.DataFrame({wave : normalized_entropy(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]]) for wave in CODED_WAVES})
+    data_entropy = pd.DataFrame({wave : entropy(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]], axis=1) for wave in CODED_WAVES})
+    data_norm = pd.DataFrame({wave : np.linalg.norm(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]], ord=2, axis=1) for wave in CODED_WAVES})
+    data = data_entropy * minmax_scale(data_norm)
     data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Entropy')
 
     #Plot

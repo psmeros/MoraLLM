@@ -3,11 +3,11 @@ import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import f1_score, make_scorer
-from sklearn.preprocessing import minmax_scale
 from __init__ import *
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
-from scipy.stats import pearsonr, zscore, entropy
+from scipy.stats import pearsonr, zscore
+from scipy.spatial.distance import euclidean
 
 from preprocessing.constants import CODERS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
@@ -123,25 +123,48 @@ def compare_deviations(interviews):
     plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
     plt.show()
 
-def compare_entropies(interviews):
-    data_entropy = pd.DataFrame({wave : entropy(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]], axis=1) for wave in CODED_WAVES})
-    data_norm = pd.DataFrame({wave : np.linalg.norm(interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]], ord=2, axis=1) for wave in CODED_WAVES})
-    data = data_entropy * minmax_scale(data_norm)
-    data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Entropy')
+def compare_distances(interviews):
+    reference = [1] * len(MORALITY_ORIGIN)
+    data = pd.DataFrame({wave : interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]].apply(lambda x: euclidean(x, reference)/np.linalg.norm(reference), axis=1) for wave in CODED_WAVES})
+    data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Distance')
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    ax = sns.boxplot(data, y='Wave', x='Entropy', orient='h', palette='Set1')
+    ax = sns.boxplot(data, y='Wave', x='Distance', orient='h', palette='Set1')
     plt.xlabel('')
     plt.ylabel('')
-    plt.title('Normalized Entropy')
-    plt.savefig('data/plots/predictors-entropy_comparison.png', bbox_inches='tight')
+    plt.title('Anchor Distance')
+    plt.savefig('data/plots/predictors-distance_comparison.png', bbox_inches='tight')
+    plt.show()
+
+def compute_distance_distribution(interviews):
+    vectors = interviews.apply(lambda i: [i[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] for wave in CODED_WAVES], axis=1)
+    interviews['Distance'] = vectors.apply(lambda v: euclidean(v[0].to_numpy(), v[1].to_numpy()))
+
+    morality_min_distance = interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN]]
+    morality_min_distance = ' -> '.join([str([round(mo, 2) for mo in morality_min_distance[:len(MORALITY_ORIGIN)]]), str([round(mo, 2) for mo in morality_min_distance[len(MORALITY_ORIGIN):]])])
+    morality_min_distance_text = ' -> '.join(interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':Morality_Origin'  for wave in CODED_WAVES]])
+    print(morality_min_distance)
+    print(morality_min_distance_text)
+
+    morality_max_distance = interviews.loc[interviews['Distance'].sort_values(ascending=False).index[2]][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN]]
+    morality_max_distance = ' -> '.join([str([round(mo, 2) for mo in morality_max_distance[:len(MORALITY_ORIGIN)]]), str([round(mo, 2) for mo in morality_max_distance[len(MORALITY_ORIGIN):]])])
+    morality_max_distance_text = ' -> '.join(interviews.loc[interviews['Distance'].sort_values(ascending=False).index[2]][[wave + ':Morality_Origin'  for wave in CODED_WAVES]])
+    print(morality_max_distance)
+    print(morality_max_distance_text)
+
+    #Plot
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(10, 5))
+    ax = sns.histplot(interviews, x='Distance', stat='probability', bins=6)
+    plt.title('Cross-Wave Distance Distribution')
+    plt.savefig('data/plots/predictors-distance_distribution.png', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [4,5]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -160,4 +183,6 @@ if __name__ == '__main__':
         elif c == 3:
             compare_deviations(interviews)
         elif c == 4:
-            compare_entropies(interviews)
+            compare_distances(interviews)
+        elif c == 5:
+            compute_distance_distribution(interviews)

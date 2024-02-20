@@ -138,9 +138,10 @@ def compare_distances(interviews):
     plt.savefig('data/plots/predictors-distance_comparison.png', bbox_inches='tight')
     plt.show()
 
-def compute_distance_distribution(interviews):
+def compute_distance_distribution(interviews, decisive_threshold):
     vectors = interviews.apply(lambda i: [i[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] for wave in CODED_WAVES], axis=1)
     interviews['Distance'] = vectors.apply(lambda v: euclidean(v[0].to_numpy(), v[1].to_numpy()))
+    interviews['Decisive'] = vectors.apply(lambda v: (v[0] > decisive_threshold).any() | (v[1] > decisive_threshold).any())
 
     morality_min_distance = interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN]]
     morality_min_distance = ' -> '.join([str([round(mo, 2) for mo in morality_min_distance[:len(MORALITY_ORIGIN)]]), str([round(mo, 2) for mo in morality_min_distance[len(MORALITY_ORIGIN):]])])
@@ -157,14 +158,14 @@ def compute_distance_distribution(interviews):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    ax = sns.histplot(interviews, x='Distance', stat='probability', bins=6)
+    ax = sns.histplot(interviews, x='Distance', hue='Decisive', hue_order=[True, False], multiple='stack', stat='probability', bins=6, palette='Set1')
     plt.title('Cross-Wave Distance Distribution')
     plt.savefig('data/plots/predictors-distance_distribution.png', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4,5]
+    config = [5]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -185,4 +186,5 @@ if __name__ == '__main__':
         elif c == 4:
             compare_distances(interviews)
         elif c == 5:
-            compute_distance_distribution(interviews)
+            decisive_threshold = 0.7
+            compute_distance_distribution(interviews, decisive_threshold=decisive_threshold)

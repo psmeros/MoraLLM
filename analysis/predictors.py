@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
 from scipy.stats import pearsonr, zscore
 from scipy.spatial.distance import euclidean
+from scipy.spatial import ConvexHull
 
 from preprocessing.constants import CODERS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
@@ -123,19 +124,19 @@ def compare_deviations(interviews):
     plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
     plt.show()
 
-def compare_distances(interviews):
-    reference = [1] * len(MORALITY_ORIGIN)
-    data = pd.DataFrame({wave : interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]].apply(lambda x: euclidean(x, reference)/np.linalg.norm(reference), axis=1) for wave in CODED_WAVES})
-    data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Distance')
+def compare_areas(interviews):
+    compute_convex_hull = lambda x: ConvexHull(np.diag(x).tolist()+[[0]*len(x)]).area
+    data = pd.DataFrame({wave : interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]].apply(lambda x: compute_convex_hull(x), axis=1) for wave in CODED_WAVES})
+    data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Area')
 
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    ax = sns.boxplot(data, y='Wave', x='Distance', orient='h', palette='Set1')
+    ax = sns.boxplot(data, y='Wave', x='Area', orient='h', palette='Set1')
     plt.xlabel('')
     plt.ylabel('')
-    plt.title('Anchor Distance')
-    plt.savefig('data/plots/predictors-distance_comparison.png', bbox_inches='tight')
+    plt.title('Convex Hull Area')
+    plt.savefig('data/plots/predictors-area_comparison.png', bbox_inches='tight')
     plt.show()
 
 def compute_distance_distribution(interviews, decisive_threshold):
@@ -165,7 +166,7 @@ def compute_distance_distribution(interviews, decisive_threshold):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [4]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -184,7 +185,7 @@ if __name__ == '__main__':
         elif c == 3:
             compare_deviations(interviews)
         elif c == 4:
-            compare_distances(interviews)
+            compare_areas(interviews)
         elif c == 5:
             decisive_threshold = 0.7
             compute_distance_distribution(interviews, decisive_threshold=decisive_threshold)

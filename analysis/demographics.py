@@ -175,9 +175,15 @@ def plot_ecdf(interviews):
     interviews = pd.concat([interviews, codings])
     
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(20, 10))
-    sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=3, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=3, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
+    g.set_titles('{col_name}')
+    g.legend.set_title('')
+    g.set_xlabels('')
+    g.set_ylabels('')
+    ax = plt.gca()
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * 100:.0f}%'))
     plt.savefig('data/plots/demographics-morality_ecdf.png', bbox_inches='tight')
     plt.show()
 
@@ -188,24 +194,24 @@ def plot_class_movement(interviews):
     interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
     interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
     interviews = merge_matches(interviews, wave_list=CODED_WAVES)
-    interviews['Household Income Diff'] = (interviews[CODED_WAVES[1] + ':Income (raw)'] - interviews[CODED_WAVES[0] + ':Income (raw)'])
-    interviews['Household Income Diff'] = pd.to_numeric(interviews['Household Income Diff'])
+    interviews['Household Income Change'] = (interviews[CODED_WAVES[1] + ':Income (raw)'] - interviews[CODED_WAVES[0] + ':Income (raw)'])
+    interviews['Household Income Change'] = pd.to_numeric(interviews['Household Income Change'])
 
-    interviews = pd.concat([pd.melt(interviews, id_vars=['Household Income Diff'], value_vars=[CODED_WAVES[0] + ':' + mo + '_' + e for mo in MORALITY_ORIGIN], var_name='Morality Origin', value_name='Value').dropna() for e in MORALITY_ESTIMATORS])
+    interviews = pd.concat([pd.melt(interviews, id_vars=['Household Income Change'], value_vars=[CODED_WAVES[0] + ':' + mo + '_' + e for mo in MORALITY_ORIGIN], var_name='Morality Origin', value_name='Value').dropna() for e in MORALITY_ESTIMATORS])
     interviews['Estimator'] = interviews['Morality Origin'].apply(lambda x: x.split('_')[1])
     interviews['Morality Origin'] = interviews['Morality Origin'].apply(lambda x: x.split('_')[0].split(':')[1])
     interviews['Value'] = interviews['Value'] * 100
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(20, 10))
-    g = sns.lmplot(data=interviews, x='Household Income Diff', y='Value', hue='Estimator', col='Morality Origin', col_wrap=3, truncate=False, x_jitter=.3, seed=42, palette=sns.color_palette('Set1'))
+    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.lmplot(data=interviews, x='Household Income Change', y='Value', hue='Estimator', col='Morality Origin', truncate=False, x_jitter=.3, seed=42, aspect=1.2, palette=sns.color_palette('Set1'))
     g.set_ylabels('')
     g.set_titles('Morality: {col_name}')
     g.fig.subplots_adjust(wspace=0.1)
     ax = plt.gca()
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    ax.set_xlim(-abs(interviews['Household Income Diff']).max(), abs(interviews['Household Income Diff']).max())
+    ax.set_xlim(-abs(interviews['Household Income Change']).max(), abs(interviews['Household Income Change']).max())
     plt.savefig('data/plots/demographics-class_movement.png', bbox_inches='tight')
     plt.show()
 

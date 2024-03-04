@@ -38,19 +38,22 @@ def plot_model_evaluation(codings, models):
         losses.append(loss)
 
     losses = pd.concat(losses, ignore_index=True).iloc[::-1]
-    losses['Model'] = losses['Model'].replace({'lg':'SpaCy (Labels)', 'bert':'BERT (Labels)', 'bart':'BART (Labels)', 'entail_ml':'Entailment (Labels)', 'entail_ml_explained':'Entailment (Labels+Notes)', 'top':'Entailment (Labels+Notes+Distro)', 'chatgpt':'GPT-3.5 (Labels)'})
+    losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment', 'entail_explained':'Entailment (Labels+Notes)', 'top':'MoraLLM', 'chatgpt':'GPT-3.5'})
 
     #Plot model comparison
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
     losses.plot(kind='barh', x = 'Model', stacked=True, color=list(sns.color_palette('Set2')))
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     min_loss = losses[MORALITY_ORIGIN].sum(axis=1).min()
-    plt.axvline(x=coders_agreement, linestyle='-', linewidth=4, color='indianred', label='Coders Disagreement')
+    plt.axvline(x=coders_agreement, linestyle='-', linewidth=4, color='indianred', label='Coders Agreement')
     plt.axvline(x=min_loss, linestyle='--', linewidth=1, color='grey')
     plt.xlabel('Normalized Mean Squared Error')
     plt.ylabel('')
-    plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 2))[1:], str(round(min_loss, 2))[1:]])
-    plt.legend( bbox_to_anchor=(0.14, 1))
+    plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(min_loss, 1)).replace('0.', '.')])
+    plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')
     plt.show()
 
@@ -67,22 +70,23 @@ def plot_coders_agreement(codings):
     heatmap = pd.DataFrame(heatmap, index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
 
     #Plot coders agreement
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
+    sns.set(context='paper', style='white', color_codes=True, font_scale=3)
     plt.figure(figsize=(10, 10))
-    ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=6), vmin=-0.2, vmax=1)
+    ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=6), square=True, cbar_kws={'shrink': .8}, vmin=-0.2, vmax=1)
     plt.ylabel('')
     plt.xlabel('')
+    plt.xticks(rotation=45, ha='right')
     colorbar = ax.collections[0].colorbar
     colorbar.set_ticks([n/10 for n in range(-1, 10, 2)]) 
     colorbar.set_ticklabels(['Poor', 'Slight', 'Fair', 'Moderate', 'Substantial', 'Perfect'])
-    plt.title('Cohen\'s Kappa Agreement between Coders')
+    plt.title('Cohen\'s Kappa Agreement between Experts')
     plt.savefig('data/plots/evaluation-coders_agreement.png', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
-    models = ['lg', 'bert', 'bart', 'chatgpt', 'entail_ml', 'entail_ml_explained', 'top']
+    models = ['lg', 'bert', 'bart', 'chatgpt', 'top']
     codings = pd.read_pickle('data/cache/morality_model-top.pkl')[['Wave', 'Interview Code']]
     codings = merge_codings(codings)
 

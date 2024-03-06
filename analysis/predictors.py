@@ -7,8 +7,7 @@ from __init__ import *
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
 from scipy.stats import pearsonr, zscore
-from scipy.spatial.distance import euclidean
-from scipy.spatial import ConvexHull
+from scipy.spatial import ConvexHull, distance
 
 from preprocessing.constants import CODERS, MORALITY_ORIGIN, CODED_WAVES, MORALITY_ESTIMATORS
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
@@ -141,8 +140,8 @@ def compare_areas(interviews):
 
 def compute_distance_distribution(interviews, decisive_threshold):
     vectors = interviews.apply(lambda i: [i[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] for wave in CODED_WAVES], axis=1)
-    interviews['Distance'] = vectors.apply(lambda v: euclidean(v[0].to_numpy(), v[1].to_numpy()))
-    interviews['Decisive'] = vectors.apply(lambda v: (v[0] > decisive_threshold).any() | (v[1] > decisive_threshold).any())
+    interviews['Distance'] = vectors.apply(lambda v: distance.euclidean(v[0].to_numpy(), v[1].to_numpy()))
+    interviews['Decisive'] = vectors.apply(lambda v: (v[0] > decisive_threshold).any() & (v[1] > decisive_threshold).any())
 
     morality_min_distance = interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN]]
     morality_min_distance = ' -> '.join([str([round(mo, 2) for mo in morality_min_distance[:len(MORALITY_ORIGIN)]]), str([round(mo, 2) for mo in morality_min_distance[len(MORALITY_ORIGIN):]])])
@@ -166,7 +165,7 @@ def compute_distance_distribution(interviews, decisive_threshold):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [5]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -187,5 +186,5 @@ if __name__ == '__main__':
         elif c == 4:
             compare_areas(interviews)
         elif c == 5:
-            decisive_threshold = 0.7
+            decisive_threshold = 0.5
             compute_distance_distribution(interviews, decisive_threshold=decisive_threshold)

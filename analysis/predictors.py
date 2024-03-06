@@ -139,10 +139,7 @@ def compare_areas(interviews):
     plt.show()
 
 def compute_distance_distribution(interviews, decisive_threshold):
-    vectors = interviews.apply(lambda i: [i[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] for wave in CODED_WAVES], axis=1)
-    interviews['Distance'] = vectors.apply(lambda v: distance.euclidean(v[0].to_numpy(), v[1].to_numpy()))
-    interviews['Decisive'] = vectors.apply(lambda v: (v[0] > decisive_threshold).any() & (v[1] > decisive_threshold).any())
-
+    interviews['Distance'] = interviews.apply(lambda i: [i[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] for wave in CODED_WAVES], axis=1).apply(lambda v: distance.euclidean(v[0].to_numpy(), v[1].to_numpy()))
     morality_min_distance = interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN]]
     morality_min_distance = ' -> '.join([str([round(mo, 2) for mo in morality_min_distance[:len(MORALITY_ORIGIN)]]), str([round(mo, 2) for mo in morality_min_distance[len(MORALITY_ORIGIN):]])])
     morality_min_distance_text = ' -> '.join(interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':Morality_Origin'  for wave in CODED_WAVES]])
@@ -155,11 +152,20 @@ def compute_distance_distribution(interviews, decisive_threshold):
     print(morality_max_distance)
     print(morality_max_distance_text)
 
+    #Prepare Data
+    decisiveness_options = ['Decisive → Decisive', 'Indecisive → Decisive', 'Decisive → Indecisive', 'Indecisive → Indecisive']
+    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold)) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo + '_Decisiveness' for mo in MORALITY_ORIGIN], axis=1)
+    decisiveness = decisiveness.applymap(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[2] if d[0] and not d[1] else decisiveness_options[3] if not d[0] and not d[1] else '')
+    decisiveness = pd.concat([interviews[['Distance']], decisiveness], axis=1)
+    decisiveness = decisiveness.melt(id_vars='Distance', value_vars=decisiveness.columns[1:], var_name='Morality', value_name='Decisiveness')
+    decisiveness['Morality'] = decisiveness['Morality'].apply(lambda x: x.split('_')[0])
+
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    ax = sns.histplot(interviews, x='Distance', hue='Decisive', hue_order=[True, False], multiple='stack', stat='probability', bins=6, palette='Set1')
-    plt.title('Cross-Wave Distance Distribution')
+    g = sns.displot(decisiveness, x='Distance', hue='Decisiveness', col='Morality', hue_order=decisiveness_options, kind='hist', stat='probability', multiple='stack', bins=6, palette='Set1')
+    g.legend.set_title('')
+    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * len(MORALITY_ORIGIN) * 100 :.0f}%'))
     plt.savefig('data/plots/predictors-distance_distribution.png', bbox_inches='tight')
     plt.show()
 

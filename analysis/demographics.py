@@ -150,15 +150,14 @@ def plot_morality_shift_by_attribute(interviews, attributes):
     sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(20, 10))
     g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Estimator', col_order=[attribute['name'] for attribute in attributes], row_order=MORALITY_ESTIMATORS, kind='bar', legend=False, seed=42, palette=sns.color_palette('Set1'))
-    g.fig.subplots_adjust(hspace=.2)
     g.set(xlim=(-12, 12))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     handles, _ = ax.get_legend_handles_labels()
     g.set_titles('')
-    for (j, attribute), pos in zip(enumerate(g.col_names), [.24, .43, .62, .79]):
-        g = g.add_legend(title=attribute, legend_data={v:h for h, v in zip(handles, attributes[j]['N'].values())}, bbox_to_anchor=(pos, 1.1), loc='upper center')
+    for (j, attribute), pos in zip(enumerate(g.col_names), [(i/(len(g.col_names)+1)+.19) - (i*.01) for i in range(len(g.col_names)+1)]):
+        g = g.add_legend(title=attribute, legend_data={v:h for h, v in zip(handles, attributes[j]['N'].values())}, bbox_to_anchor=(pos, 1.1), adjust_subtitles=True, loc='upper center')
     for i, label in enumerate(MORALITY_ESTIMATORS):
         g.facet_axis(i, 0).set_ylabel(label)
     plt.savefig('data/plots/demographics-morality_shift_by_attribute.png', bbox_inches='tight')
@@ -258,14 +257,16 @@ def plot_action_probability(interviews, n_clusters, actions):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2,3,4,5]
+    config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
+    interviews['Age'] = interviews['Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     interviews = merge_surveys(interviews)
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                   {'name' : 'Race', 'values' : ['White', 'Other']},
                   {'name' : 'Income', 'values' : ['Upper', 'Lower']},
-                  {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']}]
+                  {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']},
+                  {'name' : 'Age', 'values' : ['Early Adolescence', 'Late Adolescence']}]
 
     for c in config:
         if c == 1:

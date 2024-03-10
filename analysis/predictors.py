@@ -123,15 +123,24 @@ def compare_deviations(interviews):
     plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
     plt.show()
 
-def compare_areas(interviews):
+def compare_areas(interviews, by_age):
     compute_convex_hull = lambda x: ConvexHull(np.diag(x).tolist()+[[0]*len(x)]).area
-    data = pd.DataFrame({wave : interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]].apply(lambda x: compute_convex_hull(x), axis=1) for wave in CODED_WAVES})
-    data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Area')
+    if by_age:
+        data = pd.concat([pd.DataFrame([interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]].apply(lambda x: compute_convex_hull(x), axis=1).rename('Area'), interviews[wave + ':' + 'Age'].rename('Age')]).T for wave in CODED_WAVES])
+        data = data.dropna()
+        data['Age'] = data['Age'].astype(int)
+        data['Area'] = data['Area'].astype(float)
+    else:
+        data = pd.DataFrame({wave : interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]].apply(lambda x: compute_convex_hull(x), axis=1) for wave in CODED_WAVES})
+        data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Area')
 
-    #Plot
+    #Plota
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    ax = sns.boxplot(data, y='Wave', x='Area', orient='h', palette='Set1')
+    if by_age:
+        ax = sns.regplot(data, y='Area', x='Age')
+    else:
+        ax = sns.boxplot(data, y='Wave', x='Area', orient='h', palette='Set1')
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Convex Hull Area')
@@ -171,7 +180,7 @@ def compute_distance_distribution(interviews, decisive_threshold):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [4]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -190,7 +199,8 @@ if __name__ == '__main__':
         elif c == 3:
             compare_deviations(interviews)
         elif c == 4:
-            compare_areas(interviews)
+            by_age = False
+            compare_areas(interviews, by_age=by_age)
         elif c == 5:
             decisive_threshold = 0.5
             compute_distance_distribution(interviews, decisive_threshold=decisive_threshold)

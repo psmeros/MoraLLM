@@ -150,6 +150,7 @@ def compare_areas(interviews, by_age):
 def compute_distance_distribution(interviews):
     # decisive_threshold = {mo: pd.concat([interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]].rename(mo) for wave in CODED_WAVES]).median() for mo in MORALITY_ORIGIN}
     decisive_threshold = {mo: np.median([pd.concat([interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]].rename('Morality') for wave in CODED_WAVES]) for mo in MORALITY_ORIGIN]) for mo in MORALITY_ORIGIN}
+    # decisive_threshold = {mo:.5 for mo in MORALITY_ORIGIN}
 
     interviews['Distance'] = interviews.apply(lambda i: [i[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] for wave in CODED_WAVES], axis=1).apply(lambda v: distance.euclidean(v[0].to_numpy(), v[1].to_numpy()))
     morality_min_distance = interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN]]
@@ -175,7 +176,7 @@ def compute_distance_distribution(interviews):
     #Plot
     sns.set(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    g = sns.displot(decisiveness, x='Distance', hue='Decisiveness', col='Morality', hue_order=decisiveness_options, kind='hist', stat='probability', multiple='stack', bins=6, palette='Set1')
+    g = sns.displot(decisiveness, x='Distance', hue='Decisiveness', col='Morality', hue_order=decisiveness_options, kind='hist', stat='probability', multiple='stack', bins=6, palette='rocket')
     g.legend.set_title('')
     plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * len(MORALITY_ORIGIN) * 100 :.0f}%'))
     plt.savefig('data/plots/predictors-distance_distribution.png', bbox_inches='tight')

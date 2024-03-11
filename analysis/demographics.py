@@ -259,14 +259,16 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
+    interviews = merge_surveys(interviews)
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
     interviews['Age'] = interviews['Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-    interviews = merge_surveys(interviews)
+    interviews['Church Attendance'] = interviews['Church Attendance'].apply(lambda x: 'Irregularly' if x is not pd.NA and x in [1,2,3] else 'Regularly' if x is not pd.NA and x in [4,5,6] else '')
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                   {'name' : 'Race', 'values' : ['White', 'Other']},
                   {'name' : 'Income', 'values' : ['Upper', 'Lower']},
                   {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']},
-                  {'name' : 'Age', 'values' : ['Early Adolescence', 'Late Adolescence']}]
+                  {'name' : 'Age', 'values' : ['Early Adolescence', 'Late Adolescence']},
+                  {'name' : 'Church Attendance', 'values' : ['Regularly', 'Irregularly']}]
 
     for c in config:
         if c == 1:

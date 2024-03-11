@@ -262,7 +262,7 @@ if __name__ == '__main__':
     interviews = merge_surveys(interviews)
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
     interviews['Age'] = interviews['Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-    interviews['Church Attendance'] = interviews['Church Attendance'].apply(lambda x: 'Irregularly' if x is not pd.NA and x in [1,2,3] else 'Regularly' if x is not pd.NA and x in [4,5,6] else '')
+    interviews['Church Attendance'] = interviews['Church Attendance'].apply(lambda x: 'Irregularly' if x is not pd.NA and x in [1,2,3,4] else 'Regularly' if x is not pd.NA and x in [5,6] else '')
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                   {'name' : 'Race', 'values' : ['White', 'Other']},
                   {'name' : 'Income', 'values' : ['Upper', 'Lower']},

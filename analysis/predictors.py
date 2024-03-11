@@ -147,7 +147,10 @@ def compare_areas(interviews, by_age):
     plt.savefig('data/plots/predictors-area_comparison.png', bbox_inches='tight')
     plt.show()
 
-def compute_distance_distribution(interviews, decisive_threshold):
+def compute_distance_distribution(interviews):
+    # decisive_threshold = {mo: pd.concat([interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]].rename(mo) for wave in CODED_WAVES]).median() for mo in MORALITY_ORIGIN}
+    decisive_threshold = {mo: np.median([pd.concat([interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]].rename('Morality') for wave in CODED_WAVES]) for mo in MORALITY_ORIGIN]) for mo in MORALITY_ORIGIN}
+
     interviews['Distance'] = interviews.apply(lambda i: [i[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] for wave in CODED_WAVES], axis=1).apply(lambda v: distance.euclidean(v[0].to_numpy(), v[1].to_numpy()))
     morality_min_distance = interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN]]
     morality_min_distance = ' -> '.join([str([round(mo, 2) for mo in morality_min_distance[:len(MORALITY_ORIGIN)]]), str([round(mo, 2) for mo in morality_min_distance[len(MORALITY_ORIGIN):]])])
@@ -163,7 +166,7 @@ def compute_distance_distribution(interviews, decisive_threshold):
 
     #Prepare Data
     decisiveness_options = ['Decisive → Decisive', 'Indecisive → Decisive', 'Decisive → Indecisive', 'Indecisive → Indecisive']
-    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold)) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo + '_Decisiveness' for mo in MORALITY_ORIGIN], axis=1)
+    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[mo]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[mo])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo + '_Decisiveness' for mo in MORALITY_ORIGIN], axis=1)
     decisiveness = decisiveness.applymap(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[2] if d[0] and not d[1] else decisiveness_options[3] if not d[0] and not d[1] else '')
     decisiveness = pd.concat([interviews[['Distance']], decisiveness], axis=1)
     decisiveness = decisiveness.melt(id_vars='Distance', value_vars=decisiveness.columns[1:], var_name='Morality', value_name='Decisiveness')
@@ -180,7 +183,7 @@ def compute_distance_distribution(interviews, decisive_threshold):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [5]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -202,5 +205,4 @@ if __name__ == '__main__':
             by_age = False
             compare_areas(interviews, by_age=by_age)
         elif c == 5:
-            decisive_threshold = 0.5
-            compute_distance_distribution(interviews, decisive_threshold=decisive_threshold)
+            compute_distance_distribution(interviews)

@@ -42,6 +42,7 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
                 coding['Intuitive'] = coding['Experience']
                 coding['Consequentialist'] = coding['Consequences']
                 coding['Social'] = coding[['Family', 'Community', 'Friends']].any(axis=1)
+                coding['Theistic'] = coding['Holy Scripture']
                 coding = coding.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
                 
             if coding.attrs['Wave'] == 1:

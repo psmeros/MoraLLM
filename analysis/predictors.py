@@ -33,7 +33,7 @@ def action_prediction(interviews, actions):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
-    ax = sns.barplot(action_prediction, x='F1-Weighted Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette=sns.color_palette('Set1'))
+    ax = sns.barplot(action_prediction, x='F1-Weighted Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette='Set1')
     ax.set_ylabel('')
     ax.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Estimator')
     plt.savefig('data/plots/predictors-action_prediction.png', bbox_inches='tight')
@@ -70,24 +70,24 @@ def moral_consciousness(interviews, outlier_threshold):
             data.append(pd.concat([pd.Series(Social.values), pd.Series(Consequentialist.values), pd.Series(['Social - Consequentialist']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([estimator]*len(interviews))], axis=1))
             data.append(pd.concat([pd.Series(Intuitive.values), pd.Series(Social.values), pd.Series(['Intuitive - Social']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([estimator]*len(interviews))], axis=1))
 
-            correlations[estimator + ':' + wave].loc['Intuitive - Consequentialist'] = compute_correlation(pearsonr(Intuitive, Consequentialist))
-            correlations[estimator + ':' + wave].loc['Social - Consequentialist'] = compute_correlation(pearsonr(Social, Consequentialist))
-            correlations[estimator + ':' + wave].loc['Intuitive - Social'] = compute_correlation(pearsonr(Intuitive, Social))
+            correlations.loc['Intuitive - Consequentialist', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, Consequentialist))
+            correlations.loc['Social - Consequentialist', estimator + ':' + wave] = compute_correlation(pearsonr(Social, Consequentialist))
+            correlations.loc['Intuitive - Social', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, Social))
             
-            correlations[estimator + ':' + wave].loc['Intuitive - Expressive Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Expressive Individualist']))
-            correlations[estimator + ':' + wave].loc['Intuitive - Utilitarian Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Utilitarian Individualist']))
-            correlations[estimator + ':' + wave].loc['Intuitive - Relational'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Relational']))
-            correlations[estimator + ':' + wave].loc['Intuitive - Theistic'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Theistic']))
+            correlations.loc['Intuitive - Expressive Individualist', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, desicion_taking['Expressive Individualist']))
+            correlations.loc['Intuitive - Utilitarian Individualist', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, desicion_taking['Utilitarian Individualist']))
+            correlations.loc['Intuitive - Relational', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, desicion_taking['Relational']))
+            correlations.loc['Intuitive - Theistic', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, desicion_taking['Theistic']))
 
-            correlations[estimator + ':' + wave].loc['Intuitive - Age'] = compute_correlation(pearsonr(Intuitive.loc[Age.index], Age))
-            correlations[estimator + ':' + wave].loc['Intuitive - GPA'] = compute_correlation(pearsonr(Intuitive.loc[Grades.index], Grades))
-            correlations[estimator + ':' + wave].loc['Intuitive - Gender'] = compute_correlation(pearsonr(Intuitive, Gender))
-            correlations[estimator + ':' + wave].loc['Intuitive - Race'] = compute_correlation(pearsonr(Intuitive, Race))
-            correlations[estimator + ':' + wave].loc['Intuitive - Church Attendance'] = compute_correlation(pearsonr(Intuitive.loc[Church_Attendance.index], Church_Attendance))
-            correlations[estimator + ':' + wave].loc['Intuitive - Parent Education'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Education.index], Parent_Education))
-            correlations[estimator + ':' + wave].loc['Intuitive - Parent Income'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Income.index], Parent_Income))
+            correlations.loc['Intuitive - Age', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Age.index], Age))
+            correlations.loc['Intuitive - GPA', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Grades.index], Grades))
+            correlations.loc['Intuitive - Gender', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, Gender))
+            correlations.loc['Intuitive - Race', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, Race))
+            correlations.loc['Intuitive - Church Attendance', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Church_Attendance.index], Church_Attendance))
+            correlations.loc['Intuitive - Parent Education', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Parent_Education.index], Parent_Education))
+            correlations.loc['Intuitive - Parent Income', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Parent_Income.index], Parent_Income))
             
-            correlations[estimator + ':' + wave].loc['Theistic - Church Attendance'] = compute_correlation(pearsonr(interviews[wave + ':Theistic_' + estimator].loc[Church_Attendance.index], Church_Attendance))
+            correlations.loc['Theistic - Church Attendance', estimator + ':' + wave] = compute_correlation(pearsonr(interviews[wave + ':Theistic_' + estimator].loc[Church_Attendance.index], Church_Attendance))
 
 
     correlations.astype(str).to_csv('data/plots/predictors-correlations.csv')
@@ -117,7 +117,7 @@ def compare_deviations(interviews):
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    g = sns.displot(data, y='Wave', x='Value', col='Morality', hue='Wave', bins=20, legend=False, palette=sns.color_palette('Set1'))
+    g = sns.displot(data, y='Wave', x='Value', col='Morality', hue='Wave', bins=20, legend=False, palette='Set1')
     g.set_titles('{col_name}')
     g.set_ylabels('')
     g.set_xlabels('')
@@ -137,13 +137,13 @@ def compare_areas(interviews, by_age):
         data = pd.DataFrame({wave : interviews[wave + ':' + pd.Series(MORALITY_ORIGIN) + '_' + MORALITY_ESTIMATORS[0]].apply(lambda x: compute_convex_hull(x), axis=1) for wave in CODED_WAVES})
         data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Area')
 
-    #Plota
+    #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
     if by_age:
         ax = sns.regplot(data, y='Area', x='Age')
     else:
-        ax = sns.boxplot(data, y='Wave', x='Area', orient='h', palette='Set1')
+        ax = sns.boxplot(data, y='Wave', x='Area', hue='Wave', legend=False, orient='h', palette='Set1')
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Convex Hull Area')
@@ -171,7 +171,7 @@ def compute_distance_distribution(interviews):
     #Prepare Data
     decisiveness_options = ['Decisive → Decisive', 'Indecisive → Decisive', 'Decisive → Indecisive', 'Indecisive → Indecisive']
     decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[mo]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[mo])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo + '_Decisiveness' for mo in MORALITY_ORIGIN], axis=1)
-    decisiveness = decisiveness.applymap(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[2] if d[0] and not d[1] else decisiveness_options[3] if not d[0] and not d[1] else '')
+    decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[2] if d[0] and not d[1] else decisiveness_options[3] if not d[0] and not d[1] else '')
     decisiveness = pd.concat([interviews[['Distance']], decisiveness], axis=1)
     decisiveness = decisiveness.melt(id_vars='Distance', value_vars=decisiveness.columns[1:], var_name='Morality', value_name='Decisiveness')
     decisiveness['Morality'] = decisiveness['Morality'].apply(lambda x: x.split('_')[0])
@@ -187,7 +187,7 @@ def compute_distance_distribution(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [5]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)

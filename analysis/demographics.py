@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -102,7 +103,8 @@ def plot_morality_shift(interviews):
         #Prepare data
         sns.set_palette('Set2')
         mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(CODED_WAVES) for j, mo in enumerate(MORALITY_ORIGIN)}
-        shifts = shifts.replace(mapping)
+        shifts['source'] = shifts['source'].map(mapping)
+        shifts['target'] = shifts['target'].map(mapping)
         label = pd.DataFrame([(i,j/(.69*len(MORALITY_ORIGIN))) for i, _ in enumerate(CODED_WAVES) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
         label['name'] = pd.Series({v:k for k, v in mapping.items()}).apply(lambda x: x.split(':')[-1])
         label['color'] = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex()) * len(CODED_WAVES)
@@ -149,15 +151,14 @@ def plot_morality_shift_by_attribute(interviews, attributes):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(20, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Estimator', col_order=[attribute['name'] for attribute in attributes], row_order=MORALITY_ESTIMATORS, kind='bar', legend=False, seed=42, palette=sns.color_palette('Set1'))
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Estimator', col_order=[attribute['name'] for attribute in attributes], row_order=MORALITY_ESTIMATORS, kind='bar', legend=False, seed=42, palette='Set1')
     g.set(xlim=(-12, 12))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    handles, _ = ax.get_legend_handles_labels()
     g.set_titles('')
     for (j, attribute), pos in zip(enumerate(g.col_names), [(ax.get_position().x0 + ax.get_position().x1)/2 - i * .01 for i, ax in enumerate(g.axes.flat)]):
-        g = g.add_legend(title=attribute, legend_data={v:h for h, v in zip(handles, attributes[j]['N'].values())}, bbox_to_anchor=(pos, 1.1), adjust_subtitles=True, loc='upper center')
+        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Set1')[i]) for i, v in enumerate(attributes[j]['N'].values())}, bbox_to_anchor=(pos, 1.1), adjust_subtitles=True, loc='upper center')
     for i, label in enumerate(MORALITY_ESTIMATORS):
         g.facet_axis(i, 0).set_ylabel(label)
     plt.savefig('data/plots/demographics-morality_shift_by_attribute.png', bbox_inches='tight')

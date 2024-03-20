@@ -33,7 +33,7 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
                 coding['Interview Code'] = coding['Interview Code'].str.split('-').apply(lambda x: x[0]+'-'+x[1])
 
             coding = coding.set_index(['Interview Code', 'Wave'])
-            coding = coding.applymap(lambda x: not pd.isnull(x))
+            coding = coding.map(lambda x: not pd.isnull(x))
             coding['Experience'] = coding['Experience'] | coding['Intrinsic']
             coding['Family'] = coding['Family'] | coding['Parents']
             coding = coding.drop(['Intrinsic', 'Parents'], axis=1)
@@ -77,7 +77,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     alignment = pd.read_csv(alignment_file)
     surveys = surveys.merge(alignment, on = ['Wave', 'Survey Id'], how = 'inner')
 
-    surveys['Parent Education (raw)'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x[0], x[1]) if (x[0] <= max(EDUCATION.keys())) and (x[1] <= max(EDUCATION.keys())) else min(x[0], x[1]), axis=1)
+    surveys['Parent Education (raw)'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION.keys())) and (x.iloc[1] <= max(EDUCATION.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
     surveys['Parent Education'] = surveys['Parent Education (raw)'].apply(lambda x: EDUCATION.get(x, pd.NA))
     surveys['Pot'] = surveys['Pot'].apply(lambda x: x if x in range(1, MAX_POT_VALUE + 1) else pd.NA)
     surveys['Drink'] = surveys['Drink'].apply(lambda x: MAX_DRINK_VALUE + 1 - x if x in range(1, MAX_DRINK_VALUE + 1) else pd.NA)

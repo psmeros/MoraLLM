@@ -156,7 +156,7 @@ def plot_morality_shift_by_attribute(interviews, attributes):
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     handles, _ = ax.get_legend_handles_labels()
     g.set_titles('')
-    for (j, attribute), pos in zip(enumerate(g.col_names), [(i/(len(g.col_names)+1)+.19) - (i*.01) for i in range(len(g.col_names)+1)]):
+    for (j, attribute), pos in zip(enumerate(g.col_names), [(ax.get_position().x0 + ax.get_position().x1)/2 - i * .01 for i, ax in enumerate(g.axes.flat)]):
         g = g.add_legend(title=attribute, legend_data={v:h for h, v in zip(handles, attributes[j]['N'].values())}, bbox_to_anchor=(pos, 1.1), adjust_subtitles=True, loc='upper center')
     for i, label in enumerate(MORALITY_ESTIMATORS):
         g.facet_axis(i, 0).set_ylabel(label)
@@ -262,13 +262,13 @@ if __name__ == '__main__':
     interviews = merge_surveys(interviews)
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
     interviews['Age'] = interviews['Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-    interviews['Church Attendance'] = interviews['Church Attendance'].apply(lambda x: 'Irregularly' if x is not pd.NA and x in [1,2,3,4] else 'Regularly' if x is not pd.NA and x in [5,6] else '')
+    interviews['Church Attendance'] = interviews['Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
     attributes = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                   {'name' : 'Race', 'values' : ['White', 'Other']},
                   {'name' : 'Income', 'values' : ['Upper', 'Lower']},
                   {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']},
                   {'name' : 'Age', 'values' : ['Early Adolescence', 'Late Adolescence']},
-                  {'name' : 'Church Attendance', 'values' : ['Regularly', 'Irregularly']}]
+                  {'name' : 'Church Attendance', 'values' : ['Regular', 'Irregular']}]
 
     for c in config:
         if c == 1:

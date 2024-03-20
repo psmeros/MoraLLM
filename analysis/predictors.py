@@ -31,7 +31,7 @@ def action_prediction(interviews, actions):
     action_prediction = pd.concat(action_prediction)
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4)
     plt.figure(figsize=(10, 10))
     ax = sns.barplot(action_prediction, x='F1-Weighted Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette=sns.color_palette('Set1'))
     ax.set_ylabel('')
@@ -96,7 +96,7 @@ def moral_consciousness(interviews, outlier_threshold):
     data.columns = ['x', 'y', 'Correlation', 'Wave', 'Estimator']
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 20))
     g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', row='Correlation', hue='Wave', seed=42, palette=sns.color_palette('Set1'))
     g.set_titles('{row_name}')
@@ -116,7 +116,7 @@ def compare_deviations(interviews):
     data['Value'] = data['Value'] * 100
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     g = sns.displot(data, y='Wave', x='Value', col='Morality', hue='Wave', bins=20, legend=False, palette=sns.color_palette('Set1'))
     g.set_titles('{col_name}')
     g.set_ylabels('')
@@ -138,7 +138,7 @@ def compare_areas(interviews, by_age):
         data = data.melt(value_vars=CODED_WAVES, var_name='Wave', value_name='Area')
 
     #Plota
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
     if by_age:
         ax = sns.regplot(data, y='Area', x='Age')
@@ -177,7 +177,7 @@ def compute_distance_distribution(interviews):
     decisiveness['Morality'] = decisiveness['Morality'].apply(lambda x: x.split('_')[0])
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
     g = sns.displot(decisiveness, x='Distance', hue='Decisiveness', col='Morality', hue_order=decisiveness_options, kind='hist', stat='probability', multiple='stack', bins=6, palette='rocket')
     g.legend.set_title('')

@@ -39,7 +39,7 @@ def plot_morality_evolution(interviews, attribute):
     interviews['Value'] = interviews['Value'] * 100
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
     g = sns.relplot(data=interviews, y='Value', x='Wave', hue='Morality Origin', col=attribute['name'], row='estimator', kind='line', linewidth=4, palette='Set2')
     g.fig.subplots_adjust(wspace=0.05)
@@ -147,7 +147,7 @@ def plot_morality_shift_by_attribute(interviews, attributes):
     shifts['value'] = shifts['value'] * 100
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(20, 10))
     g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Estimator', col_order=[attribute['name'] for attribute in attributes], row_order=MORALITY_ESTIMATORS, kind='bar', legend=False, seed=42, palette=sns.color_palette('Set1'))
     g.set(xlim=(-12, 12))
@@ -174,7 +174,7 @@ def plot_ecdf(interviews):
     interviews = pd.concat([interviews, codings])
     
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
     g = sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=3, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
     g.set_titles('{col_name}')
@@ -202,7 +202,7 @@ def plot_class_movement(interviews):
     interviews['Value'] = interviews['Value'] * 100
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
     g = sns.lmplot(data=interviews, x='Household Income Change', y='Value', hue='Estimator', col='Morality Origin', truncate=False, x_jitter=.3, seed=42, aspect=1.2, palette=sns.color_palette('Set1'))
     g.set_ylabels('')
@@ -238,7 +238,7 @@ def plot_action_probability(interviews, n_clusters, actions):
     embeddings = pd.concat(embeddings_list)
 
     #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
     color_palette = sns.color_palette('coolwarm', as_cmap=True)
     g = sns.displot(data=embeddings, col='Action', row='Estimator', kind='kde', facet_kws=dict(sharex=False, sharey=False), common_norm=False, x=0, y=1, hue='Value', hue_norm=(0, .25), fill=True, thresh=.2, alpha=.5, legend=False, palette=color_palette)

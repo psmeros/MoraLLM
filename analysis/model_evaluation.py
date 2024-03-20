@@ -41,7 +41,7 @@ def plot_model_evaluation(codings, models):
     losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment', 'entail_explained':'Entailment (Labels+Notes)', 'top':'MoraLLM', 'chatgpt':'GPT-3.5'})
 
     #Plot model comparison
-    sns.set(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
     losses.plot(kind='barh', x = 'Model', stacked=True, color=list(sns.color_palette('Set2')))
     ax = plt.gca()
@@ -70,7 +70,7 @@ def plot_coders_agreement(codings):
     heatmap = pd.DataFrame(heatmap, index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
 
     #Plot coders agreement
-    sns.set(context='paper', style='white', color_codes=True, font_scale=3)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3)
     plt.figure(figsize=(10, 10))
     ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=6), square=True, cbar_kws={'shrink': .8}, vmin=-0.2, vmax=1)
     plt.ylabel('')

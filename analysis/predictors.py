@@ -59,7 +59,7 @@ def moral_consciousness(interviews, outlier_threshold):
     compute_correlation = lambda x: str(round(x[0], 3)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
 
     data = []
-    correlations = pd.DataFrame(columns=[estimator + ':' + wave for estimator in MORALITY_ESTIMATORS for wave in CODED_WAVES], index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic', 'Intuitive - Age', 'Intuitive - GPA', 'Intuitive - Gender', 'Intuitive - Race', 'Intuitive - Church Attendance', 'Intuitive - Parent Education', 'Intuitive - Parent Income'])
+    correlations = pd.DataFrame(columns=[estimator + ':' + wave for estimator in MORALITY_ESTIMATORS for wave in CODED_WAVES], index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic', 'Intuitive - Age', 'Intuitive - GPA', 'Intuitive - Gender', 'Intuitive - Race', 'Intuitive - Church Attendance', 'Intuitive - Parent Education', 'Intuitive - Parent Income', 'Theistic - Church Attendance'])
     for estimator in MORALITY_ESTIMATORS:
         for wave in CODED_WAVES:
             Intuitive = interviews[wave + ':Intuitive_' + estimator]
@@ -86,6 +86,9 @@ def moral_consciousness(interviews, outlier_threshold):
             correlations[estimator + ':' + wave].loc['Intuitive - Church Attendance'] = compute_correlation(pearsonr(Intuitive.loc[Church_Attendance.index], Church_Attendance))
             correlations[estimator + ':' + wave].loc['Intuitive - Parent Education'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Education.index], Parent_Education))
             correlations[estimator + ':' + wave].loc['Intuitive - Parent Income'] = compute_correlation(pearsonr(Intuitive.loc[Parent_Income.index], Parent_Income))
+            
+            correlations[estimator + ':' + wave].loc['Theistic - Church Attendance'] = compute_correlation(pearsonr(interviews[wave + ':Theistic_' + estimator].loc[Church_Attendance.index], Church_Attendance))
+
 
     correlations.astype(str).to_csv('data/plots/predictors-correlations.csv')
     print(correlations)
@@ -184,7 +187,7 @@ def compute_distance_distribution(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [2]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)

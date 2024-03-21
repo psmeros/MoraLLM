@@ -3,6 +3,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import f1_score, make_scorer
+import spacy
 from __init__ import *
 from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
@@ -185,9 +186,35 @@ def compute_distance_distribution(interviews):
     plt.savefig('data/plots/predictors-distance_distribution.png', bbox_inches='tight')
     plt.show()
 
+def compute_morality_wordiness_corr(interviews):
+    #Prepare Data
+    nlp = spacy.load('en_core_web_lg')
+    count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
+    interviews[[wave + ':Word Count' for wave in CODED_WAVES]] = interviews[[wave + ':Morality_Origin' for wave in CODED_WAVES]].map(count)
+    interviews['Word Count Diff'] = interviews[CODED_WAVES[1] + ':Word Count'] - interviews[CODED_WAVES[0] + ':Word Count']
+    interviews[MORALITY_ORIGIN] = interviews[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values
+    interviews = interviews[['Word Count Diff'] + MORALITY_ORIGIN].melt(id_vars=['Word Count Diff'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+
+    #Remove Outliers
+    outlier_threshold = 2
+    data = interviews[zscore(interviews['Word Count Diff']) < outlier_threshold]
+
+    #Compute Correlations
+    compute_correlation = lambda x: str(round(x[0], 3)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+    correlations = {mo: mo + ' (r = ' + compute_correlation(pearsonr(data[data['Morality'] == mo]['Word Count Diff'], data[data['Morality'] == mo]['Value'])) + ')' for mo in MORALITY_ORIGIN}
+    data['Morality'] = data['Morality'].map(correlations)
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(10, 10))
+    g = sns.lmplot(data=data, x='Word Count Diff', y='Value', hue='Morality', seed=42, palette='Set2')
+    g.set_ylabels('Morality Diff')
+    plt.savefig('data/plots/predictors-morality_wordiness_corr.png', bbox_inches='tight')
+    plt.show()
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [6]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -210,3 +237,5 @@ if __name__ == '__main__':
             compare_areas(interviews, by_age=by_age)
         elif c == 5:
             compute_distance_distribution(interviews)
+        elif c == 6:
+            compute_morality_wordiness_corr(interviews)

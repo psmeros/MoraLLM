@@ -5,9 +5,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
-import spacy
 from __init__ import *
-from scipy.stats import zscore
 from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import minmax_scale
@@ -289,31 +287,3 @@ if __name__ == '__main__':
             actions = ['Pot', 'Drink', 'Cheat']
             n_clusters = 2
             plot_action_probability(interviews, actions=actions, n_clusters=n_clusters)
-
-
-interviews = merge_codings(interviews)
-
-nlp = spacy.load('en_core_web_lg')
-count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
-
-interviews['Word Count'] = interviews['Morality_Origin'].apply(count)
-
-interviews = interviews[['Word Count', 'Wave'] + MORALITY_ORIGIN].melt(id_vars=['Word Count', 'Wave'], value_vars=MORALITY_ORIGIN, var_name='Morality Origin', value_name='Value')
-
-interviews['Word Count'] = interviews['Word Count'].apply(lambda x: min(x, 200))
-
-outlier_threshold = 2
-
-#Plot
-sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-plt.figure(figsize=(10, 10))
-g = sns.lmplot(data=interviews, x='Word Count', y='Value', hue='Wave', col='Morality Origin', seed=42, x_jitter=.3, palette='Set1')
-g.set_ylabels('')
-
-
-g.set_titles('Morality: {col_name}')
-g.fig.subplots_adjust(wspace=0.1)
-# plt.savefig('data/plots/demographics-class_movement.png', bbox_inches='tight')
-plt.show()
-
-

@@ -191,24 +191,29 @@ def compute_morality_wordiness_corr(interviews):
     nlp = spacy.load('en_core_web_lg')
     count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
     interviews[[wave + ':Word Count' for wave in CODED_WAVES]] = interviews[[wave + ':Morality_Origin' for wave in CODED_WAVES]].map(count)
-    interviews['Word Count Diff'] = interviews[CODED_WAVES[1] + ':Word Count'] - interviews[CODED_WAVES[0] + ':Word Count']
-    interviews[MORALITY_ORIGIN] = interviews[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values
-    interviews = interviews[['Word Count Diff'] + MORALITY_ORIGIN].melt(id_vars=['Word Count Diff'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    interviews = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Word Count', 'Morality_Origin']]].values, columns=MORALITY_ORIGIN + ['Word Count', 'Text']) for wave in CODED_WAVES]).reset_index()
 
-    #Remove Outliers
-    outlier_threshold = 2
-    data = interviews[zscore(interviews['Word Count Diff']) < outlier_threshold]
+    #Keep values within 5th and 95th percentile
+    bounds = {mo:{'lower':interviews[mo].quantile(.05), 'upper':interviews[mo].quantile(.95)} for mo in MORALITY_ORIGIN + ['Word Count']}
+    interviews = interviews[pd.DataFrame([((interviews[b] >= bounds[b]['lower']) & (interviews[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
+    
+    #Melt Data
+    interviews = interviews.melt(id_vars=['Word Count', 'Text'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    interviews['Value'] = interviews['Value'].astype(float)
+    interviews['Word Count'] = interviews['Word Count'].astype(int)
 
     #Compute Correlations
     compute_correlation = lambda x: str(round(x[0], 3)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
-    correlations = {mo: mo + ' (r = ' + compute_correlation(pearsonr(data[data['Morality'] == mo]['Word Count Diff'], data[data['Morality'] == mo]['Value'])) + ')' for mo in MORALITY_ORIGIN}
-    data['Morality'] = data['Morality'].map(correlations)
+    correlations = {mo: mo + ' (r = ' + compute_correlation(pearsonr(interviews[interviews['Morality'] == mo]['Word Count'], interviews[interviews['Morality'] == mo]['Value'])) + ')' for mo in MORALITY_ORIGIN}
+    interviews['Morality'] = interviews['Morality'].map(correlations)
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='Word Count Diff', y='Value', hue='Morality', seed=42, palette='Set2')
-    g.set_ylabels('Morality Diff')
+    g = sns.lmplot(data=interviews, x='Word Count', y='Value', hue='Morality', seed=42, palette='Set2')
+    g.set_ylabels('Morality Value')
+    plt.gca().set_xlim(0)
+    plt.gca().set_ylim(0,1)
     plt.savefig('data/plots/predictors-morality_wordiness_corr.png', bbox_inches='tight')
     plt.show()
 

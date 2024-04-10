@@ -198,6 +198,10 @@ def compute_morality_wordiness_corr(interviews, wave_diff):
         interviews['Word Count Diff'] = interviews[CODED_WAVES[1] + ':Word Count'] - interviews[CODED_WAVES[0] + ':Word Count']
         interviews[MORALITY_ORIGIN] = interviews[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values
         interviews = interviews[MORALITY_ORIGIN + ['Word Count Diff', CODED_WAVES[0] + ':Word Count'] + [wave + ':Morality_Origin' for wave in CODED_WAVES]]
+
+        #Keep values within 5th and 95th percentile
+        bounds = {mo:{'lower':interviews[mo].quantile(.05), 'upper':interviews[mo].quantile(.95)} for mo in MORALITY_ORIGIN + ['Word Count Diff', CODED_WAVES[0] + ':Word Count']}
+        interviews = interviews[pd.DataFrame([((interviews[b] >= bounds[b]['lower']) & (interviews[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
         
         #Melt Data
         interviews = interviews.melt(id_vars=['Word Count Diff', CODED_WAVES[0] + ':Word Count'] + [wave + ':Morality_Origin' for wave in CODED_WAVES], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
@@ -266,5 +270,5 @@ if __name__ == '__main__':
         elif c == 5:
             compute_distance_distribution(interviews)
         elif c == 6:
-            wave_diff = False
+            wave_diff = True
             compute_morality_wordiness_corr(interviews, wave_diff=wave_diff)

@@ -3,14 +3,14 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import spacy
-import statsmodels.api as sm
+import statsmodels.formula.api as smf
 from __init__ import *
+from IPython.display import display
 from matplotlib import pyplot as plt
 from scipy.spatial import ConvexHull, distance
 from scipy.stats import pearsonr, zscore
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import f1_score, make_scorer
-from sklearn.preprocessing import scale
 
 from preprocessing.constants import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings, merge_matches, merge_surveys
@@ -199,9 +199,9 @@ def compute_morality_wordiness_corr(interviews, wave_diff):
         interviews[MORALITY_ORIGIN] = interviews[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values
         interviews = interviews[MORALITY_ORIGIN + ['Word Count Diff', CODED_WAVES[0] + ':Word Count'] + [wave + ':Morality_Origin' for wave in CODED_WAVES]]
 
-        #Keep values within 5th and 95th percentile
-        bounds = {mo:{'lower':interviews[mo].quantile(.05), 'upper':interviews[mo].quantile(.95)} for mo in MORALITY_ORIGIN + ['Word Count Diff', CODED_WAVES[0] + ':Word Count']}
-        interviews = interviews[pd.DataFrame([((interviews[b] >= bounds[b]['lower']) & (interviews[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
+        # # #Keep values within 5th and 95th percentile
+        # bounds = {mo:{'lower':interviews[mo].quantile(.05), 'upper':interviews[mo].quantile(.95)} for mo in MORALITY_ORIGIN + ['Word Count Diff', CODED_WAVES[0] + ':Word Count']}
+        # interviews = interviews[pd.DataFrame([((interviews[b] >= bounds[b]['lower']) & (interviews[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
         
         #Melt Data
         interviews = interviews.melt(id_vars=['Word Count Diff', CODED_WAVES[0] + ':Word Count'] + [wave + ':Morality_Origin' for wave in CODED_WAVES], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
@@ -209,14 +209,16 @@ def compute_morality_wordiness_corr(interviews, wave_diff):
         interviews['Word Count Diff'] = interviews['Word Count Diff'].astype(int)
         interviews[CODED_WAVES[0] + ':Word Count'] = interviews[CODED_WAVES[0] + ':Word Count'].astype(int)
 
+        #Display Results
+        results = []
         for mo in MORALITY_ORIGIN:
             data = interviews[interviews['Morality'] == mo]
-            X = pd.DataFrame(scale(data[['Word Count Diff', CODED_WAVES[0] + ':Word Count']]), columns=['Word Count Diff', CODED_WAVES[0] + ':Word Count'])
-            y = scale(data['Value'])
-            results = sm.OLS(y, X).fit()
-            results = pd.DataFrame(results.summary().tables[1].data[1:], columns=results.summary().tables[1].data[0])[['','coef', 'P>|t|']]
-            compute_coef = lambda x: str(round(x[0], 2)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
-            print(mo, {r[0]:compute_coef((float(r[1]), float(r[2]))) for r in results.values})
+            data = pd.DataFrame(data[['Value', 'Word Count Diff', CODED_WAVES[0] + ':Word Count']].values, columns=['morality', 'w31', 'w1'])
+            lm = smf.ols(formula='morality ~ w31 + w1', data=data).fit()
+            compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+            results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
+        results = pd.DataFrame(results, index=MORALITY_ORIGIN)
+        display(results)
     else:
         interviews = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Word Count', 'Morality_Origin', 'Wave']]].values, columns=MORALITY_ORIGIN + ['Word Count', 'Text', 'Wave']) for wave in CODED_WAVES]).reset_index()
 

@@ -266,11 +266,11 @@ def compute_morality_age_std(interviews):
     stds = stds.pivot(index=['Morality', 'Age'], columns='Wave', values='Value')
     stds['Value'] = (stds[CODED_WAVES[1]] - stds[CODED_WAVES[0]]) / stds[CODED_WAVES[0]]
     stds['Value'] = stds['Value'].apply(lambda x: str(round(x * 100, 1)) + '%').apply(lambda x: ' (σ: ' + ('+' if x[0] != '-' else '') + x + ')')
-    stds = [age + '\n' + mo + stds.loc[mo, age]['Value'] for mo in MORALITY_ORIGIN for age in ['Early Adolescence', 'Late Adolescence']]
+    stds = [age + '\n' + mo + stds.loc[mo, age]['Value']  for age in ['Early Adolescence', 'Late Adolescence'] for mo in MORALITY_ORIGIN]
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    g = sns.displot(interviews, y='Wave', x='Value', row='Morality', col='Age', col_order=['Early Adolescence', 'Late Adolescence'], hue='Wave', bins=20, legend=False, palette='Set1')
+    g = sns.displot(interviews, y='Wave', x='Value', col='Morality', row='Age', row_order=['Early Adolescence', 'Late Adolescence'], hue='Wave', bins=20, legend=False, palette='Set1')
     for ax, title in zip(g.axes.flat, stds):
         ax.set_title(title)
     g.figure.subplots_adjust(hspace=0.15)

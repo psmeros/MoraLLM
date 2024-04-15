@@ -153,10 +153,9 @@ def compare_areas(interviews, by_age):
     plt.savefig('data/plots/predictors-area_comparison.png', bbox_inches='tight')
     plt.show()
 
-def compute_distance_distribution(interviews):
-    # decisive_threshold = {mo: pd.concat([interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]].rename(mo) for wave in CODED_WAVES]).median() for mo in MORALITY_ORIGIN}
-    decisive_threshold = {mo: np.median([pd.concat([interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]].rename('Morality') for wave in CODED_WAVES]) for mo in MORALITY_ORIGIN]) for mo in MORALITY_ORIGIN}
-    # decisive_threshold = {mo:.5 for mo in MORALITY_ORIGIN}
+def compute_distance_distribution(interviews, include_distance):
+    decisive_threshold = {wave: np.median([pd.concat([interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]].rename('Morality')]) for mo in MORALITY_ORIGIN]) for wave in CODED_WAVES}
+    # decisive_threshold = {wave:.5 for wave in CODED_WAVES}
 
     interviews['Distance'] = interviews.apply(lambda i: [i[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] for wave in CODED_WAVES], axis=1).apply(lambda v: distance.euclidean(v[0].to_numpy(), v[1].to_numpy()))
     morality_min_distance = interviews.loc[interviews['Distance'].sort_values(ascending=True).index[2]][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN]]
@@ -173,20 +172,41 @@ def compute_distance_distribution(interviews):
 
     #Prepare Data
     decisiveness_options = ['Decisive → Decisive', 'Indecisive → Decisive', 'Decisive → Indecisive', 'Indecisive → Indecisive']
-    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[mo]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[mo])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo + '_Decisiveness' for mo in MORALITY_ORIGIN], axis=1)
+    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[CODED_WAVES[0]]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[CODED_WAVES[1]])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
     decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[2] if d[0] and not d[1] else decisiveness_options[3] if not d[0] and not d[1] else '')
-    decisiveness = pd.concat([interviews[['Distance']], decisiveness], axis=1)
-    decisiveness = decisiveness.melt(id_vars='Distance', value_vars=decisiveness.columns[1:], var_name='Morality', value_name='Decisiveness')
-    decisiveness['Morality'] = decisiveness['Morality'].apply(lambda x: x.split('_')[0])
+    
+    if include_distance:
+        decisiveness = pd.concat([interviews[['Distance']], decisiveness], axis=1)
+        decisiveness = decisiveness.melt(id_vars='Distance', value_vars=decisiveness.columns[1:], var_name='Morality', value_name='Decisiveness')
+        decisiveness['Morality'] = decisiveness['Morality'].apply(lambda x: x.split('_')[0])
 
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(10, 5))
-    g = sns.displot(decisiveness, x='Distance', hue='Decisiveness', col='Morality', hue_order=decisiveness_options, kind='hist', stat='probability', multiple='stack', bins=6, palette='rocket')
-    g.legend.set_title('')
-    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * len(MORALITY_ORIGIN) * 100 :.0f}%'))
-    plt.savefig('data/plots/predictors-distance_distribution.png', bbox_inches='tight')
-    plt.show()
+        #Plot
+        sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+        plt.figure(figsize=(10, 5))
+        g = sns.displot(decisiveness, x='Distance', hue='Decisiveness', col='Morality', hue_order=decisiveness_options, kind='hist', stat='probability', multiple='stack', bins=6, palette='rocket')
+        g.legend.set_title('')
+        plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * len(MORALITY_ORIGIN) * 100 :.0f}%'))
+        plt.savefig('data/plots/predictors-distance_distribution.png', bbox_inches='tight')
+        plt.show()
+    else:
+        decisiveness = decisiveness.apply(lambda x: x.value_counts(normalize=True) * 100).T
+        decisiveness = decisiveness[decisiveness_options]
+
+        #Plot
+        sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+        plt.figure(figsize=(10, 10))
+        decisiveness.plot(kind='barh', stacked=True, color=pd.Series(sns.color_palette('vlag'))[[0,1,4,5]])
+        ax = plt.gca()
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y :.0f}%'))
+        plt.xlabel('')
+        plt.ylabel('')
+        plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
+        plt.savefig('data/plots/predictors-decisiveness.png', bbox_inches='tight')
+        plt.show()
+
+
 
 def compute_morality_wordiness_corr(interviews, wave_diff):
     #Prepare Data
@@ -285,7 +305,7 @@ def compute_morality_age_std(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [7]
+    config = [5]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -307,7 +327,8 @@ if __name__ == '__main__':
             by_age = False
             compare_areas(interviews, by_age=by_age)
         elif c == 5:
-            compute_distance_distribution(interviews)
+            include_distance = False
+            compute_distance_distribution(interviews, include_distance)
         elif c == 6:
             wave_diff = True
             compute_morality_wordiness_corr(interviews, wave_diff=wave_diff)

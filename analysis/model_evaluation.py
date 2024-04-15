@@ -30,6 +30,7 @@ def plot_model_evaluation(codings, models):
             interviews['Intuitive'] = interviews['Experience']
             interviews['Consequentialist'] = interviews['Consequences']
             interviews['Social'] = interviews[['Family', 'Community', 'Friends']].max(axis=1)
+            interviews['Theistic'] = interviews['Holy Scripture']
             interviews = interviews.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
 
         interviews = merge_codings(interviews)[MORALITY_ORIGIN]

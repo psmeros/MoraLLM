@@ -133,7 +133,7 @@ def plot_morality_shift_by_attribute(interviews, attributes):
                 shift, N = compute_morality_shifts(interviews, estimator=estimator, attribute_name=attribute['name'], attribute_value=attribute_value)
                 if not shift.empty:
                     shift['Attribute'] = attribute['name']
-                    attributes[i]['N'][j] = attribute_value + ' (N = ' + str(N) + ')'
+                    attributes[i]['N'][j] = attribute_value #+ ' (N = ' + str(N) + ')'
                     shift['Attribute Position'] = j
                     shift['Estimator'] = estimator
                     shifts.append(shift)
@@ -151,16 +151,17 @@ def plot_morality_shift_by_attribute(interviews, attributes):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(20, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', row='Estimator', col_order=[attribute['name'] for attribute in attributes], row_order=MORALITY_ESTIMATORS, kind='bar', legend=False, seed=42, palette='Set1')
+    g = sns.catplot(data=shifts[shifts['Estimator'] == MORALITY_ESTIMATORS[0]], x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette='Set1')
     g.set(xlim=(-12, 12))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     g.set_titles('')
-    for (j, attribute), pos in zip(enumerate(g.col_names), [(ax.get_position().x0 + ax.get_position().x1)/2 - i * .01 for i, ax in enumerate(g.axes.flat)]):
-        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Set1')[i]) for i, v in enumerate(attributes[j]['N'].values())}, bbox_to_anchor=(pos, 1.1), adjust_subtitles=True, loc='upper center')
-    for i, label in enumerate(MORALITY_ESTIMATORS):
-        g.facet_axis(i, 0).set_ylabel(label)
+    for (j, attribute), pos in zip(enumerate(g.col_names), [(ax.get_position().x0 + ax.get_position().x1)/2 - (i%3)*.03 for i, ax in enumerate(g.axes)]):
+        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Set1')[i]) for i, v in enumerate(attributes[j]['N'].values())}, bbox_to_anchor=(pos - (len(''.join(attributes[0]['N'].values()))/2)*0.001, 1.1 - (j // 3) * 0.5), adjust_subtitles=True, loc='upper center')
+    for ax in g.axes:
+        ax.set_ylabel('')
+    plt.subplots_adjust(hspace=0.6)
     plt.savefig('data/plots/demographics-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
@@ -258,9 +259,14 @@ def plot_action_probability(interviews, n_clusters, actions):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = []
+    config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
+
+    #Keep values within 5th and 95th percentile
+    bounds = {mo:{'lower':interviews[mo].quantile(.05), 'upper':interviews[mo].quantile(.95)} for mo in MORALITY_ORIGIN}
+    interviews = interviews[pd.DataFrame([((interviews[b] >= bounds[b]['lower']) & (interviews[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
+
     interviews['Race'] = interviews['Race'].apply(lambda x: x if x in ['White'] else 'Other')
     interviews['Age'] = interviews['Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     interviews['Church Attendance'] = interviews['Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')

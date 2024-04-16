@@ -96,31 +96,57 @@ def compute_morality_shifts(interviews, estimator, attribute_name=None, attribut
     return shift, N
 
 #Plot morality shift
-def plot_morality_shift(interviews):
-    figs = []
-    for estimator, position in zip(MORALITY_ESTIMATORS, [[0, .45], [.55, 1]]):
-        shifts, _ = compute_morality_shifts(interviews, estimator)
-        #Prepare data
-        sns.set_palette('Set2')
-        mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(CODED_WAVES) for j, mo in enumerate(MORALITY_ORIGIN)}
-        shifts['source'] = shifts['source'].map(mapping)
-        shifts['target'] = shifts['target'].map(mapping)
-        label = pd.DataFrame([(i,j/(.69*len(MORALITY_ORIGIN))) for i, _ in enumerate(CODED_WAVES) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
-        label['name'] = pd.Series({v:k for k, v in mapping.items()}).apply(lambda x: x.split(':')[-1])
-        label['color'] = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex()) * len(CODED_WAVES)
+def plot_morality_shift(interviews, sankey):
+    if sankey:
+        figs = []
+        for estimator, position in zip(MORALITY_ESTIMATORS, [[0, .45], [.55, 1]]):
+            shifts, _ = compute_morality_shifts(interviews, estimator)
+            #Prepare data
+            sns.set_palette('Set2')
+            mapping = {wave+':'+mo:j+i*len(MORALITY_ORIGIN) for i, wave in enumerate(CODED_WAVES) for j, mo in enumerate(MORALITY_ORIGIN)}
+            shifts['source'] = shifts['source'].map(mapping)
+            shifts['target'] = shifts['target'].map(mapping)
+            label = pd.DataFrame([(i,j/(.69*len(MORALITY_ORIGIN))) for i, _ in enumerate(CODED_WAVES) for j, _ in enumerate(MORALITY_ORIGIN)], columns=['x', 'y']) + 0.001
+            label['name'] = pd.Series({v:k for k, v in mapping.items()}).apply(lambda x: x.split(':')[-1])
+            label['color'] = list(sns.color_palette("Set2", len(MORALITY_ORIGIN)).as_hex()) * len(CODED_WAVES)
 
-        #Create Sankey
-        node = dict(pad=10, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
-        link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=label['color'].iloc[shifts['target']])
-        domain = dict(x=position)
-        fig = go.Sankey(node=node, link=link, domain=domain)
-        figs.append(fig)
+            #Create Sankey
+            node = dict(pad=10, thickness=30, line=dict(color='black', width=0.5), label=label['name'], color=label['color'], x=label['x'], y=label['y'])
+            link = dict(source=shifts['source'], target=shifts['target'], value=shifts['value'], color=label['color'].iloc[shifts['target']])
+            domain = dict(x=position)
+            fig = go.Sankey(node=node, link=link, domain=domain)
+            figs.append(fig)
 
-    #Plot
-    fig = go.Figure(data=figs, layout=go.Layout(height=400, width=800, font_size=14))
-    fig.update_layout(title=go.layout.Title(text='Morality Shift by Model (left) and Coders (right)', x=0.08, xanchor='left'))
-    fig.write_image('data/plots/demographics-morality_shift.png')
-    fig.show()
+        #Plot
+        fig = go.Figure(data=figs, layout=go.Layout(height=400, width=800, font_size=14))
+        fig.update_layout(title=go.layout.Title(text='Morality Shift by Model (left) and Coders (right)', x=0.08, xanchor='left'))
+        fig.write_image('data/plots/demographics-morality_shift.png')
+        fig.show()
+    else:
+        shifts, _ = compute_morality_shifts(interviews, MORALITY_ESTIMATORS[0])
+        shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
+        shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
+        shifts['target'] = shifts['target'].apply(lambda x: x.split(':')[-1])
+        source_shifts = shifts.drop('target', axis=1).rename(columns={'source':'morality'})
+        source_shifts['value'] = -source_shifts['value']
+        target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
+        shifts = pd.concat([source_shifts, target_shifts])
+        shifts = shifts.groupby(['morality'])['value'].sum().reset_index()
+        shifts['value'] = shifts['value'] * 100
+
+        #Plot
+        sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+        plt.figure(figsize=(20, 10))
+        g = sns.catplot(data=shifts, x='value', y='morality', orient='h', order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, color=sns.color_palette('Set1')[2])
+        g.set(xlim=(-7, 7))
+        g.set_xlabels('')
+        ax = plt.gca()
+        ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+        ax.set_ylabel('')
+        plt.title('Overall Shift')
+        plt.savefig('data/plots/demographics-morality_shift.png', bbox_inches='tight')
+        plt.show()
+
 
 #Plot morality shift by attribute
 def plot_morality_shift_by_attribute(interviews, attributes):
@@ -152,7 +178,7 @@ def plot_morality_shift_by_attribute(interviews, attributes):
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(20, 10))
     g = sns.catplot(data=shifts[shifts['Estimator'] == MORALITY_ESTIMATORS[0]], x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette='Set1')
-    g.set(xlim=(-12, 12))
+    g.set(xlim=(-7, 7))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
@@ -259,7 +285,7 @@ def plot_action_probability(interviews, n_clusters, actions):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [2,3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
 
@@ -282,7 +308,8 @@ if __name__ == '__main__':
             for attribute in attributes:
                 plot_morality_evolution(interviews, attribute)
         elif c == 2:
-            plot_morality_shift(interviews)
+            sankey = False
+            plot_morality_shift(interviews, sankey=sankey)
         elif c == 3:
             plot_morality_shift_by_attribute(interviews, attributes)
         elif c == 4:

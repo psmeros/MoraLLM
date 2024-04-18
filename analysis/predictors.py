@@ -246,23 +246,45 @@ def compute_morality_wordiness_corr(interviews):
     plt.savefig('data/plots/predictors-morality_wordiness_corr.png', bbox_inches='tight')
     plt.show()
 
-def compute_morality_age_std(interviews):
+def compute_morality_age_corr(interviews):
     #Prepare Data
-    interviews['Age'] = interviews[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-    interviews = interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]+ ['Age']]
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna()
+    data['Age'] = data['Age'].astype(int)
 
     #Keep values within 5th and 95th percentile
-    bounds = {mo:{'lower':interviews[mo].quantile(.05), 'upper':interviews[mo].quantile(.95)} for mo in list(interviews.columns)[:-1]}
-    interviews = interviews[pd.DataFrame([((interviews[b] >= bounds[b]['lower']) & (interviews[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
+    bounds = {mo:{'lower':data[mo].quantile(.05), 'upper':data[mo].quantile(.95)} for mo in list(data.columns)[:-1]}
+    data = data[pd.DataFrame([((data[b] >= bounds[b]['lower']) & (data[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
+    data['Average'] = data[MORALITY_ORIGIN].mean(axis=1)
 
     #Melt Data
-    interviews = interviews.melt(id_vars=['Age'], value_vars=[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
-    interviews['Wave'] = interviews['Morality'].apply(lambda x: x.split(':')[0])
-    interviews['Morality'] = interviews['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
-    interviews['Value'] = interviews['Value'] * 100
+    data = data.melt(id_vars=['Age'], value_vars=MORALITY_ORIGIN+['Average'], var_name='Morality', value_name='Value').dropna()
+    data['Value'] = data['Value'].astype(float)
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(10, 10))
+    g = sns.lmplot(data=data, x='Age', y='Value', hue='Morality', scatter=False, seed=42, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
+    g.set_titles('{row_name}')
+    g.set_ylabels('Morality Value')
+    plt.savefig('data/plots/predictors-morality_age_lm', bbox_inches='tight')
+    plt.show()
+
+    #Prepare Data
+    interviews['Age'] = interviews[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
+    data = interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES]+ ['Age']]
+
+    #Keep values within 5th and 95th percentile
+    bounds = {mo:{'lower':data[mo].quantile(.05), 'upper':data[mo].quantile(.95)} for mo in list(data.columns)[:-1]}
+    data = data[pd.DataFrame([((data[b] >= bounds[b]['lower']) & (data[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
+
+    #Melt Data
+    data = data.melt(id_vars=['Age'], value_vars=[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
+    data['Wave'] = data['Morality'].apply(lambda x: x.split(':')[0])
+    data['Morality'] = data['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
+    data['Value'] = data['Value'] * 100
 
     #Compute Standard Deviation
-    stds = interviews.groupby(['Morality', 'Age', 'Wave'])['Value'].apply(np.std).reset_index()
+    stds = data.groupby(['Morality', 'Age', 'Wave'])['Value'].apply(np.std).reset_index()
     stds = stds.pivot(index=['Morality', 'Age'], columns='Wave', values='Value')
     stds['Value'] = (stds[CODED_WAVES[1]] - stds[CODED_WAVES[0]]) / stds[CODED_WAVES[0]]
     stds['Value'] = stds['Value'].apply(lambda x: str(round(x * 100, 1)) + '%').apply(lambda x: ' (σ: ' + ('+' if x[0] != '-' else '') + x + ')')
@@ -270,7 +292,7 @@ def compute_morality_age_std(interviews):
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    g = sns.displot(interviews, y='Wave', x='Value', col='Morality', row='Age', row_order=['Early Adolescence', 'Late Adolescence'], hue='Wave', bins=20, legend=False, palette='Set1')
+    g = sns.displot(data, y='Wave', x='Value', col='Morality', row='Age', row_order=['Early Adolescence', 'Late Adolescence'], hue='Wave', bins=20, legend=False, palette='Set1')
     for ax, title in zip(g.axes.flat, stds):
         ax.set_title(title)
     g.figure.subplots_adjust(hspace=0.15)
@@ -285,7 +307,7 @@ def compute_morality_age_std(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [6]
+    config = [7]
     actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -312,4 +334,4 @@ if __name__ == '__main__':
         elif c == 6:
             compute_morality_wordiness_corr(interviews)
         elif c == 7:
-            compute_morality_age_std(interviews)
+            compute_morality_age_corr(interviews)

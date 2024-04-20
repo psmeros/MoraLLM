@@ -248,12 +248,8 @@ def compute_morality_wordiness_corr(interviews):
 
 def compute_morality_age_corr(interviews):
     #Prepare Data
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna()
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
     data['Age'] = data['Age'].astype(int)
-
-    #Keep values within 5th and 95th percentile
-    bounds = {mo:{'lower':data[mo].quantile(.05), 'upper':data[mo].quantile(.95)} for mo in list(data.columns)[:-1]}
-    data = data[pd.DataFrame([((data[b] >= bounds[b]['lower']) & (data[b] <= bounds[b]['upper'])).values for b in bounds]).all()]
     data['Average'] = data[MORALITY_ORIGIN].mean(axis=1)
 
     #Melt Data

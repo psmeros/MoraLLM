@@ -144,6 +144,14 @@ def inform_morality_origin_model(interviews):
 
     return interviews
 
+#Count words in morality section
+def count_words(interviews, section):
+    nlp = spacy.load('en_core_web_lg')
+    count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
+    interviews[section + '_Word_Count'] = interviews[section].map(count)
+    interviews = interviews[interviews[section + '_Word_Count'] < interviews[section + '_Word_Count'].quantile(.95)].reset_index(drop=True)
+    return interviews
+
 #Compute morality origin of interviews
 def compute_morality_origin_model(interviews, model, section, dictionary_file='data/misc/eMFD.pkl'):
     #Zero-shot model
@@ -219,6 +227,7 @@ if __name__ == '__main__':
                 interviews = wave_parser(morality_breakdown=True)
                 interviews = locate_morality_section(interviews, section)
                 interviews = compute_morality_origin_model(interviews, model, section)
+                interviews = count_words(interviews, section)
                 interviews.to_pickle('data/cache/morality_model-'+model+'.pkl')
                 display_notification(model + ' Morality Origin Computed!')
         elif c == 2:

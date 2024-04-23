@@ -10,7 +10,10 @@ from preprocessing.metadata_parser import merge_codings
 
 
 #Plot mean-squared error for all models
-def plot_model_evaluation(codings, models):
+def plot_model_evaluation(interviews, models):
+    #Prepare data
+    codings = merge_codings(interviews[['Wave', 'Interview Code']])
+
     #Compute golden labels
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
     coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
@@ -59,7 +62,10 @@ def plot_model_evaluation(codings, models):
     plt.show()
 
 #Plot coders agreement using Cohen's Kappa
-def plot_coders_agreement(codings):
+def plot_coders_agreement(interviews):
+    #Prepare data
+    codings = merge_codings(interviews[['Wave', 'Interview Code']])
+
     #Prepare heatmap
     coder_A = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].astype(int).values.T
     coder_B = codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].astype(int).values.T
@@ -84,15 +90,41 @@ def plot_coders_agreement(codings):
     plt.savefig('data/plots/evaluation-coders_agreement.png', bbox_inches='tight')
     plt.show()
 
+#Show benefits of quantification by plotting ecdf
+def plot_ecdf(interviews):
+    #Prepare Data
+    interviews = merge_codings(interviews)
+    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+
+    codings = pd.DataFrame(codings.values, columns=MORALITY_ORIGIN).unstack().reset_index().rename(columns={'level_0':'Morality', 0:'Value'}).drop('level_1', axis=1)
+    codings['Estimator'] = 'Coders'
+    interviews = interviews[MORALITY_ORIGIN].unstack().reset_index().rename(columns={'level_0':'Morality', 0:'Value'}).drop('level_1', axis=1)
+    interviews['Estimator'] = 'Model'
+    interviews = pd.concat([interviews, codings])
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=3, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
+    g.set_titles('{col_name}')
+    g.legend.set_title('')
+    g.set_xlabels('')
+    g.set_ylabels('')
+    ax = plt.gca()
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * 100:.0f}%'))
+    plt.savefig('data/plots/demographics-morality_ecdf.png', bbox_inches='tight')
+    plt.show()
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2]
-    models = ['lg', 'bert', 'bart', 'chatgpt', 'top']
-    codings = pd.read_pickle('data/cache/morality_model-top.pkl')[['Wave', 'Interview Code']]
-    codings = merge_codings(codings)
-
+    config = [1,2,3]
+    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
+    
     for c in config:
         if c == 1:
-            plot_model_evaluation(codings, models)
+            models = ['lg', 'bert', 'bart', 'chatgpt', 'top']
+            plot_model_evaluation(interviews, models)
         elif c == 2:
-            plot_coders_agreement(codings)
+            plot_coders_agreement(interviews)
+        elif c == 3:
+            plot_ecdf(interviews)

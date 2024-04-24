@@ -13,8 +13,7 @@ from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
 from preprocessing.constants import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
-from preprocessing.metadata_parser import merge_codings
-from preprocessing.transcript_parser import wave_parser
+from preprocessing.transcript_parser import merge_codings, wave_parser
 
 
 #Return a SpaCy, BERT, or BART vectorizer

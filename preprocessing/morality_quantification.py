@@ -12,7 +12,7 @@ from sklearn.linear_model import LinearRegression, Ridge
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
-from preprocessing.constants import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
+from preprocessing.constants import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
 from preprocessing.helpers import display_notification
 from preprocessing.metadata_parser import merge_codings
 from preprocessing.transcript_parser import wave_parser
@@ -126,7 +126,7 @@ def locate_morality_section(interviews, section):
 def inform_morality_origin_model(interviews):
     #Compute golden labels
     codings = merge_codings(interviews)
-    golden_labels = codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    golden_labels = codings[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]]
     golden_labels.columns = MORALITY_ORIGIN
 
     #Compute coefficients for more accurate morality origin estimation

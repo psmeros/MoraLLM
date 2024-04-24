@@ -1,11 +1,11 @@
 from __init__ import *
-from preprocessing.constants import DECISION_TAKING, EDUCATION, HOUSEHOLD_CLASS, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, MERGE_MORALITY_ORIGINS, SURVEY_ATTRIBUTES
 
+from preprocessing.constants import CODED_WAVES, CODERS, DECISION_TAKING, EDUCATION, HOUSEHOLD_CLASS, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, SURVEY_ATTRIBUTES
 from preprocessing.transcript_parser import wave_parser
 
 
 #Merge matched interviews from different waves
-def merge_matches(interviews, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/interviews/alignments/crosswave.csv'):
+def merge_matches(interviews, wave_list = CODED_WAVES, matches_file = 'data/interviews/alignments/crosswave.csv'):
     matches = pd.read_csv(matches_file)[wave_list].dropna()
 
     for wave in wave_list:
@@ -58,6 +58,9 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
     codings = codings.reset_index()
 
     interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
+    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
+    interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
     
     return interviews
 

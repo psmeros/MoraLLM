@@ -45,7 +45,7 @@ def plot_morality_wordcloud(interviews):
         plt.axis('off')
         plt.title(mo)
     plt.tight_layout()
-    plt.savefig('data/plots/word_level-morality_wordcloud.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-morality_wordcloud.png', bbox_inches='tight')
     plt.show()
 
 #Plot general wordiness statistics
@@ -98,7 +98,7 @@ def plot_general_wordiness(interviews_folder):
     ax.set_xticks([0.1, 1, 10], ['1:10', '1:1', '10:1'])
     sns.despine(left=True, bottom=True)
     plt.tight_layout()
-    plt.savefig('data/plots/wordiness-general_ratio.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-general_ratio.png', bbox_inches='tight')
     plt.show()
 
     #Plot distribution
@@ -114,7 +114,7 @@ def plot_general_wordiness(interviews_folder):
     ax.set_ylabel('')
     sns.despine(left=True, bottom=True)
     plt.tight_layout()
-    plt.savefig('data/plots/wordiness-general_distribution.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-general_distribution.png', bbox_inches='tight')
     plt.show()
 
 #Plot morality wordiness statistics
@@ -167,7 +167,7 @@ def plot_morality_wordiness(interviews_folder, eMFD_file):
 
     sns.despine(left=True, bottom=True)
     plt.tight_layout()
-    plt.savefig('data/plots/wordiness-morality_wordcount.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-morality_wordcount.png', bbox_inches='tight')
     plt.show()
 
     #Plot wordcloud
@@ -181,7 +181,7 @@ def plot_morality_wordiness(interviews_folder, eMFD_file):
         plt.axis("off")
         plt.title(wordcloud_data['Wave'].iloc[i])
     plt.tight_layout()
-    plt.savefig('data/plots/wordiness-morality_wordcloud.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-morality_wordcloud.png', bbox_inches='tight')
     plt.show()
 
     #Plot unique wordcloud
@@ -195,7 +195,7 @@ def plot_morality_wordiness(interviews_folder, eMFD_file):
         plt.axis("off")
         plt.title(unique_wordcloud_data['Wave'].iloc[i])
     plt.tight_layout()
-    plt.savefig('data/plots/wordiness-morality_unique_wordcloud.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-morality_unique_wordcloud.png', bbox_inches='tight')
     plt.show()
 
 #Plot morality embeddings of all waves
@@ -213,7 +213,7 @@ def plot_morality_embeddings(interviews, dim_reduction='TSNE', perplexity=5):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Morality Embeddings')
-    plt.savefig('data/plots/morality-embeddings.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-embeddings.png', bbox_inches='tight')
     plt.show()
 
 #Plot moral foundations by wave
@@ -231,7 +231,7 @@ def plot_moral_foundations(interviews, moral_foundations):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Moral Foundations by Wave')
-    plt.savefig('data/plots/morality-moral_foundations.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-moral_foundations.png', bbox_inches='tight')
     plt.show()
 
     #Aggregate similarity
@@ -255,7 +255,7 @@ def plot_semantic_shift(interviews, wave_list=['Wave 1', 'Wave 2', 'Wave 3']):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Semantic Shift by Morality Origin')
-    plt.savefig('data/plots/morality-semantic_shift.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-semantic_shift.png', bbox_inches='tight')
     plt.show()
 
     #Print order by median
@@ -287,20 +287,12 @@ def plot_silhouette_score(interviews):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Silhouette Score')
-    plt.savefig('data/plots/morality-silhouette_score.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-silhouette_score.png', bbox_inches='tight')
     plt.show()
 
 #Plot morality evolution
 def plot_morality_evolution(interviews, attributes):
     for attribute in attributes:
-
-        #Prepare data for computing evolution
-        interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-        interviews = merge_codings(interviews)
-        codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-        interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
-        interviews = merge_matches(interviews, wave_list=CODED_WAVES)
-
         #Compute evolution for each data slice
         interviews_list = []
         for estimator in MORALITY_ESTIMATORS:
@@ -331,7 +323,7 @@ def plot_morality_evolution(interviews, attributes):
         legend = g._legend
         for line in legend.get_lines():
             line.set_linewidth(4)
-        plt.savefig('data/plots/demographics-morality_evolution_by_'+attribute['name'].lower()+'.png', bbox_inches='tight')
+        plt.savefig('data/plots/deprecated-morality_evolution_by_'+attribute['name'].lower()+'.png', bbox_inches='tight')
         plt.show()
 
 #Plot morality shift
@@ -360,16 +352,11 @@ def plot_sankey_morality_shift(interviews):
     #Plot
     fig = go.Figure(data=figs, layout=go.Layout(height=400, width=800, font_size=14))
     fig.update_layout(title=go.layout.Title(text='Morality Shift by Model (left) and Coders (right)', x=0.08, xanchor='left'))
-    fig.write_image('data/plots/demographics-morality_shift.png')
+    fig.write_image('data/plots/deprecated-morality_shift.png')
     fig.show()
 
 def plot_class_movement(interviews):
     #Prepare data
-    interviews = merge_codings(interviews)
-    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
-    interviews = merge_matches(interviews, wave_list=CODED_WAVES)
     interviews['Household Income Change'] = (interviews[CODED_WAVES[1] + ':Income (raw)'] - interviews[CODED_WAVES[0] + ':Income (raw)'])
     interviews['Household Income Change'] = pd.to_numeric(interviews['Household Income Change'])
 
@@ -388,17 +375,10 @@ def plot_class_movement(interviews):
     ax = plt.gca()
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     ax.set_xlim(-abs(interviews['Household Income Change']).max(), abs(interviews['Household Income Change']).max())
-    plt.savefig('data/plots/demographics-class_movement.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-class_movement.png', bbox_inches='tight')
     plt.show()
 
 def plot_action_probability(interviews, n_clusters, actions):
-    #Prepare data
-    interviews = merge_codings(interviews)
-    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
-    interviews = merge_matches(interviews, wave_list=CODED_WAVES)
-
     # Perform clustering, dimensionality reduction, and probability estimation
     embeddings_list = []
     for action in actions:
@@ -429,7 +409,7 @@ def plot_action_probability(interviews, n_clusters, actions):
     for ax in g.axes.flat:
         ax.yaxis.set_major_locator(mtick.MaxNLocator(nbins=4))
     g.set_titles('Estimator: {row_name}' + '\n' + 'Action: {col_name}')
-    plt.savefig('data/plots/demographics-action_probability', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-action_probability', bbox_inches='tight')
     plt.show()
 
 def action_prediction(interviews, actions):
@@ -455,7 +435,7 @@ def action_prediction(interviews, actions):
     ax = sns.barplot(action_prediction, x='F1-Weighted Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette='Set1')
     ax.set_ylabel('')
     ax.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Estimator')
-    plt.savefig('data/plots/predictors-action_prediction.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-action_prediction.png', bbox_inches='tight')
     plt.show()
 
     action_prediction = action_prediction.drop_duplicates(subset=['Action', 'Estimator', 'F1-Weighted Score']).groupby('Action')['Coefs'].apply(list).apply(lambda l: (pd.Series(l[0]) + pd.Series(l[1])).idxmax())
@@ -509,7 +489,7 @@ def moral_consciousness(interviews, outlier_threshold):
             correlations.loc['Theistic - Church Attendance', estimator + ':' + wave] = compute_correlation(pearsonr(interviews[wave + ':Theistic_' + estimator].loc[Church_Attendance.index], Church_Attendance))
 
 
-    correlations.astype(str).to_csv('data/plots/predictors-correlations.csv')
+    correlations.astype(str).to_csv('data/plots/deprecated-correlations.csv')
     print(correlations)
     data = pd.concat(data, axis=0, ignore_index=True)
     data.columns = ['x', 'y', 'Correlation', 'Wave', 'Estimator']
@@ -521,7 +501,7 @@ def moral_consciousness(interviews, outlier_threshold):
     g.set_titles('{row_name}')
     g.set_xlabels('')
     g.set_ylabels('')
-    plt.savefig('data/plots/predictors-correlations', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-correlations', bbox_inches='tight')
     plt.show()
 
 def compare_deviations(interviews):
@@ -542,7 +522,7 @@ def compare_deviations(interviews):
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.savefig('data/plots/predictors-deviation_comparison.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-deviation_comparison.png', bbox_inches='tight')
     plt.show()
 
 def compare_areas(interviews, by_age):
@@ -566,7 +546,7 @@ def compare_areas(interviews, by_age):
     plt.xlabel('')
     plt.ylabel('')
     plt.title('Convex Hull Area')
-    plt.savefig('data/plots/predictors-area_comparison.png', bbox_inches='tight')
+    plt.savefig('data/plots/deprecated-area_comparison.png', bbox_inches='tight')
     plt.show()
 
 
@@ -577,10 +557,7 @@ if __name__ == '__main__':
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
-    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
-    interviews = merge_matches(interviews, wave_list=CODED_WAVES)
+    interviews = merge_matches(interviews)
 
     for c in config:
         #word level

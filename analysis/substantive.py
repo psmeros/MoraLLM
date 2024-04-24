@@ -73,7 +73,7 @@ def plot_morality_shifts(interviews, attributes):
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     ax.set_ylabel('')
     plt.title('Overall Shift')
-    plt.savefig('data/plots/demographics-morality_shift.png', bbox_inches='tight')
+    plt.savefig('data/plots/substantive-morality_shift.png', bbox_inches='tight')
     plt.show()
 
     #Prepare data
@@ -115,7 +115,7 @@ def plot_morality_shifts(interviews, attributes):
     for ax in g.axes:
         ax.set_ylabel('')
     plt.subplots_adjust(hspace=0.6)
-    plt.savefig('data/plots/demographics-morality_shift_by_attribute.png', bbox_inches='tight')
+    plt.savefig('data/plots/substantive-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
 def compute_decisiveness(interviews):
@@ -141,7 +141,7 @@ def compute_decisiveness(interviews):
     plt.xlabel('')
     plt.ylabel('')
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
-    plt.savefig('data/plots/predictors-decisiveness.png', bbox_inches='tight')
+    plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
     plt.show()
 
 def compute_morality_wordiness_corr(interviews):
@@ -177,7 +177,7 @@ def compute_morality_wordiness_corr(interviews):
     g = sns.lmplot(data=interviews, x='Word Count Diff', y='Value', hue='Morality', seed=42, palette='Set2')
     g.set_ylabels('Morality Value Diff')
     plt.gca().set_ylim(-1,1)
-    plt.savefig('data/plots/predictors-morality_wordiness_corr.png', bbox_inches='tight')
+    plt.savefig('data/plots/substantive-morality_wordiness_corr.png', bbox_inches='tight')
     plt.show()
 
 def compute_morality_age_corr(interviews):
@@ -196,7 +196,7 @@ def compute_morality_age_corr(interviews):
     g = sns.lmplot(data=data, x='Age', y='Value', hue='Morality', scatter=False, seed=42, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
     g.set_titles('{row_name}')
     g.set_ylabels('Morality Value')
-    plt.savefig('data/plots/predictors-morality_age_lm', bbox_inches='tight')
+    plt.savefig('data/plots/substantive-morality_age_lm', bbox_inches='tight')
     plt.show()
 
     #Prepare Data
@@ -232,12 +232,12 @@ def compute_morality_age_corr(interviews):
     ax = plt.gca()
     ax.set_xlim(0,100)
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.savefig('data/plots/predictors-morality_age_std.png', bbox_inches='tight')
+    plt.savefig('data/plots/substantive-morality_age_std.png', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [1,2,3,4,5]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     # #Keep values within 5th and 95th percentile
@@ -246,10 +246,7 @@ if __name__ == '__main__':
 
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
-    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
-    interviews = merge_matches(interviews, wave_list=CODED_WAVES)
+    interviews = merge_matches(interviews)
 
     for c in config:
         if c == 1:

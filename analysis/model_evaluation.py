@@ -5,7 +5,7 @@ import seaborn as sns
 from __init__ import *
 from sklearn.metrics import cohen_kappa_score, mean_squared_error
 
-from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ORIGIN
+from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
 from preprocessing.metadata_parser import merge_codings
 
 
@@ -94,13 +94,12 @@ def plot_coders_agreement(interviews):
 def plot_ecdf(interviews):
     #Prepare Data
     interviews = merge_codings(interviews)
-    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
-
-    codings = pd.DataFrame(codings.values, columns=MORALITY_ORIGIN).unstack().reset_index().rename(columns={'level_0':'Morality', 0:'Value'}).drop('level_1', axis=1)
-    codings['Estimator'] = 'Coders'
-    interviews = interviews[MORALITY_ORIGIN].unstack().reset_index().rename(columns={'level_0':'Morality', 0:'Value'}).drop('level_1', axis=1)
-    interviews['Estimator'] = 'Model'
-    interviews = pd.concat([interviews, codings])
+    model = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    model['Estimator'] = 'Model'
+    coders = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    coders['Estimator'] = 'Coders'
+    interviews = pd.concat([model, coders])
+    interviews = interviews.melt(id_vars=['Estimator'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
@@ -112,7 +111,7 @@ def plot_ecdf(interviews):
     g.set_ylabels('')
     ax = plt.gca()
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * 100:.0f}%'))
-    plt.savefig('data/plots/demographics-morality_ecdf.png', bbox_inches='tight')
+    plt.savefig('data/plots/evaluation-morality_ecdf.png', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':

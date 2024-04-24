@@ -9,7 +9,7 @@ from __init__ import *
 from IPython.display import display
 
 from preprocessing.constants import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
-from preprocessing.transcript_parser import merge_codings, merge_matches, merge_surveys
+from preprocessing.parser import merge_codings, merge_matches, merge_surveys
 
 
 #Plot morality shifts

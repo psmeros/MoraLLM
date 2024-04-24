@@ -21,7 +21,7 @@ from sklearn.preprocessing import minmax_scale
 from wordcloud import WordCloud
 
 from preprocessing.constants import CODED_WAVES, CODERS, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, REFINED_SECTIONS
-from preprocessing.transcript_parser import merge_codings, merge_matches, merge_surveys, wave_parser
+from preprocessing.parser import merge_codings, merge_matches, merge_surveys, wave_parser
 
 #Plot wordcloud for each morality origin
 def plot_morality_wordcloud(interviews):

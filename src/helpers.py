@@ -252,6 +252,13 @@ DECISION_TAKING = {1:'Expressive Individualist',
                    3:'Relational',
                    4:'Theistic'}
 
+DEMOGRAPHICS = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
+                {'name' : 'Race', 'values' : ['White', 'Other']},
+                {'name' : 'Income', 'values' : ['Upper', 'Lower']},
+                {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']},
+                {'name' : 'Age', 'values' : ['Early Adolescence', 'Late Adolescence']},
+                {'name' : 'Church Attendance', 'values' : ['Regular', 'Irregular']}]
+
 CODED_WAVES = ['Wave 1', 'Wave 3']
 MORALITY_ESTIMATORS = ['Model', 'Coders']
 

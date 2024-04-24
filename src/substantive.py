@@ -8,8 +8,8 @@ import statsmodels.formula.api as smf
 from __init__ import *
 from IPython.display import display
 
-from preprocessing.constants import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
-from preprocessing.parser import merge_codings, merge_matches, merge_surveys
+from src.helpers import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
+from src.parser import merge_codings, merge_matches, merge_surveys
 
 
 #Plot morality shifts

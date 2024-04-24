@@ -6,7 +6,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
 import spacy
-from __init__ import *
 from matplotlib import pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from pandarallel import pandarallel
@@ -20,8 +19,8 @@ from sklearn.metrics import f1_score, make_scorer
 from sklearn.preprocessing import minmax_scale
 from wordcloud import WordCloud
 
-from preprocessing.constants import CODED_WAVES, CODERS, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, REFINED_SECTIONS
-from preprocessing.parser import merge_codings, merge_matches, merge_surveys, wave_parser
+from src.helpers import CODED_WAVES, CODERS, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, REFINED_SECTIONS
+from src.parser import merge_codings, merge_matches, merge_surveys, wave_parser
 
 #Plot wordcloud for each morality origin
 def plot_morality_wordcloud(interviews):

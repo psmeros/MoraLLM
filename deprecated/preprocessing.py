@@ -2,13 +2,12 @@ from itertools import combinations
 
 import numpy as np
 import pandas as pd
-from __init__ import *
 from scipy.spatial.distance import pdist, squareform
 from sklearn.linear_model import LinearRegression
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers_interpret import ZeroShotClassificationExplainer
 
-from preprocessing.constants import MORALITY_ORIGIN
+from src.helpers import MORALITY_ORIGIN
 
 
 #Compute coefficients for transforming waves

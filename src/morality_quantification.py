@@ -12,8 +12,8 @@ from sklearn.linear_model import LinearRegression, Ridge
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
-from preprocessing.constants import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
-from preprocessing.parser import merge_codings, wave_parser
+from src.helpers import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
+from src.parser import merge_codings, wave_parser
 
 
 #Return a SpaCy, BERT, or BART vectorizer

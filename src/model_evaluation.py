@@ -5,8 +5,8 @@ import seaborn as sns
 from __init__ import *
 from sklearn.metrics import cohen_kappa_score, mean_squared_error
 
-from preprocessing.constants import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
-from preprocessing.parser import merge_codings
+from src.helpers import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
+from src.parser import merge_codings
 
 
 #Plot mean-squared error for all models

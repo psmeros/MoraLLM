@@ -3,10 +3,39 @@ import re
 
 import pandas as pd
 from __init__ import *
+from striprtf.striprtf import rtf_to_text
 
 from preprocessing.constants import INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, TRANSCRIPT_ENCODING
-from preprocessing.helpers import error_handling
 
+
+#Convert encoding of files in a folder
+def convert_encoding(folder_path, from_encoding, to_encoding):
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        if os.path.isfile(file_path):
+            if from_encoding == 'rtf':
+                with open(file_path, 'r') as file:
+                    file_contents = file.read()
+                    file_contents = rtf_to_text(file_contents, encoding = to_encoding)
+                    file_path = file_path[:-len(from_encoding)] + 'txt'
+            else:
+                with open(file_path, 'r', encoding = from_encoding) as file:
+                    file_contents = file.read()
+            with open(file_path, 'w', encoding = to_encoding) as file:
+                file.write(file_contents)
+            print('Converted file:', filename)
+
+#Print error message and file with line number
+def error_handling(filename, target_line, error_message, print_line=False):
+    filename = os.path.abspath(filename)
+    with open(filename, 'r') as file:
+        for line_number, line in enumerate(file, 1):
+            if target_line in line:
+                print(error_message, '\n', filename+':'+str(line_number))
+                if print_line:
+                    print(target_line)
+                return
+    print(error_message, '\n', filename, target_line)
 
 #Metadata normalization
 def normalize_metadata(line, filename):
@@ -28,7 +57,6 @@ def normalize_metadata(line, filename):
         key, value = '', ''
 
     return key, value
-
 
 #Section name normalization
 def normalize_section_name(line, filename):
@@ -186,4 +214,15 @@ def wave_parser(waves_folder='data/interviews/waves', morality_breakdown=False):
 
 
 if __name__ == '__main__':
-    interviews = wave_parser()
+    #Hyperparameters
+    config = []
+
+    for c in config:
+        if c == 1:
+            interviews = wave_parser()
+        elif c == 2:
+            folder_path = None
+            from_encoding = None
+            to_encoding = None
+            convert_encoding(folder_path=folder_path, from_encoding=from_encoding, to_encoding=to_encoding)
+    

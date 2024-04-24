@@ -103,7 +103,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = []
     interviews = wave_parser()
 
     for c in config:

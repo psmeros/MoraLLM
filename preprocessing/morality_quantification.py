@@ -13,7 +13,6 @@ from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
 from preprocessing.constants import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
-from preprocessing.helpers import display_notification
 from preprocessing.metadata_parser import merge_codings
 from preprocessing.transcript_parser import wave_parser
 
@@ -223,6 +222,7 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
+            display_notification = lambda notification: os.system("osascript -e 'display notification \"\" with title \""+notification+"\"'")            
             for model in models:
                 interviews = wave_parser(morality_breakdown=True)
                 interviews = locate_morality_section(interviews, section)

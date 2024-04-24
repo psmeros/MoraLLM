@@ -237,7 +237,7 @@ def compute_morality_age_corr(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5]
+    config = [1,2,3,4]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     # #Keep values within 5th and 95th percentile

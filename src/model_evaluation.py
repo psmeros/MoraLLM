@@ -12,7 +12,7 @@ from src.parser import merge_codings
 #Plot mean-squared error for all models
 def plot_model_evaluation(interviews, models):
     #Prepare data
-    codings = merge_codings(interviews[['Wave', 'Interview Code']])
+    codings = merge_codings(interviews)
 
     #Compute golden labels
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
@@ -64,7 +64,7 @@ def plot_model_evaluation(interviews, models):
 #Plot coders agreement using Cohen's Kappa
 def plot_coders_agreement(interviews):
     #Prepare data
-    codings = merge_codings(interviews[['Wave', 'Interview Code']])
+    codings = merge_codings(interviews)
 
     #Prepare heatmap
     coder_A = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].astype(int).values.T

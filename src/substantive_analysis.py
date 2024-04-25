@@ -243,12 +243,12 @@ def compute_std_diff(interviews, attributes):
     data['Attribute Value'] = data['Attribute Value'].apply(lambda v: [attribute['values'].index(v) for attribute in attributes if v in attribute['values']][0])
     
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     g = sns.displot(data, x='Value', col='Attribute', row='Attribute Value', hue='Wave', kind='kde', fill=True, alpha=.5, common_norm=False, palette='Set1')
     for ax, title in zip(g.axes.flat, stds):
         ax.set_title(title)
     g.figure.subplots_adjust(hspace=0.2)
-    g.figure.subplots_adjust(wspace=0.15)
+    g.figure.subplots_adjust(wspace=0.2)
     g.set_ylabels('')
     g.set_xlabels('')
     ax = plt.gca()

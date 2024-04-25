@@ -14,10 +14,6 @@ from src.parser import merge_codings, merge_matches, merge_surveys
 
 #Plot morality shifts
 def plot_morality_shifts(interviews, attributes):
-    interviews[CODED_WAVES[0] + ':Race'] = interviews[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
-    interviews[CODED_WAVES[0] + ':Age'] = interviews[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-    interviews[CODED_WAVES[0] + ':Church Attendance'] = interviews[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
-    interviews[CODED_WAVES[0] + ':Income'] = interviews[CODED_WAVES[0] + ':Income'] + ' Class'
 
     #Compute morality shifts across waves
     def compute_morality_shifts(interviews, estimator, attribute_name=None, attribute_value=None):
@@ -54,8 +50,14 @@ def plot_morality_shifts(interviews, attributes):
 
         return shift, N
 
+    data = interviews.copy()
+    data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
+    data[CODED_WAVES[0] + ':Age'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
+    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
+    data[CODED_WAVES[0] + ':Income'] = data[CODED_WAVES[0] + ':Income'] + ' Class'
+
     #Prepare data
-    shifts, _ = compute_morality_shifts(interviews, MORALITY_ESTIMATORS[0])
+    shifts, _ = compute_morality_shifts(data, MORALITY_ESTIMATORS[0])
     shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
     shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
     shifts['target'] = shifts['target'].apply(lambda x: x.split(':')[-1])
@@ -82,14 +84,15 @@ def plot_morality_shifts(interviews, attributes):
 
     #Prepare data
     shifts = []
+    legends = []
     for estimator in MORALITY_ESTIMATORS:
         for i, attribute in enumerate(attributes):
-            attributes[i]['N'] = {}
+            legends.insert(i, {})
             for j, attribute_value in enumerate(attribute['values']):
-                shift, N = compute_morality_shifts(interviews, estimator=estimator, attribute_name=attribute['name'], attribute_value=attribute_value)
+                shift, N = compute_morality_shifts(data, estimator=estimator, attribute_name=attribute['name'], attribute_value=attribute_value)
                 if not shift.empty:
                     shift['Attribute'] = attribute['name']
-                    attributes[i]['N'][j] = attribute_value + ' (N = ' + str(N) + ')'
+                    legends[i][j] = attribute_value + ' (N = ' + str(N) + ')'
                     shift['Attribute Position'] = j
                     shift['Estimator'] = estimator
                     shifts.append(shift)
@@ -115,7 +118,7 @@ def plot_morality_shifts(interviews, attributes):
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     g.set_titles('')
     for (j, attribute), pos in zip(enumerate(g.col_names), [(ax.get_position().x0 + ax.get_position().x1)/2 - (i%3)*.03 for i, ax in enumerate(g.axes)]):
-        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Set1')[i]) for i, v in enumerate(attributes[j]['N'].values())}, bbox_to_anchor=(pos - (len(''.join(attributes[0]['N'].values()))/2)*0.001, 1.1 - (j // 3) * 0.5), adjust_subtitles=True, loc='upper center')
+        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Set1')[i]) for i, v in enumerate(legends[j].values())}, bbox_to_anchor=(pos - (len(''.join(legends[0].values()))/2)*0.001, 1.1 - (j // 3) * 0.5), adjust_subtitles=True, loc='upper center')
     for ax in g.axes:
         ax.set_ylabel('')
     plt.subplots_adjust(hspace=0.6)
@@ -149,23 +152,23 @@ def compute_decisiveness(interviews):
 
 def compute_morality_wordiness_corr(interviews):
     #Prepare Data
-    interviews['Word Count Diff'] = interviews[CODED_WAVES[1] + ':Morality_Origin_Word_Count'] - interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count']
-    interviews[MORALITY_ORIGIN] = interviews[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values
-    interviews = interviews[MORALITY_ORIGIN + ['Word Count Diff', CODED_WAVES[0] + ':Morality_Origin_Word_Count'] + [wave + ':Morality_Origin' for wave in CODED_WAVES]]
+    data = pd.DataFrame(interviews[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    data['Word Count Diff'] = interviews[CODED_WAVES[1] + ':Morality_Origin_Word_Count'] - interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count']
+    data['Word Count Wave 1'] = interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count']
 
     #Melt Data
-    interviews = interviews.melt(id_vars=['Word Count Diff', CODED_WAVES[0] + ':Morality_Origin_Word_Count'] + [wave + ':Morality_Origin' for wave in CODED_WAVES], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-    interviews['Value'] = interviews['Value'].astype(float)
-    interviews['Word Count Diff'] = interviews['Word Count Diff'].astype(int)
-    interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count'] = interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count'].astype(int)
+    data = data.melt(id_vars=['Word Count Diff', 'Word Count Wave 1'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    data['Value'] = data['Value'].astype(float)
+    data['Word Count Diff'] = data['Word Count Diff'].astype(int)
+    data['Word Count Wave 1'] = data['Word Count Wave 1'].astype(int)
 
     #Display Results
     for formula in ['morality ~ w31', 'morality ~ w31 + w1']:
         results = []
         for mo in MORALITY_ORIGIN:
-            data = interviews[interviews['Morality'] == mo]
-            data = pd.DataFrame(data[['Value', 'Word Count Diff', CODED_WAVES[0] + ':Morality_Origin_Word_Count']].values, columns=['morality', 'w31', 'w1'])
-            lm = smf.ols(formula=formula, data=data).fit()
+            slice = data[data['Morality'] == mo]
+            slice = pd.DataFrame(slice[['Value', 'Word Count Diff', 'Word Count Wave 1']].values, columns=['morality', 'w31', 'w1'])
+            lm = smf.ols(formula=formula, data=slice).fit()
             compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
             results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
@@ -174,7 +177,7 @@ def compute_morality_wordiness_corr(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=interviews, x='Word Count Diff', y='Value', hue='Morality', seed=42, palette='Set2')
+    g = sns.lmplot(data=data, x='Word Count Diff', y='Value', hue='Morality', seed=42, palette='Set2')
     g.set_ylabels('Morality Value Diff')
     plt.gca().set_ylim(-1,1)
     plt.savefig('data/plots/substantive-morality_wordiness_corr.png', bbox_inches='tight')
@@ -182,17 +185,17 @@ def compute_morality_wordiness_corr(interviews):
 
 def compute_morality_age_corr(interviews):
     #Prepare Data
-    interviews = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
-    interviews['Age'] = interviews['Age'].astype(int)
-    interviews = interviews.melt(id_vars=['Age'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value').dropna()
-    interviews['Value'] = interviews['Value'].astype(float)
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
+    data['Age'] = data['Age'].astype(int)
+    data = data.melt(id_vars=['Age'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value').dropna()
+    data['Value'] = data['Value'].astype(float)
 
     #Display Results
     results = []
     for mo in MORALITY_ORIGIN:
-        data = interviews[interviews['Morality'] == mo]
-        data = pd.DataFrame(data[['Value', 'Age']].values, columns=['morality', 'age'])
-        lm = smf.ols(formula='morality ~ age', data=data).fit()
+        slice = data[data['Morality'] == mo]
+        slice = pd.DataFrame(slice[['Value', 'Age']].values, columns=['morality', 'age'])
+        lm = smf.ols(formula='morality ~ age', data=slice).fit()
         compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
         results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
     results = pd.DataFrame(results, index=MORALITY_ORIGIN)
@@ -201,7 +204,7 @@ def compute_morality_age_corr(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=interviews, x='Age', y='Value', hue='Morality', scatter=False, seed=42, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
+    g = sns.lmplot(data=data, x='Age', y='Value', hue='Morality', scatter=False, seed=42, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
     g.set_titles('{row_name}')
     g.set_ylabels('Morality Value')
     plt.savefig('data/plots/substantive-morality_age_lm', bbox_inches='tight')
@@ -270,6 +273,8 @@ if __name__ == '__main__':
         elif c == 3:
             compute_morality_age_corr(interviews)
         elif c == 4:
-            compute_std_diff(interviews, DEMOGRAPHICS)
+            attributes = DEMOGRAPHICS
+            compute_std_diff(interviews, attributes)
         elif c == 5:
-            plot_morality_shifts(interviews, DEMOGRAPHICS)
+            attributes = DEMOGRAPHICS
+            plot_morality_shifts(interviews, attributes)

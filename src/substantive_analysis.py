@@ -177,7 +177,7 @@ def compute_morality_wordiness_corr(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='Word Count Diff', y='Value', hue='Morality', seed=42, palette='Set2')
+    g = sns.lmplot(data=data, x='Word Count Diff', y='Value', hue='Morality', seed=42, scatter_kws={'s': 20}, markers='+', palette='Set2')
     g.set_ylabels('Morality Value Diff')
     plt.gca().set_ylim(-1,1)
     plt.savefig('data/plots/substantive-morality_wordiness_corr.png', bbox_inches='tight')
@@ -244,7 +244,7 @@ def compute_std_diff(interviews, attributes):
     
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    g = sns.displot(data, y='Wave', x='Value', col='Attribute', row='Attribute Value', hue='Wave', bins=20, legend=False, palette='Set1')
+    g = sns.displot(data, x='Value', col='Attribute', row='Attribute Value', hue='Wave', kind='kde', fill=True, alpha=.5, common_norm=False, palette='Set1')
     for ax, title in zip(g.axes.flat, stds):
         ax.set_title(title)
     g.figure.subplots_adjust(hspace=0.2)

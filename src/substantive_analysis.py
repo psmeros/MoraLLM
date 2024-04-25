@@ -17,6 +17,7 @@ def plot_morality_shifts(interviews, attributes):
     interviews[CODED_WAVES[0] + ':Race'] = interviews[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
     interviews[CODED_WAVES[0] + ':Age'] = interviews[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     interviews[CODED_WAVES[0] + ':Church Attendance'] = interviews[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
+    interviews[CODED_WAVES[0] + ':Income'] = interviews[CODED_WAVES[0] + ':Income'] + ' Class'
 
     #Compute morality shifts across waves
     def compute_morality_shifts(interviews, estimator, attribute_name=None, attribute_value=None):
@@ -159,15 +160,16 @@ def compute_morality_wordiness_corr(interviews):
     interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count'] = interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count'].astype(int)
 
     #Display Results
-    results = []
-    for mo in MORALITY_ORIGIN:
-        data = interviews[interviews['Morality'] == mo]
-        data = pd.DataFrame(data[['Value', 'Word Count Diff', CODED_WAVES[0] + ':Morality_Origin_Word_Count']].values, columns=['morality', 'w31', 'w1'])
-        lm = smf.ols(formula='morality ~ w31', data=data).fit()
-        compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
-        results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
-    results = pd.DataFrame(results, index=MORALITY_ORIGIN)
-    display(results)
+    for formula in ['morality ~ w31', 'morality ~ w31 + w1']:
+        results = []
+        for mo in MORALITY_ORIGIN:
+            data = interviews[interviews['Morality'] == mo]
+            data = pd.DataFrame(data[['Value', 'Word Count Diff', CODED_WAVES[0] + ':Morality_Origin_Word_Count']].values, columns=['morality', 'w31', 'w1'])
+            lm = smf.ols(formula=formula, data=data).fit()
+            compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+            results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
+        results = pd.DataFrame(results, index=MORALITY_ORIGIN)
+        display(results)
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
@@ -180,18 +182,26 @@ def compute_morality_wordiness_corr(interviews):
 
 def compute_morality_age_corr(interviews):
     #Prepare Data
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
-    data['Age'] = data['Age'].astype(int)
-    data['Average'] = data[MORALITY_ORIGIN].mean(axis=1)
+    interviews = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
+    interviews['Age'] = interviews['Age'].astype(int)
+    interviews = interviews.melt(id_vars=['Age'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value').dropna()
+    interviews['Value'] = interviews['Value'].astype(float)
 
-    #Melt Data
-    data = data.melt(id_vars=['Age'], value_vars=MORALITY_ORIGIN+['Average'], var_name='Morality', value_name='Value').dropna()
-    data['Value'] = data['Value'].astype(float)
+    #Display Results
+    results = []
+    for mo in MORALITY_ORIGIN:
+        data = interviews[interviews['Morality'] == mo]
+        data = pd.DataFrame(data[['Value', 'Age']].values, columns=['morality', 'age'])
+        lm = smf.ols(formula='morality ~ age', data=data).fit()
+        compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+        results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
+    results = pd.DataFrame(results, index=MORALITY_ORIGIN)
+    display(results)
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='Age', y='Value', hue='Morality', scatter=False, seed=42, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
+    g = sns.lmplot(data=interviews, x='Age', y='Value', hue='Morality', scatter=False, seed=42, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
     g.set_titles('{row_name}')
     g.set_ylabels('Morality Value')
     plt.savefig('data/plots/substantive-morality_age_lm', bbox_inches='tight')
@@ -210,17 +220,20 @@ def compute_std_diff(interviews, attributes):
     data['Morality'] = data['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
     data['Value'] = data['Value'] * 100
     data = data.rename(columns = {CODED_WAVES[0] + ':' + attribute['name'] : attribute['name'] for attribute in attributes})
+    data['Income'] = data['Income'] + ' Class'
 
     #Compute Standard Deviation
     stds = []
     for attribute in attributes:
-        std = data.groupby([attribute['name'], 'Wave'])['Value'].apply(np.std).reset_index()
-        std = std.pivot(index=attribute['name'], columns='Wave', values='Value')
+        std = data.groupby([attribute['name'], 'Wave']).agg({'Value': ['count', 'std']})
+        std.columns = std.columns.droplevel(0)
+        std = std.reset_index().pivot(index=[attribute['name'], 'count'], columns='Wave', values='std').reset_index()
         std['Value'] = (std[CODED_WAVES[1]] - std[CODED_WAVES[0]]) / std[CODED_WAVES[0]]
-        std['Value'] = std['Value'].apply(lambda x: str(round(x * 100, 1)) + '%').apply(lambda x: ' (σ: ' + ('+' if x[0] != '-' else '') + x + ')')
-        std = [value + '\n' + std.loc[value]['Value'] for value in attribute['values']]
+        std['Value'] = std['Value'].apply(lambda x: str(round(x * 100, 1)) + '%').apply(lambda x: ', σ = ' + ('+' if x[0] != '-' else '') + x + ')')
+        std['Value'] = '(N = ' + std['count'].apply(lambda c: str(int(c/len(MORALITY_ORIGIN)))) + std['Value']
+        std = [value + '\n' + std[std[attribute['name']] == value]['Value'].iloc[0] for value in attribute['values']]
         stds.append(std)
-    stds = [l[0] for l in stds] + [l[1] for l in stds]        
+    stds = [l[0] for l in stds] + [l[1] for l in stds]
 
     data = data.melt(id_vars=['Value', 'Wave'], value_vars=[attribute['name'] for attribute in attributes], var_name='Attribute', value_name='Attribute Value')
     data = data[data['Attribute Value'] != ''].dropna()
@@ -231,7 +244,7 @@ def compute_std_diff(interviews, attributes):
     g = sns.displot(data, y='Wave', x='Value', col='Attribute', row='Attribute Value', hue='Wave', bins=20, legend=False, palette='Set1')
     for ax, title in zip(g.axes.flat, stds):
         ax.set_title(title)
-    g.figure.subplots_adjust(hspace=0.15)
+    g.figure.subplots_adjust(hspace=0.2)
     g.figure.subplots_adjust(wspace=0.15)
     g.set_ylabels('')
     g.set_xlabels('')

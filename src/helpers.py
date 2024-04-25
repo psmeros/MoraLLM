@@ -254,7 +254,7 @@ DECISION_TAKING = {1:'Expressive Individualist',
 
 DEMOGRAPHICS = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                 {'name' : 'Race', 'values' : ['White', 'Other']},
-                {'name' : 'Income', 'values' : ['Upper', 'Lower']},
+                {'name' : 'Income', 'values' : ['Upper Class', 'Lower Class']},
                 {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']},
                 {'name' : 'Age', 'values' : ['Early Adolescence', 'Late Adolescence']},
                 {'name' : 'Church Attendance', 'values' : ['Regular', 'Irregular']}]

@@ -134,7 +134,7 @@ def compute_decisiveness(interviews):
     decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[2] if d[0] and not d[1] else decisiveness_options[3] if not d[0] and not d[1] else '')
     
     decisiveness = decisiveness.apply(lambda x: x.value_counts(normalize=True) * 100).T
-    decisiveness = decisiveness[decisiveness_options]
+    decisiveness = decisiveness[decisiveness_options].iloc[::-1]
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)

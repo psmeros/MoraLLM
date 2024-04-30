@@ -257,9 +257,34 @@ def compute_std_diff(interviews, attributes):
     plt.savefig('data/plots/substantive-std_diff.png', bbox_inches='tight')
     plt.show()
 
+def print_cases(interviews):
+    #Increased Intuitiveness
+    data = interviews[interviews[CODED_WAVES[0] + ':Parent Education'] == 'Tertiary']
+    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
+    data['Intuitive Diff'] = data[CODED_WAVES[1] + ':Intuitive'] - data[CODED_WAVES[0] + ':Intuitive']
+    data = data.sort_values(by='Intuitive Diff')[-10:]
+    print(data.iloc[-1][CODED_WAVES[0] + ':Morality_Origin'])
+    print(data.iloc[-1][CODED_WAVES[1] + ':Morality_Origin'])
+    print([data.iloc[-1][wave + ':' + d] for wave in CODED_WAVES for d in ['Age', 'Gender', 'Race', 'Income', 'Parent Education', 'Church Attendance']])
+    print(str(round(data.iloc[-1][CODED_WAVES[0] + ':Intuitive_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(data.iloc[-1][CODED_WAVES[1] + ':Intuitive_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (Model)')
+    print(str(round(data.iloc[-1][CODED_WAVES[0] + ':Intuitive_' + MORALITY_ESTIMATORS[1]], 2) * 100) + '%' + ' → ' + str(round(data.iloc[-1][CODED_WAVES[1] + ':Intuitive_' + MORALITY_ESTIMATORS[1]], 2) * 100) + '%' + ' (Coders)')
+
+    print('\n----------\n')
+
+    #Decreased Intuitiveness
+    data = interviews[interviews[CODED_WAVES[0] + ':Parent Education'] == 'Secondary']
+    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
+    data['Intuitive Diff'] = data[CODED_WAVES[1] + ':Intuitive'] - data[CODED_WAVES[0] + ':Intuitive']
+    data = data.sort_values(by='Intuitive Diff')[:10]
+    print(data.iloc[0][CODED_WAVES[0] + ':Morality_Origin'])
+    print(data.iloc[0][CODED_WAVES[1] + ':Morality_Origin'])
+    print([data.iloc[0][wave + ':' + d] for wave in CODED_WAVES for d in ['Age', 'Gender', 'Race', 'Income', 'Parent Education', 'Church Attendance']])
+    print(str(round(data.iloc[0][CODED_WAVES[0] + ':Intuitive_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(data.iloc[-1][CODED_WAVES[1] + ':Intuitive_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (Model)')
+    print(str(round(data.iloc[0][CODED_WAVES[0] + ':Intuitive_' + MORALITY_ESTIMATORS[1]], 2) * 100) + '%' + ' → ' + str(round(data.iloc[-1][CODED_WAVES[1] + ':Intuitive_' + MORALITY_ESTIMATORS[1]], 2) * 100) + '%' + ' (Coders)')
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5]
+    config = [6]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -278,3 +303,5 @@ if __name__ == '__main__':
         elif c == 5:
             attributes = DEMOGRAPHICS
             plot_morality_shifts(interviews, attributes)
+        elif c == 6:
+            print_cases(interviews)

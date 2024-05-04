@@ -257,30 +257,25 @@ def compute_std_diff(interviews, attributes):
     plt.savefig('data/plots/substantive-std_diff.png', bbox_inches='tight')
     plt.show()
 
-def print_cases(interviews):
-    #Increased Intuitiveness
-    data = interviews[interviews[CODED_WAVES[0] + ':Parent Education'] == 'Tertiary']
+def print_cases(interviews, cases):
+    #Prepare Data
+    data = interviews.copy()
+    data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
+    data[CODED_WAVES[0] + ':Age'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
-    data['Intuitive Diff'] = data[CODED_WAVES[1] + ':Intuitive'] - data[CODED_WAVES[0] + ':Intuitive']
-    data = data.sort_values(by='Intuitive Diff')[-10:]
-    print(data.iloc[-1][CODED_WAVES[0] + ':Morality_Origin'])
-    print(data.iloc[-1][CODED_WAVES[1] + ':Morality_Origin'])
-    print([data.iloc[-1][wave + ':' + d] for wave in CODED_WAVES for d in ['Age', 'Gender', 'Race', 'Income', 'Parent Education', 'Church Attendance']])
-    print(str(round(data.iloc[-1][CODED_WAVES[0] + ':Intuitive_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(data.iloc[-1][CODED_WAVES[1] + ':Intuitive_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (Model)')
-    print(str(round(data.iloc[-1][CODED_WAVES[0] + ':Intuitive_' + MORALITY_ESTIMATORS[1]], 2) * 100) + '%' + ' → ' + str(round(data.iloc[-1][CODED_WAVES[1] + ':Intuitive_' + MORALITY_ESTIMATORS[1]], 2) * 100) + '%' + ' (Coders)')
 
-    print('\n----------\n')
+    #Print Cases
+    for case in cases:
+        for c in case:
+            slice = data[pd.concat([data[CODED_WAVES[0] + ':' + attribute] == c['demographics'][attribute] for attribute in c['demographics'].keys()], axis=1).all(axis=1)]
+            slice['Diff'] = slice[CODED_WAVES[1] + ':' + c['morality']] - slice[CODED_WAVES[0] + ':' + c['morality']]
+            slice = slice.sort_values(by='Diff', ascending=c['ascending'])
+            print(slice.iloc[c['pos']][CODED_WAVES[0] + ':Morality_Origin'])
+            print(slice.iloc[c['pos']][CODED_WAVES[1] + ':Morality_Origin'])
+            print(str(round(slice.iloc[c['pos']][CODED_WAVES[0] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(slice.iloc[c['pos']][CODED_WAVES[1] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (' + c['morality'] + ')')
+            print('\n----------\n')
+        print('\n==========\n')
 
-    #Decreased Intuitiveness
-    data = interviews[interviews[CODED_WAVES[0] + ':Parent Education'] == 'Secondary']
-    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
-    data['Intuitive Diff'] = data[CODED_WAVES[1] + ':Intuitive'] - data[CODED_WAVES[0] + ':Intuitive']
-    data = data.sort_values(by='Intuitive Diff')[:10]
-    print(data.iloc[0][CODED_WAVES[0] + ':Morality_Origin'])
-    print(data.iloc[0][CODED_WAVES[1] + ':Morality_Origin'])
-    print([data.iloc[0][wave + ':' + d] for wave in CODED_WAVES for d in ['Age', 'Gender', 'Race', 'Income', 'Parent Education', 'Church Attendance']])
-    print(str(round(data.iloc[0][CODED_WAVES[0] + ':Intuitive_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(data.iloc[-1][CODED_WAVES[1] + ':Intuitive_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (Model)')
-    print(str(round(data.iloc[0][CODED_WAVES[0] + ':Intuitive_' + MORALITY_ESTIMATORS[1]], 2) * 100) + '%' + ' → ' + str(round(data.iloc[-1][CODED_WAVES[1] + ':Intuitive_' + MORALITY_ESTIMATORS[1]], 2) * 100) + '%' + ' (Coders)')
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -304,4 +299,10 @@ if __name__ == '__main__':
             attributes = DEMOGRAPHICS
             plot_morality_shifts(interviews, attributes)
         elif c == 6:
-            print_cases(interviews)
+            cases = [
+                     (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
+                      ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),
+                     (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Social', 'ascending' : True}),
+                      ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Lower', 'Parent Education' : 'Secondary'}, 'pos' : 3, 'morality' : 'Social', 'ascending' : True}))
+                    ]
+            print_cases(interviews, cases)

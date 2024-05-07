@@ -279,9 +279,10 @@ def print_cases(interviews, demographics_cases, incoherent_cases):
     #Print Incoherent Cases
     data = data[pd.DataFrame([data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].sum(axis=1) > len(MORALITY_ORIGIN)/2 for wave in CODED_WAVES]).T.apply(lambda w: w[0] | w[1], axis=1)]
     for ic in incoherent_cases:
+        print (data.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Income', ':Parent Education']]].values)
         for wave in CODED_WAVES:
             print(wave)
-            print(data.iloc[ic][wave + ':Morality_Origin'])        
+            print(data.iloc[ic][wave + ':Morality_Origin'])
             print(data.iloc[ic][[wave + ':' + mo for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
             print('\n----------\n')
 

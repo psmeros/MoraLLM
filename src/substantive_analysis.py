@@ -257,15 +257,15 @@ def compute_std_diff(interviews, attributes):
     plt.savefig('data/plots/substantive-std_diff.png', bbox_inches='tight')
     plt.show()
 
-def print_cases(interviews, cases):
+def print_cases(interviews, demographics_cases, incoherent_cases):
     #Prepare Data
     data = interviews.copy()
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
     data[CODED_WAVES[0] + ':Age'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
 
-    #Print Cases
-    for case in cases:
+    #Print Demographics Cases
+    for case in demographics_cases:
         for c in case:
             slice = data[pd.concat([data[CODED_WAVES[0] + ':' + attribute] == c['demographics'][attribute] for attribute in c['demographics'].keys()], axis=1).all(axis=1)]
             slice['Diff'] = slice[CODED_WAVES[1] + ':' + c['morality']] - slice[CODED_WAVES[0] + ':' + c['morality']]
@@ -275,6 +275,15 @@ def print_cases(interviews, cases):
             print(str(round(slice.iloc[c['pos']][CODED_WAVES[0] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(slice.iloc[c['pos']][CODED_WAVES[1] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (' + c['morality'] + ')')
             print('\n----------\n')
         print('\n==========\n')
+
+    #Print Incoherent Cases
+    data = data[pd.DataFrame([data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].sum(axis=1) > len(MORALITY_ORIGIN)/2 for wave in CODED_WAVES]).T.apply(lambda w: w[0] | w[1], axis=1)]
+    for ic in incoherent_cases:
+        for wave in CODED_WAVES:
+            print(wave)
+            print(data.iloc[ic][wave + ':Morality_Origin'])        
+            print(data.iloc[ic][[wave + ':' + mo for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print('\n----------\n')
 
 
 if __name__ == '__main__':
@@ -299,10 +308,11 @@ if __name__ == '__main__':
             attributes = DEMOGRAPHICS
             plot_morality_shifts(interviews, attributes)
         elif c == 6:
-            cases = [
+            demographics_cases = [
                      (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
                       ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),
                      (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Social', 'ascending' : True}),
                       ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Lower', 'Parent Education' : 'Secondary'}, 'pos' : 3, 'morality' : 'Social', 'ascending' : True}))
                     ]
-            print_cases(interviews, cases)
+            incoherent_cases = [2]
+            print_cases(interviews, demographics_cases, incoherent_cases)

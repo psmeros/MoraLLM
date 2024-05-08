@@ -283,7 +283,8 @@ def print_cases(interviews, demographics_cases, incoherent_cases):
         for wave in CODED_WAVES:
             print(wave)
             print(data.iloc[ic][wave + ':Morality_Origin'])
-            print(data.iloc[ic][[wave + ':' + mo for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
             print('\n----------\n')
 
 

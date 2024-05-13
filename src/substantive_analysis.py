@@ -257,7 +257,7 @@ def compute_std_diff(interviews, attributes):
     plt.savefig('data/plots/substantive-std_diff.png', bbox_inches='tight')
     plt.show()
 
-def print_cases(interviews, demographics_cases, incoherent_cases):
+def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases):
     #Prepare Data
     data = interviews.copy()
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
@@ -277,9 +277,26 @@ def print_cases(interviews, demographics_cases, incoherent_cases):
         print('\n==========\n')
 
     #Print Incoherent Cases
-    data = data[pd.DataFrame([data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].sum(axis=1) > len(MORALITY_ORIGIN)/2 for wave in CODED_WAVES]).T.apply(lambda w: w[0] | w[1], axis=1)]
+    slice = data[pd.DataFrame([data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].sum(axis=1) > len(MORALITY_ORIGIN)/2 for wave in CODED_WAVES]).T.apply(lambda w: w[0] | w[1], axis=1)]
     for ic in incoherent_cases:
-        print (data.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Income', ':Parent Education']]].values)
+        print(slice.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Income', ':Parent Education']]].values)
+        for wave in CODED_WAVES:
+            print(wave)
+            print(slice.iloc[ic][wave + ':Morality_Origin'])
+            print(slice.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print(slice.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print('\n----------\n')
+
+    #Print Max Diff Cases
+    model_diff = pd.DataFrame(data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    coders_diff = pd.DataFrame(data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    data['model-coders_diff'] = abs(model_diff - coders_diff).max(axis=1)
+    data['model-coders_diff_morality'] = abs(model_diff - coders_diff).idxmax(axis=1)
+    data = data.sort_values(by='model-coders_diff', ascending=False)
+
+    for ic in max_diff_cases:
+        print(data.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Income', ':Parent Education']]].values)
+        print(data.iloc[ic]['model-coders_diff_morality'])
         for wave in CODED_WAVES:
             print(wave)
             print(data.iloc[ic][wave + ':Morality_Origin'])
@@ -317,4 +334,5 @@ if __name__ == '__main__':
                       ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Lower', 'Parent Education' : 'Secondary'}, 'pos' : 3, 'morality' : 'Social', 'ascending' : True}))
                     ]
             incoherent_cases = [2]
-            print_cases(interviews, demographics_cases, incoherent_cases)
+            max_diff_cases = [1]
+            print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases)

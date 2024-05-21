@@ -157,6 +157,10 @@ def compute_morality_wordiness_corr(interviews):
     data['Word Count Diff'] = interviews[CODED_WAVES[1] + ':Morality_Origin_Word_Count'] - interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count']
     data['Word Count Wave 1'] = interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count']
 
+    data['Word Count Diff'] = scale(data[['Word Count Diff']], with_mean=True, with_std=False)
+    data['Word Count Wave 1'] = scale(data[['Word Count Wave 1']], with_mean=True, with_std=False)
+    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=True)
+
     #Melt Data
     data = data.melt(id_vars=['Word Count Diff', 'Word Count Wave 1'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
     data['Value'] = data['Value'].astype(float)
@@ -178,7 +182,7 @@ def compute_morality_wordiness_corr(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='Word Count Diff', y='Value', hue='Morality', seed=42, scatter_kws={'s': 20}, markers='+', palette='Set2')
+    g = sns.lmplot(data=data, x='Word Count Diff', y='Value', hue='Morality', seed=42, scatter_kws={'s': 20}, markers='+', ci=68, palette='Set2')
     g.set_ylabels('Morality Value Diff')
     plt.gca().set_ylim(-1,1)
     plt.savefig('data/plots/substantive-morality_wordiness_corr.png', bbox_inches='tight')
@@ -323,7 +327,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

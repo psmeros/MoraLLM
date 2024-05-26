@@ -144,9 +144,11 @@ def compute_decisiveness(interviews):
     sns.barplot(data=decisiveness, y='Morality', x='Value', hue='Decisiveness', order=MORALITY_ORIGIN, hue_order=decisiveness_options, palette=sns.color_palette('coolwarm', n_colors=len(decisiveness_options)))
     ax = plt.gca()
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y :.0f}%'))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     plt.xlabel('')
     plt.ylabel('')
-    plt.legend(bbox_to_anchor=(1, 1.03))
+    plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
     plt.show()
 
@@ -318,7 +320,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [1]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

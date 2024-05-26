@@ -152,26 +152,23 @@ def compute_decisiveness(interviews):
 
 def compute_morality_wordiness_corr(interviews):
     #Prepare Data
-    data = pd.DataFrame(interviews[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    data['Word Count Diff'] = interviews[CODED_WAVES[1] + ':Morality_Origin_Word_Count'] - interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count']
-    data['Word Count Wave 1'] = interviews[CODED_WAVES[0] + ':Morality_Origin_Word_Count']
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Morality_Origin_Word_Count']]].values, columns=MORALITY_ORIGIN+['Morality_Origin_Word_Count']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
+    data['wc'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
+    data['wc_m'] = scale(data[['wc']], with_mean=True, with_std=False)
 
-    data['Word Count Diff'] = scale(data[['Word Count Diff']], with_mean=True, with_std=False)
-    data['Word Count Wave 1'] = scale(data[['Word Count Wave 1']], with_mean=True, with_std=False)
-    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=True)
+    data['wc_2'] = data['wc'] ** 2
+    data['wc_2_m'] = data['wc_m'] ** 2
 
-    #Melt Data
-    data = data.melt(id_vars=['Word Count Diff', 'Word Count Wave 1'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-    data['Value'] = data['Value'].astype(float)
-    data['Word Count Diff'] = data['Word Count Diff'].astype(int)
-    data['Word Count Wave 1'] = data['Word Count Wave 1'].astype(int)
+    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False)
+
+    data = data.melt(id_vars=['wc', 'wc_m', 'wc_2', 'wc_2_m'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
+    data['morality'] = data['morality'].astype(float)
 
     #Display Results
-    for formula in ['morality ~ w31', 'morality ~ w31 + w1']:
+    for formula in ['morality ~ wc', 'morality ~ wc + wc_2', 'morality ~ wc_m', 'morality ~ wc_m + wc_2_m']:
         results = []
         for mo in MORALITY_ORIGIN:
             slice = data[data['Morality'] == mo]
-            slice = pd.DataFrame(slice[['Value', 'Word Count Diff', 'Word Count Wave 1']].values, columns=['morality', 'w31', 'w1'])
             lm = smf.ols(formula=formula, data=slice).fit()
             compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
             results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
@@ -181,9 +178,10 @@ def compute_morality_wordiness_corr(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='Word Count Diff', y='Value', hue='Morality', seed=42, scatter_kws={'s': 20}, markers='+', ci=68, palette='Set2')
-    g.set_ylabels('Morality Value Diff')
-    plt.gca().set_ylim(-1,1)
+    g = sns.lmplot(data=data, x='wc_m', y='morality', hue='Morality', scatter=False, seed=42, aspect=1.2, palette=sns.color_palette('Set2'))
+    g.set_titles('{row_name}')
+    g.set_ylabels('Morality (Mean-Centered)')
+    g.set_xlabels('Wordiness (Mean-Centered)')
     plt.savefig('data/plots/substantive-morality_wordiness_corr.png', bbox_inches='tight')
     plt.show()
 
@@ -213,7 +211,7 @@ def compute_morality_age_corr(interviews):
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
         display(results)
 
-    # #Plot
+    #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
     g = sns.lmplot(data=data, x='Age_m', y='Value', hue='Morality', scatter=False, seed=42, aspect=1.2, palette=sns.color_palette('Set2'))
@@ -320,7 +318,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

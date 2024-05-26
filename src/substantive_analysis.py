@@ -192,40 +192,34 @@ def compute_morality_age_corr(interviews):
     data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
     data['Age'] = data['Age'].astype(int)
     data['Age_m'] = scale(data[['Age']], with_mean=True, with_std=False)
-    data['Age_sm'] = scale(data[['Age']], with_mean=True, with_std=True)
 
     data['Age_2'] = data['Age'] ** 2
-    data['Age_2_m'] = scale(data[['Age_2']], with_mean=True, with_std=False)
-    data['Age_2_sm'] = scale(data[['Age_2']], with_mean=True, with_std=True)
+    data['Age_2_m'] = data['Age_m'] ** 2
 
-    data['Age_log'] = np.log(data['Age'])
-    data['Age_log_m'] = scale(data[['Age_log']], with_mean=True, with_std=False)
-    data['Age_log_sm'] = scale(data[['Age_log']], with_mean=True, with_std=True)
+    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False)
 
-    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=True)
-
-    data = data.melt(id_vars=['Age', 'Age_m', 'Age_sm', 'Age_2', 'Age_2_m', 'Age_2_sm', 'Age_log', 'Age_log_m', 'Age_log_sm'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value').dropna()
+    data = data.melt(id_vars=['Age', 'Age_m', 'Age_2', 'Age_2_m'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value').dropna()
     data['Value'] = data['Value'].astype(float)
 
     #Display Results
-    for formula in ['morality ~ age', 'morality ~ age_m', 'morality ~ age_sm', 'morality ~ age_2', 'morality ~ age_2_m', 'morality ~ age_2_sm', 'morality ~ age_log', 'morality ~ age_log_m', 'morality ~ age_log_sm']:
+    for formula in ['morality ~ age', 'morality ~ age + age_2', 'morality ~ age_m', 'morality ~ age_m + age_2_m']:
         results = []
         for mo in MORALITY_ORIGIN:
             slice = data[data['Morality'] == mo]
-            slice = pd.DataFrame(slice[['Value', 'Age', 'Age_m', 'Age_sm', 'Age_2', 'Age_2_m', 'Age_2_sm', 'Age_log', 'Age_log_m', 'Age_log_sm']].values, columns=['morality', 'age', 'age_m', 'age_sm', 'age_2', 'age_2_m', 'age_2_sm', 'age_log', 'age_log_m', 'age_log_sm'])
+            slice = pd.DataFrame(slice[['Value', 'Age', 'Age_m', 'Age_2', 'Age_2_m']].values, columns=['morality', 'age', 'age_m', 'age_2', 'age_2_m'])
             lm = smf.ols(formula=formula, data=slice).fit()
             compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
             results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
         display(results)
 
-    #Plot
+    # #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='Age_log_m', y='Value', hue='Morality', scatter=False, robust=True, seed=42, ci=68, aspect=1.2, palette=sns.color_palette('Set2'))
+    g = sns.lmplot(data=data, x='Age_m', y='Value', hue='Morality', scatter=False, seed=42, aspect=1.2, palette=sns.color_palette('Set2'))
     g.set_titles('{row_name}')
-    g.set_ylabels('Morality (Standardized)')
-    g.set_xlabels('Age (Log, Mean-Centered)')
+    g.set_ylabels('Morality (Mean-Centered)')
+    g.set_xlabels('Age (Mean-Centered)')
     plt.savefig('data/plots/substantive-morality_age_lm', bbox_inches='tight')
     plt.show()
 
@@ -326,7 +320,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

@@ -127,27 +127,26 @@ def plot_morality_shifts(interviews, attributes):
     plt.show()
 
 def compute_decisiveness(interviews):
-    decisive_threshold = np.median([pd.concat([interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]].rename('Morality')]) for mo in MORALITY_ORIGIN for wave in CODED_WAVES])
+    decisive_threshold = {mo + ':' + wave : np.mean(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) for mo in MORALITY_ORIGIN for wave in CODED_WAVES}
 
     #Prepare Data
-    decisiveness_options = ['Decisive → Decisive', 'Indecisive → Decisive', 'Decisive → Indecisive', 'Indecisive → Indecisive']
-    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold)) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
-    decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[2] if d[0] and not d[1] else decisiveness_options[3] if not d[0] and not d[1] else '')
+    decisiveness_options = ['Decisive', 'Ambivalent', 'Indecisive']
+    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[mo + ':' + CODED_WAVES[0]]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] > decisive_threshold[mo + ':' + CODED_WAVES[1]])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
+    decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[1] if d[0] and not d[1] else decisiveness_options[2] if not d[0] and not d[1] else '')
     
     decisiveness = decisiveness.apply(lambda x: x.value_counts(normalize=True) * 100).T
-    decisiveness = decisiveness[decisiveness_options].iloc[::-1]
+    decisiveness = decisiveness.stack().reset_index().rename(columns={'level_0':'Morality', 'level_1':'Decisiveness', 0:'Value'})
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3)
     plt.figure(figsize=(10, 10))
-    decisiveness.plot(kind='barh', stacked=True, color=pd.Series(sns.color_palette('vlag'))[[0,1,4,5]])
+
+    sns.barplot(data=decisiveness, y='Morality', x='Value', hue='Decisiveness', order=MORALITY_ORIGIN, hue_order=decisiveness_options, palette=sns.color_palette('coolwarm', n_colors=len(decisiveness_options)))
     ax = plt.gca()
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y :.0f}%'))
     plt.xlabel('')
     plt.ylabel('')
-    plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
+    plt.legend(bbox_to_anchor=(1, 1.03))
     plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
     plt.show()
 
@@ -327,7 +326,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [1]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

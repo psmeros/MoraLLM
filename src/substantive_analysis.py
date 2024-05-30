@@ -152,20 +152,25 @@ def compute_decisiveness(interviews):
     plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
     plt.show()
 
-def compute_morality_wordiness_corr(interviews):
+def compute_morality_correlations(interviews):
     #Prepare Data
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Morality_Origin_Word_Count']]].values, columns=MORALITY_ORIGIN+['Morality_Origin_Word_Count']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age']]].values, columns=MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
+
     data['wc_log'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
     data['wc_log_m'] = scale(data[['wc_log']], with_mean=True, with_std=False)
     data['wc_log_log_m'] = scale(np.log(data['wc_log']), with_mean=True, with_std=False)
 
+    data['age'] = data['Age'].astype(int)
+    data['age_m'] = scale(data[['age']], with_mean=True, with_std=False)
+    data['age_log_m'] = scale(np.log(data['age']), with_mean=True, with_std=False)
+
     data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False)
 
-    data = data.melt(id_vars=['wc_log', 'wc_log_m', 'wc_log_log_m'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
+    data = data.melt(id_vars=['wc_log', 'wc_log_m', 'wc_log_log_m', 'age', 'age_m', 'age_log_m'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
     data['morality'] = data['morality'].astype(float)
 
     #Display Results
-    for formula in ['morality ~ wc_log_m', 'morality ~ wc_log_m + wc_log_log_m', 'morality ~ wc_log_log_m']:
+    for formula in ['morality ~ wc_log_m', 'morality ~ wc_log_m + wc_log_log_m', 'morality ~ wc_log_log_m', 'morality ~ age_m', 'morality ~ age_m + age_log_m', 'morality ~ age_log_m']:
         results = []
         for mo in MORALITY_ORIGIN:
             slice = data[data['Morality'] == mo]
@@ -185,29 +190,6 @@ def compute_morality_wordiness_corr(interviews):
     g.set(xlim=(-.3, .3), ylim=(-.2, .2))
     plt.savefig('data/plots/substantive-morality_wordiness_corr.png', bbox_inches='tight')
     plt.show()
-
-def compute_morality_age_corr(interviews):
-    #Prepare Data
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Age']]].values, columns=MORALITY_ORIGIN+['Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
-    data['age'] = data['Age'].astype(int)
-    data['age_m'] = scale(data[['age']], with_mean=True, with_std=False)
-    data['age_log_m'] = scale(np.log(data['age']), with_mean=True, with_std=False)
-
-    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False)
-
-    data = data.melt(id_vars=['age', 'age_m', 'age_log_m'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
-    data['morality'] = data['morality'].astype(float)
-
-    #Display Results
-    for formula in ['morality ~ age_m', 'morality ~ age_m + age_log_m', 'morality ~ age_log_m']:
-        results = []
-        for mo in MORALITY_ORIGIN:
-            slice = data[data['Morality'] == mo]
-            lm = smf.ols(formula=formula, data=slice).fit()
-            compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
-            results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
-        results = pd.DataFrame(results, index=MORALITY_ORIGIN)
-        display(results)
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
@@ -317,7 +299,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2,3]
+    config = [2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -327,16 +309,14 @@ if __name__ == '__main__':
         if c == 1:
             compute_decisiveness(interviews)
         elif c == 2:
-            compute_morality_wordiness_corr(interviews)
+            compute_morality_correlations(interviews)
         elif c == 3:
-            compute_morality_age_corr(interviews)
-        elif c == 4:
             attributes = DEMOGRAPHICS
             compute_std_diff(interviews, attributes)
-        elif c == 5:
+        elif c == 4:
             attributes = DEMOGRAPHICS
             plot_morality_shifts(interviews, attributes)
-        elif c == 6:
+        elif c == 5:
             demographics_cases = [
                      (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
                       ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),

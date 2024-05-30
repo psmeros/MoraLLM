@@ -156,21 +156,20 @@ def compute_morality_correlations(interviews):
     #Prepare Data
     data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age']]].values, columns=MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
 
-    data['wc_log'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
-    data['wc_log_m'] = scale(data[['wc_log']], with_mean=True, with_std=False)
-    data['wc_log_log_m'] = scale(np.log(data['wc_log']), with_mean=True, with_std=False)
+    data['wc_log'] = data['Morality_Origin_Word_Count'].astype(int)
+    data['wc_log'] = data['wc_log'] - data['wc_log'].min() + 1
+    data['wc_log'] = np.log(data['wc_log'])
 
     data['age'] = data['Age'].astype(int)
-    data['age_m'] = scale(data[['age']], with_mean=True, with_std=False)
-    data['age_log_m'] = scale(np.log(data['age']), with_mean=True, with_std=False)
+    data['age'] = data['age'] - data['age'].min()
 
     data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False)
 
-    data = data.melt(id_vars=['wc_log', 'wc_log_m', 'wc_log_log_m', 'age', 'age_m', 'age_log_m'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
+    data = data.melt(id_vars=['wc_log', 'age'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
     data['morality'] = data['morality'].astype(float)
 
     #Display Results
-    for formula in ['morality ~ wc_log_m', 'morality ~ wc_log_m + wc_log_log_m', 'morality ~ wc_log_log_m', 'morality ~ age_m', 'morality ~ age_m + age_log_m', 'morality ~ age_log_m']:
+    for formula in ['morality ~ wc_log', 'morality ~ age', 'morality ~ wc_log + age']:
         results = []
         for mo in MORALITY_ORIGIN:
             slice = data[data['Morality'] == mo]
@@ -183,22 +182,19 @@ def compute_morality_correlations(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='wc_log_log_m', y='morality', hue='Morality', scatter=False, seed=42, palette=sns.color_palette('Set2'))
+    g = sns.lmplot(data=data, x='wc_log', y='morality', hue='Morality', scatter=False, seed=42, palette=sns.color_palette('Set2'))
     g.set_titles('{row_name}')
     g.set_ylabels('Value')
-    g.set_xlabels('Log(Log(Wordiness))')
-    g.set(xlim=(-.3, .3), ylim=(-.2, .2))
+    g.set_xlabels('Log(Wordiness)')
     plt.savefig('data/plots/substantive-morality_wordiness_corr.png', bbox_inches='tight')
     plt.show()
 
-    #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='age_log_m', y='morality', hue='Morality', scatter=False, seed=42, palette=sns.color_palette('Set2'))
+    g = sns.lmplot(data=data, x='age', y='morality', hue='Morality', scatter=False, seed=42, palette=sns.color_palette('Set2'))
     g.set_titles('{row_name}')
     g.set_ylabels('Value')
-    g.set_xlabels('Log(Age)')
-    g.set(xlim=(-.3, .3), ylim=(-.2, .2))
+    g.set_xlabels('Age')
     plt.savefig('data/plots/substantive-morality_age_lm', bbox_inches='tight')
     plt.show()
 

@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import statsmodels.formula.api as smf
+import statsmodels.api as sm
 from IPython.display import display
 from sklearn.preprocessing import scale
 
@@ -155,14 +156,9 @@ def compute_decisiveness(interviews):
 def compute_morality_correlations(interviews):
     #Prepare Data
     data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age']]].values, columns=MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
-
-    data['wc_log'] = data['Morality_Origin_Word_Count'].astype(int)
-    data['wc_log'] = data['wc_log'] - data['wc_log'].min() + 1
-    data['wc_log'] = np.log(data['wc_log'])
-
+    
+    data['wc_log'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
     data['age'] = data['Age'].astype(int)
-    data['age'] = data['age'] - data['age'].min()
-
     data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False)
 
     data = data.melt(id_vars=['wc_log', 'age'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
@@ -173,29 +169,23 @@ def compute_morality_correlations(interviews):
         results = []
         for mo in MORALITY_ORIGIN:
             slice = data[data['Morality'] == mo]
-            lm = smf.ols(formula=formula, data=slice).fit()
+            lm = smf.rlm(formula=formula, data=slice, M=sm.robust.norms.AndrewWave()).fit()
             compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
             results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
         display(results)
 
+    data.columns = ['Wordiness', 'Age', 'Morality', 'Value']
+    data = data.melt(id_vars=['Morality', 'Value'], value_vars=['Wordiness', 'Age'], var_name='Attribute Name', value_name='Attribute')
+
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='wc_log', y='morality', hue='Morality', scatter=False, seed=42, palette=sns.color_palette('Set2'))
-    g.set_titles('{row_name}')
+    plt.figure(figsize=(20, 10))
+    g = sns.lmplot(data=data, x='Attribute', y='Value', hue='Morality', col='Attribute Name', scatter=False, seed=42, facet_kws={'sharex':False, 'sharey':False}, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
+    g.set_titles('{col_name}')
     g.set_ylabels('Value')
-    g.set_xlabels('Log(Wordiness)')
-    plt.savefig('data/plots/substantive-morality_wordiness_corr.png', bbox_inches='tight')
-    plt.show()
-
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=data, x='age', y='morality', hue='Morality', scatter=False, seed=42, palette=sns.color_palette('Set2'))
-    g.set_titles('{row_name}')
-    g.set_ylabels('Value')
-    g.set_xlabels('Age')
-    plt.savefig('data/plots/substantive-morality_age_lm', bbox_inches='tight')
+    g.set_xlabels('')
+    plt.savefig('data/plots/substantive-morality_correlations.png', bbox_inches='tight')
     plt.show()
 
 def compute_std_diff(interviews, attributes):

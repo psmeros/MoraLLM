@@ -175,13 +175,13 @@ def compute_morality_correlations(interviews):
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
         display(results)
 
-    data.columns = ['Wordiness', 'Age', 'Morality', 'Value']
-    data = data.melt(id_vars=['Morality', 'Value'], value_vars=['Wordiness', 'Age'], var_name='Attribute Name', value_name='Attribute')
+    data.columns = ['Verbosity', 'Age', 'Morality', 'Value']
+    data = data.melt(id_vars=['Morality', 'Value'], value_vars=['Verbosity', 'Age'], var_name='Attribute Name', value_name='Attribute')
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(20, 10))
-    g = sns.lmplot(data=data, x='Attribute', y='Value', hue='Morality', col='Attribute Name', scatter=False, seed=42, facet_kws={'sharex':False, 'sharey':False}, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
+    g = sns.lmplot(data=data, x='Attribute', y='Value', hue='Morality', col='Attribute Name', scatter=False, seed=42, facet_kws={'sharex':False}, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
     g.set_titles('{col_name}')
     g.set_ylabels('Value')
     g.set_xlabels('')

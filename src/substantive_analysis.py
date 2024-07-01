@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import statsmodels.formula.api as smf
+from statsmodels.stats.diagnostic import het_white
 import statsmodels.api as sm
 from IPython.display import display
 from sklearn.preprocessing import scale
@@ -159,21 +160,30 @@ def compute_morality_correlations(interviews):
     
     data['wc_log'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
     data['age'] = data['Age'].astype(int)
-    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False)
+    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False) + .5
 
     data = data.melt(id_vars=['wc_log', 'age'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
     data['morality'] = data['morality'].astype(float)
 
     #Display Results
+    compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
     for formula in ['morality ~ wc_log', 'morality ~ age', 'morality ~ wc_log + age']:
         results = []
+        heteroscedasticity = []
         for mo in MORALITY_ORIGIN:
             slice = data[data['Morality'] == mo]
+
+            lm = smf.ols(formula=formula, data=slice).fit()
+            white_test = het_white(lm.resid, sm.add_constant(slice[['wc_log', 'age']]))
+            heteroscedasticity.append({'Heteroscedasticity':compute_coef((white_test[0], white_test[1]))})
+
             lm = smf.rlm(formula=formula, data=slice, M=sm.robust.norms.AndrewWave()).fit()
-            compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
             results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
+
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
+        heteroscedasticity = pd.DataFrame(heteroscedasticity, index=MORALITY_ORIGIN)
         display(results)
+    display(heteroscedasticity)
 
     data.columns = ['Verbosity', 'Age', 'Morality', 'Value']
     data = data.melt(id_vars=['Morality', 'Value'], value_vars=['Verbosity', 'Age'], var_name='Attribute Name', value_name='Attribute')
@@ -183,8 +193,10 @@ def compute_morality_correlations(interviews):
     plt.figure(figsize=(20, 10))
     g = sns.lmplot(data=data, x='Attribute', y='Value', hue='Morality', col='Attribute Name', scatter=False, seed=42, facet_kws={'sharex':False}, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
     g.set_titles('{col_name}')
-    g.set_ylabels('Value')
-    g.set_xlabels('')
+    g.set_ylabels('Mean-Centered Morality')
+    for ax, label in zip(g.axes.flat, ['Log(Word Count)', 'Years']):
+        ax.set_xlabel(label)
+    g.legend.set_title('Morality Origin')
     plt.savefig('data/plots/substantive-morality_correlations.png', bbox_inches='tight')
     plt.show()
 

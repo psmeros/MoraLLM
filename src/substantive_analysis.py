@@ -154,15 +154,17 @@ def compute_decisiveness(interviews):
     plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
     plt.show()
 
-def compute_morality_correlations(interviews):
+def compute_morality_correlations(interviews, model):
     #Prepare Data
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age']]].values, columns=MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age', 'Wave']]].values, columns=MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age', 'Wave']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
     
     data['wc_log'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
     data['age'] = data['Age'].astype(int)
+    data['short_response'] = (data['wc_log'] < 3).astype(int)
+    data['wave'] = (data['Wave'] == 1).astype(int)
     data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False) + .5
 
-    data = data.melt(id_vars=['wc_log', 'age'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
+    data = data.melt(id_vars=['wc_log', 'age', 'short_response', 'wave'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
     data['morality'] = data['morality'].astype(float)
 
     #Display Results
@@ -176,8 +178,10 @@ def compute_morality_correlations(interviews):
             lm = smf.ols(formula=formula, data=slice).fit()
             white_test = het_white(lm.resid, sm.add_constant(slice[['wc_log', 'age']]))
             heteroscedasticity.append({'Heteroscedasticity':compute_coef((white_test[0], white_test[1]))})
-
-            lm = smf.rlm(formula=formula, data=slice, M=sm.robust.norms.AndrewWave()).fit()
+            if model == 'ols':
+                lm = smf.ols(formula=formula, data=slice).fit(cov_type='HC3')
+            elif model == 'rlm':
+                lm = smf.rlm(formula=formula, data=slice, M=sm.robust.norms.AndrewWave()).fit()
             results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
 
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
@@ -185,7 +189,7 @@ def compute_morality_correlations(interviews):
         display(results)
     display(heteroscedasticity)
 
-    data.columns = ['Verbosity', 'Age', 'Morality', 'Value']
+    data.columns = ['Verbosity', 'Age', 'Short Response', 'Wave', 'Morality', 'Value']
     data = data.melt(id_vars=['Morality', 'Value'], value_vars=['Verbosity', 'Age'], var_name='Attribute Name', value_name='Attribute')
 
     #Plot
@@ -196,7 +200,7 @@ def compute_morality_correlations(interviews):
     g.set_ylabels('Mean-Centered Morality')
     for ax, label in zip(g.axes.flat, ['Log(Word Count)', 'Years']):
         ax.set_xlabel(label)
-    g.legend.set_title('Morality Origin')
+    g.legend.set_title('')
     plt.savefig('data/plots/substantive-morality_correlations.png', bbox_inches='tight')
     plt.show()
 
@@ -307,7 +311,8 @@ if __name__ == '__main__':
         if c == 1:
             compute_decisiveness(interviews)
         elif c == 2:
-            compute_morality_correlations(interviews)
+            model = 'ols'
+            compute_morality_correlations(interviews, model)
         elif c == 3:
             attributes = DEMOGRAPHICS
             compute_std_diff(interviews, attributes)

@@ -57,7 +57,6 @@ def plot_morality_shifts(interviews, attributes):
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
     data[CODED_WAVES[0] + ':Age'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
-    data[CODED_WAVES[0] + ':Income'] = data[CODED_WAVES[0] + ':Income'] + ' Class'
 
     #Prepare data
     shifts, _ = compute_morality_shifts(data, MORALITY_ESTIMATORS[0])
@@ -217,7 +216,6 @@ def compute_std_diff(interviews, attributes):
     data['Morality'] = data['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
     data['Value'] = data['Value'] * 100
     data = data.rename(columns = {CODED_WAVES[0] + ':' + attribute['name'] : attribute['name'] for attribute in attributes})
-    data['Income'] = data['Income'] + ' Class'
 
     #Compute Standard Deviation
     stds = []

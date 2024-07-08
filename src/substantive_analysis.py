@@ -214,38 +214,35 @@ def compute_std_diff(interviews, attributes):
     data = data.melt(id_vars=[CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes], value_vars=[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
     data['Wave'] = data['Morality'].apply(lambda x: x.split(':')[0])
     data['Morality'] = data['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
-    data['Value'] = data['Value'] * 100
     data = data.rename(columns = {CODED_WAVES[0] + ':' + attribute['name'] : attribute['name'] for attribute in attributes})
 
     #Compute Standard Deviation
     stds = []
     for attribute in attributes:
-        std = data.groupby([attribute['name'], 'Wave']).agg({'Value': ['count', 'std']})
-        std.columns = std.columns.droplevel(0)
-        std = std.reset_index().pivot(index=[attribute['name'], 'count'], columns='Wave', values='std').reset_index()
-        std['Value'] = (std[CODED_WAVES[1]] - std[CODED_WAVES[0]]) / std[CODED_WAVES[0]]
-        std['Value'] = std['Value'].apply(lambda x: str(round(x * 100, 1)) + '%').apply(lambda x: ', σ = ' + ('+' if x[0] != '-' else '') + x + ')')
-        std['Value'] = '(N = ' + std['count'].apply(lambda c: str(int(c/len(MORALITY_ORIGIN)))) + std['Value']
-        std = [value + '\n' + std[std[attribute['name']] == value]['Value'].iloc[0] for value in attribute['values']]
-        stds.append(std)
-    stds = [l[0] for l in stds] + [l[1] for l in stds]
+        for j, attribute_value in enumerate(attribute['values']):
+            slice = data[data[attribute['name']] == attribute_value]
+            N = int(len(slice)/len(MORALITY_ORIGIN)/len(CODED_WAVES))
+            slice = slice.groupby(['Wave', 'Morality'])['Value'].std().reset_index()
+            slice = slice[slice['Wave'] == CODED_WAVES[0]][['Morality', 'Value']].merge(slice[slice['Wave'] == CODED_WAVES[1]][['Morality', 'Value']], on='Morality', suffixes=('_0', '_1'))
+            std = round(((slice['Value_1'] - slice['Value_0'])/slice['Value_0']).mean() * 100, 1)
+            std = {'Attribute Name' : attribute['name'], 'Attribute Position' : j, 'Attribute Value' : attribute_value + ' (N = ' + str(N) + ')', 'STD' : std}
+            stds.append(std)
+    stds = pd.DataFrame(stds)
 
-    data = data.melt(id_vars=['Value', 'Wave'], value_vars=[attribute['name'] for attribute in attributes], var_name='Attribute', value_name='Attribute Value')
-    data = data[data['Attribute Value'] != ''].dropna()
-    data['Attribute Value'] = data['Attribute Value'].apply(lambda v: [attribute['values'].index(v) for attribute in attributes if v in attribute['values']][0])
-    
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    g = sns.displot(data, x='Value', col='Attribute', row='Attribute Value', hue='Wave', kind='kde', fill=True, alpha=.5, common_norm=False, palette='Set1')
-    for ax, title in zip(g.axes.flat, stds):
-        ax.set_title(title)
-    g.figure.subplots_adjust(hspace=0.2)
-    g.figure.subplots_adjust(wspace=0.2)
-    g.set_ylabels('')
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
+    plt.figure(figsize=(20, 10))
+    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=3, orient='h', kind='bar', seed=42, aspect=3, legend=False, palette=sns.color_palette('Set1')[:2])
+    g.set(xlim=(-30, 0))
+    g.figure.subplots_adjust(wspace=0.55)
+    g.set_titles('{col_name}')
     g.set_xlabels('')
     ax = plt.gca()
-    ax.set_xlim(0,100)
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    for j, ax in enumerate(g.axes):
+        ax.set_ylabel('')
+        labels = stds.iloc[2*j:2*j+2]['Attribute Value'].to_list()
+        ax.set(yticks=range(len(labels)), yticklabels=labels)
     plt.savefig('data/plots/substantive-std_diff.png', bbox_inches='tight')
     plt.show()
 
@@ -299,7 +296,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

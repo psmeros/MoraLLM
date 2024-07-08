@@ -206,17 +206,17 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'EARNINGS':'Income (raw)'}}
 
 #Income: Lower Class < 70K < Upper Class
-HOUSEHOLD_CLASS = {1:'Lower Income',
-                   2:'Lower Income',
-                   3:'Lower Income',
-                   4:'Lower Income',
-                   5:'Lower Income',
-                   6:'Lower Income',
-                   7:'Lower Income',
-                   8:'Upper Income',
-                   9:'Upper Income',
-                   10:'Upper Income',
-                   11:'Upper Income'}
+HOUSEHOLD_CLASS = {1:'Low',
+                   2:'Low',
+                   3:'Low',
+                   4:'Low',
+                   5:'Low',
+                   6:'Low',
+                   7:'Low',
+                   8:'High',
+                   9:'High',
+                   10:'High',
+                   11:'High'}
 
 #Education: Basic < College < Higher < PhD < Advanced
 EDUCATION = {0:'Primary',
@@ -254,7 +254,7 @@ DECISION_TAKING = {1:'Expressive Individualist',
 
 DEMOGRAPHICS = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                 {'name' : 'Race', 'values' : ['White', 'Other']},
-                {'name' : 'Income', 'values' : ['Upper Income', 'Lower Income']},
+                {'name' : 'Household Income', 'values' : ['High', 'Low']},
                 {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']},
                 {'name' : 'Age', 'values' : ['Early Adolescence', 'Late Adolescence']},
                 {'name' : 'Church Attendance', 'values' : ['Regular', 'Irregular']}]

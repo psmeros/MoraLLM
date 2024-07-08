@@ -302,7 +302,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     surveys['Church Attendance'] = surveys['Church Attendance'].apply(lambda x: x if x in range(1, MAX_CHURCH_ATTENDANCE_VALUE + 1) else pd.NA)
 
     surveys['Income (raw)'] = surveys['Income (raw)'].apply(lambda i: i if i in HOUSEHOLD_CLASS.keys() else pd.NA)
-    surveys['Income'] = surveys['Income (raw)'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
+    surveys['Household Income'] = surveys['Income (raw)'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
 
     interviews = interviews.merge(surveys, on = ['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
 

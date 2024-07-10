@@ -226,6 +226,13 @@ def measure_readability(interviews, section):
     interviews[section + '_Readability'] = interviews[section].map(measure)
     return interviews
 
+#Measure sentiment in morality section
+def measure_sentiment(interviews, section):
+    sentiment_pipeline = pipeline('sentiment-analysis')
+    cumpute_score = lambda r : (r['score'] + 1)/2 if r['label'] == 'POSITIVE' else (-r['score'] + 1)/2 if r['label'] == 'NEGATIVE' else .5
+    interviews[section + '_Sentiment'] = pd.Series(sentiment_pipeline(interviews[section].tolist(), truncation=True)).map(cumpute_score)
+    return interviews
+
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -257,4 +264,5 @@ if __name__ == '__main__':
             interviews = count_words(interviews, section)
             interviews = count_uncertain_terms(interviews, section)
             interviews = measure_readability(interviews, section)
+            interviews = measure_sentiment(interviews, section)
             interviews.to_pickle('data/cache/morality_model-top.pkl')

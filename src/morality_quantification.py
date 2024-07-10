@@ -6,13 +6,14 @@ import openai
 import pandas as pd
 import spacy
 import torch
-from __init__ import *
 from pandarallel import pandarallel
 from sklearn.linear_model import LinearRegression, Ridge
+from textstat.textstat import textstat
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
-from src.helpers import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE, UNCERTAINT_TERMS
+from __init__ import *
+from src.helpers import CHATGPT_PROMPT, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE, UNCERTAINT_TERMS
 from src.parser import merge_codings, wave_parser
 
 
@@ -219,6 +220,12 @@ def count_uncertain_terms(interviews, section):
     interviews[section + '_Uncertain_Terms'] = interviews[section].map(count)
     return interviews
 
+#Measure readability in morality section
+def measure_readability(interviews, section):
+    measure = lambda section : 0 if pd.isna(section) else textstat.flesch_reading_ease(section)
+    interviews[section + '_Readability'] = interviews[section].map(measure)
+    return interviews
+
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -249,4 +256,5 @@ if __name__ == '__main__':
             interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
             interviews = count_words(interviews, section)
             interviews = count_uncertain_terms(interviews, section)
+            interviews = measure_readability(interviews, section)
             interviews.to_pickle('data/cache/morality_model-top.pkl')

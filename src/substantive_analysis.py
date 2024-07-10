@@ -153,55 +153,82 @@ def compute_decisiveness(interviews):
     plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
     plt.show()
 
-def compute_morality_correlations(interviews, model):
+def compute_morality_correlations(interviews, model, show_plots=False):
     #Prepare Data
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age', 'Wave']]].values, columns=MORALITY_ORIGIN + ['Morality_Origin_Word_Count', 'Age', 'Wave']) for wave in CODED_WAVES]).dropna().reset_index(drop=True)
-    
-    data['wc_log'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
-    data['age'] = data['Age'].astype(int)
-    data['short_response'] = (data['wc_log'] < 3).astype(int)
-    data['wave'] = (data['Wave'] == 1).astype(int)
+    data = interviews.copy()
+    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
+    data[CODED_WAVES[1] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education']
+    data[CODED_WAVES[1] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance']
+    attribute_list = ['Morality_Origin_Word_Count', 'Morality_Origin_Uncertain_Terms', 'Morality_Origin_Readability', 'Morality_Origin_Sentiment', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Age', 'Church Attendance', 'Wave']
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo for mo in MORALITY_ORIGIN + attribute_list]].values, columns=MORALITY_ORIGIN + attribute_list) for wave in CODED_WAVES]).reset_index(drop=True)
+
+    data['Verbosity'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
+    data['Brevity'] = (data['Verbosity'] < 3).astype(int)
+    data['Uncertainty'] = data['Morality_Origin_Uncertain_Terms'].astype(int) / data['Morality_Origin_Word_Count'].astype(int)
+    data['Readability'] = data['Morality_Origin_Readability'].astype(float)
+    data['Sentiment'] = data['Morality_Origin_Sentiment'].astype(float)
+
+    data['Gender'] = (data['Gender'] == 'Male').astype(int)
+    data['Race'] = (data['Race'] == 'White').astype(int)
+    data['Household_Income'] = (data['Household Income'] == 'High').astype(int)
+    data['Parent_Education'] = (data['Parent Education'] == 'Tertiary').astype(int)
+    data['Age'] = data['Age'].fillna(data['Age'].dropna().astype(int).mean()).astype(int)
+    data['Church_Attendance'] = (data['Church Attendance'] == 'Regular').astype(int)
+    data['Wave'] = (data['Wave'] == CODED_WAVES[0]).astype(int)
+
     data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False) + .5
 
-    data = data.melt(id_vars=['wc_log', 'age', 'short_response', 'wave'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='morality').dropna()
+    data = data.melt(id_vars=['Verbosity', 'Brevity', 'Uncertainty', 'Readability', 'Sentiment', 'Gender', 'Race', 'Household_Income', 'Parent_Education', 'Age', 'Church_Attendance', 'Wave'], value_vars=MORALITY_ORIGIN, var_name='Morality Category', value_name='morality').dropna()
     data['morality'] = data['morality'].astype(float)
+    formulas = ['morality ~ Verbosity',
+                'morality ~ Uncertainty',
+                'morality ~ Readability',
+                'morality ~ Sentiment',
+                'morality ~ Verbosity + Uncertainty + Readability + Sentiment',
+                'morality ~ Gender',
+                'morality ~ Race',
+                'morality ~ Household_Income',
+                'morality ~ Parent_Education',
+                'morality ~ Age',
+                'morality ~ Church_Attendance',
+                'morality ~ Gender + Race + Household_Income + Parent_Education + Age + Church_Attendance']
 
     #Display Results
     compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
-    for formula in ['morality ~ wc_log', 'morality ~ age', 'morality ~ wc_log + age']:
+    for formula in formulas:
         results = []
-        heteroscedasticity = []
         for mo in MORALITY_ORIGIN:
-            slice = data[data['Morality'] == mo]
-
-            lm = smf.ols(formula=formula, data=slice).fit()
-            white_test = het_white(lm.resid, sm.add_constant(slice[['wc_log', 'age']]))
-            heteroscedasticity.append({'Heteroscedasticity':compute_coef((white_test[0], white_test[1]))})
+            slice = data[data['Morality Category'] == mo]
             if model == 'ols':
                 lm = smf.ols(formula=formula, data=slice).fit(cov_type='HC3')
             elif model == 'rlm':
                 lm = smf.rlm(formula=formula, data=slice, M=sm.robust.norms.AndrewWave()).fit()
             results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
-
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
-        heteroscedasticity = pd.DataFrame(heteroscedasticity, index=MORALITY_ORIGIN)
         display(results)
-    display(heteroscedasticity)
 
-    data.columns = ['Verbosity', 'Age', 'Short Response', 'Wave', 'Morality', 'Value']
-    data = data.melt(id_vars=['Morality', 'Value'], value_vars=['Verbosity', 'Age'], var_name='Attribute Name', value_name='Attribute')
+    if show_plots:
+        heteroscedasticity = []
+        for mo in MORALITY_ORIGIN:
+            slice = data[data['Morality Category'] == mo]
+            lm = smf.ols(formula=formula, data=slice).fit()
+            white_test = het_white(lm.resid, sm.add_constant(slice[['Verbosity', 'Age']]))
+            heteroscedasticity.append({'Heteroscedasticity':compute_coef((white_test[0], white_test[1]))})
+        display(pd.DataFrame(heteroscedasticity, index=MORALITY_ORIGIN))
 
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(20, 10))
-    g = sns.lmplot(data=data, x='Attribute', y='Value', hue='Morality', col='Attribute Name', scatter=False, seed=42, facet_kws={'sharex':False}, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
-    g.set_titles('{col_name}')
-    g.set_ylabels('Mean-Centered Morality')
-    for ax, label in zip(g.axes.flat, ['Log(Word Count)', 'Years']):
-        ax.set_xlabel(label)
-    g.legend.set_title('')
-    plt.savefig('data/plots/substantive-morality_correlations.png', bbox_inches='tight')
-    plt.show()
+        data = data.melt(id_vars=['Morality Category', 'morality'], value_vars=['Verbosity', 'Age'], var_name='Attribute Name', value_name='Attribute')
+
+        #Plot
+        sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+        plt.figure(figsize=(20, 10))
+        g = sns.lmplot(data=data, x='Attribute', y='morality', hue='Morality Category', col='Attribute Name', scatter=False, seed=42, facet_kws={'sharex':False}, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
+        g.set_titles('{col_name}')
+        g.set_ylabels('Mean-Centered Morality')
+        for ax, label in zip(g.axes.flat, ['Log(Word Count)', 'Years']):
+            ax.set_xlabel(label)
+        g.legend.set_title('')
+        plt.savefig('data/plots/substantive-morality_correlations.png', bbox_inches='tight')
+        plt.show()
 
 def compute_std_diff(interviews, attributes):
     #Prepare Data
@@ -296,7 +323,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -306,7 +333,7 @@ if __name__ == '__main__':
         if c == 1:
             compute_decisiveness(interviews)
         elif c == 2:
-            model = 'ols'
+            model = 'rlm'
             compute_morality_correlations(interviews, model)
         elif c == 3:
             attributes = DEMOGRAPHICS

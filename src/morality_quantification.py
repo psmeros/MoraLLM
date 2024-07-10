@@ -12,7 +12,7 @@ from sklearn.linear_model import LinearRegression, Ridge
 from torch.nn.functional import cosine_similarity
 from transformers import BartModel, BartTokenizer, BertModel, BertTokenizer, pipeline
 
-from src.helpers import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE
+from src.helpers import CHATGPT_PROMPT, CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE, UNCERTAINT_TERMS
 from src.parser import merge_codings, wave_parser
 
 
@@ -142,14 +142,6 @@ def inform_morality_origin_model(interviews):
 
     return interviews
 
-#Count words in morality section
-def count_words(interviews, section):
-    nlp = spacy.load('en_core_web_lg')
-    count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
-    interviews[section + '_Word_Count'] = interviews[section].map(count)
-    interviews = interviews[interviews[section + '_Word_Count'] < interviews[section + '_Word_Count'].quantile(.95)].reset_index(drop=True)
-    return interviews
-
 #Compute morality origin of interviews
 def compute_morality_origin_model(interviews, model, section, dictionary_file='data/misc/eMFD.pkl'):
     #Zero-shot model
@@ -212,10 +204,25 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
     
     return interviews
 
+#Count words in morality section
+def count_words(interviews, section):
+    nlp = spacy.load('en_core_web_lg')
+    count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
+    interviews[section + '_Word_Count'] = interviews[section].map(count)
+    interviews = interviews[interviews[section + '_Word_Count'] < interviews[section + '_Word_Count'].quantile(.95)].reset_index(drop=True)
+    return interviews
+
+#Count uncertain terms in morality section
+def count_uncertain_terms(interviews, section):
+    pattern = r'\b(' + '|'.join(re.escape(term) for term in UNCERTAINT_TERMS) + r')\b'
+    count = lambda section : 0 if pd.isna(section) else len(re.findall(pattern, section.lower()))
+    interviews[section + '_Uncertain_Terms'] = interviews[section].map(count)
+    return interviews
+
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [3]
     models = ['lg', 'bert', 'bart', 'chatgpt', 'entail', 'entail_explained', 'entail_ml', 'entail_ml_explained']
     section = 'Morality_Origin'
 
@@ -226,7 +233,6 @@ if __name__ == '__main__':
                 interviews = wave_parser(morality_breakdown=True)
                 interviews = locate_morality_section(interviews, section)
                 interviews = compute_morality_origin_model(interviews, model, section)
-                interviews = count_words(interviews, section)
                 interviews.to_pickle('data/cache/morality_model-'+model+'.pkl')
                 display_notification(model + ' Morality Origin Computed!')
         elif c == 2:
@@ -238,4 +244,9 @@ if __name__ == '__main__':
                 interviews['Theistic'] = interviews['Holy Scripture']
                 interviews = interviews.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
             interviews = inform_morality_origin_model(interviews)
+            interviews.to_pickle('data/cache/morality_model-top.pkl')
+        elif c == 3:
+            interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
+            interviews = count_words(interviews, section)
+            interviews = count_uncertain_terms(interviews, section)
             interviews.to_pickle('data/cache/morality_model-top.pkl')

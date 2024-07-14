@@ -77,16 +77,15 @@ def plot_coders_agreement(interviews):
     heatmap = pd.DataFrame(heatmap, index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
 
     #Plot coders agreement
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=1.8)
     plt.figure(figsize=(10, 10))
-    ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=6), square=True, cbar_kws={'shrink': .8}, vmin=-0.2, vmax=1)
+    ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=4), square=True, cbar_kws={'shrink': .8}, vmin=-0.2, vmax=1)
     plt.ylabel('')
     plt.xlabel('')
-    plt.xticks(rotation=45, ha='right')
     colorbar = ax.collections[0].colorbar
-    colorbar.set_ticks([n/10 for n in range(-1, 10, 2)]) 
-    colorbar.set_ticklabels(['Poor', 'Slight', 'Fair', 'Moderate', 'Substantial', 'Perfect'])
-    plt.title('Cohen\'s Kappa Agreement between Experts')
+    colorbar.set_ticks([-.05, .25, .55, .85])
+    colorbar.set_ticklabels(['Poor', 'Slight', 'Moderate', 'Perfect'])
+    plt.title('Cohen\'s Kappa Agreement between Annotators')
     plt.savefig('data/plots/evaluation-coders_agreement.png', bbox_inches='tight')
     plt.show()
 
@@ -116,7 +115,7 @@ def plot_ecdf(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3]
+    config = [2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     
     for c in config:

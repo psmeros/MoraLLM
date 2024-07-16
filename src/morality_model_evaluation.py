@@ -52,12 +52,13 @@ def plot_model_evaluation(interviews, models):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     min_loss = losses[MORALITY_ORIGIN].sum(axis=1).min()
-    plt.axvline(x=coders_agreement, linestyle='-', linewidth=4, color='indianred', label='Coders Agreement')
+    plt.axvline(x=coders_agreement, linestyle='-', linewidth=4, color='indianred', label='Annotators Agreement')
     plt.axvline(x=min_loss, linestyle='--', linewidth=1, color='grey')
     plt.xlabel('Normalized Mean Squared Error')
     plt.ylabel('')
     plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(min_loss, 1)).replace('0.', '.')])
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
+    plt.title('Model Evaluation')
     plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')
     plt.show()
 
@@ -74,10 +75,10 @@ def plot_coders_agreement(interviews):
     for mo_A in range(len(MORALITY_ORIGIN)):
         for mo_B in range(len(MORALITY_ORIGIN)):
             heatmap[mo_A, mo_B] = cohen_kappa_score(coder_A[mo_A], coder_B[mo_B])
-    heatmap = pd.DataFrame(heatmap, index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
+    heatmap = pd.DataFrame(heatmap, index=['Intuitive', 'Conseq.', 'Social', 'Theistic'], columns=['Intuitive', 'Conseq.', 'Social', 'Theistic'])
 
     #Plot coders agreement
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=1.8)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
     ax = sns.heatmap(heatmap, cmap = sns.color_palette('PuBuGn', n_colors=4), square=True, cbar_kws={'shrink': .8}, vmin=-0.2, vmax=1)
     plt.ylabel('')
@@ -94,16 +95,16 @@ def plot_ecdf(interviews):
     #Prepare Data
     interviews = merge_codings(interviews)
     model = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    model['Estimator'] = 'Model'
+    model['Estimator'] = 'MoraLLM'
     coders = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    coders['Estimator'] = 'Coders'
-    interviews = pd.concat([model, coders])
+    coders['Estimator'] = 'Annotators'
+    interviews = pd.concat([coders, model])
     interviews = interviews.melt(id_vars=['Estimator'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=3, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
+    g = sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=5, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
     g.set_titles('{col_name}')
     g.legend.set_title('')
     g.set_xlabels('')
@@ -115,7 +116,7 @@ def plot_ecdf(interviews):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [1,2,3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     
     for c in config:

@@ -74,13 +74,13 @@ def plot_morality_shifts(interviews, attributes):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(20, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', orient='h', order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, color=sns.color_palette('Set1')[2])
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, legend=False, palette=sns.color_palette('Set2')[:4])
     g.set(xlim=(-11, 11))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     ax.set_ylabel('')
-    plt.title('Overall Shift')
+    plt.title('Crosswave Morality Shift')
     plt.savefig('data/plots/substantive-morality_shift.png', bbox_inches='tight')
     plt.show()
 
@@ -111,9 +111,10 @@ def plot_morality_shifts(interviews, attributes):
     shifts['value'] = shifts['value'] * 100
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(20, 10))
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.8)
+    plt.figure(figsize=(10, 10))
     g = sns.catplot(data=shifts[shifts['Estimator'] == MORALITY_ESTIMATORS[0]], x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette='Set1')
+    g.figure.suptitle('Morality Crosswave Shift', y=1.15)
     g.set(xlim=(-11, 11))
     g.set_xlabels('')
     ax = plt.gca()
@@ -139,7 +140,7 @@ def compute_decisiveness(interviews):
     decisiveness = decisiveness.stack().reset_index().rename(columns={'level_0':'Morality', 'level_1':'Decisiveness', 0:'Value'})
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
     plt.figure(figsize=(10, 10))
 
     sns.barplot(data=decisiveness, y='Morality', x='Value', hue='Decisiveness', order=MORALITY_ORIGIN, hue_order=decisiveness_options, palette=sns.color_palette('coolwarm', n_colors=len(decisiveness_options)))
@@ -149,6 +150,7 @@ def compute_decisiveness(interviews):
     ax.spines['right'].set_visible(False)
     plt.xlabel('')
     plt.ylabel('')
+    plt.title('Crosswave Decisiveness')
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
     plt.show()
@@ -258,10 +260,11 @@ def compute_std_diff(interviews, attributes):
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
-    plt.figure(figsize=(20, 10))
-    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=3, orient='h', kind='bar', seed=42, aspect=3, legend=False, palette=sns.color_palette('Set1')[:2])
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=2, orient='h', kind='bar', seed=42, aspect=2, legend=False, palette=sns.color_palette('Set1')[:2])
     g.set(xlim=(-30, 0))
     g.figure.subplots_adjust(wspace=0.55)
+    g.figure.suptitle('Standard Deviation Crosswave Shift', y=1.03)
     g.set_titles('{col_name}')
     g.set_xlabels('')
     ax = plt.gca()
@@ -323,7 +326,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [4]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

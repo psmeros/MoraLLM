@@ -132,7 +132,7 @@ def compute_decisiveness(interviews):
     decisive_threshold = {mo + ':' + wave : np.mean(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) for mo in MORALITY_ORIGIN for wave in CODED_WAVES}
 
     #Prepare Data
-    decisiveness_options = ['Decisive', 'Ambivalent', 'Indecisive']
+    decisiveness_options = ['Rigidly Decisive', 'Ambivalent', 'Rigidly Indecisive']
     decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] >= decisive_threshold[mo + ':' + CODED_WAVES[0]]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] >= decisive_threshold[mo + ':' + CODED_WAVES[1]])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
     decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[1] if d[0] and not d[1] else decisiveness_options[2] if not d[0] and not d[1] else '')
     
@@ -150,7 +150,7 @@ def compute_decisiveness(interviews):
     ax.spines['right'].set_visible(False)
     plt.xlabel('')
     plt.ylabel('')
-    plt.title('Crosswave Decisiveness')
+    plt.title('Crosswave Morality Rigidity')
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
     plt.show()
@@ -326,7 +326,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [1]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

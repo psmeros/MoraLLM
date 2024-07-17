@@ -259,9 +259,9 @@ def compute_std_diff(interviews, attributes):
     stds = pd.DataFrame(stds)
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=2, orient='h', kind='bar', seed=42, aspect=2, legend=False, palette=sns.color_palette('Set1')[:2])
+    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=2, orient='h', kind='bar', seed=42, aspect=4, legend=False, palette=sns.color_palette('Set1')[:2])
     g.set(xlim=(-30, 0))
     g.figure.subplots_adjust(wspace=0.55)
     g.figure.suptitle('Standard Deviation Crosswave Shift', y=1.03)
@@ -326,7 +326,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [3]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

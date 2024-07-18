@@ -105,6 +105,7 @@ def plot_ecdf(interviews):
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
     g = sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=5, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
+    g.figure.suptitle('Cumulative Distribution Function', y=1.05)
     g.set_titles('{col_name}')
     g.legend.set_title('')
     g.set_xlabels('')

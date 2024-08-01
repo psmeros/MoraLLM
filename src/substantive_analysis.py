@@ -8,7 +8,7 @@ import statsmodels.formula.api as smf
 from statsmodels.stats.diagnostic import het_white
 import statsmodels.api as sm
 from IPython.display import display
-from sklearn.preprocessing import scale
+from sklearn.preprocessing import minmax_scale, scale
 
 from __init__ import *
 from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
@@ -164,11 +164,11 @@ def compute_morality_correlations(interviews, model, show_plots=False):
     attribute_list = ['Morality_Origin_Word_Count', 'Morality_Origin_Uncertain_Terms', 'Morality_Origin_Readability', 'Morality_Origin_Sentiment', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Age', 'Church Attendance', 'Wave']
     data = pd.concat([pd.DataFrame(data[[wave + ':' + mo for mo in MORALITY_ORIGIN + attribute_list]].values, columns=MORALITY_ORIGIN + attribute_list) for wave in CODED_WAVES]).reset_index(drop=True)
 
-    data['Verbosity'] = np.log(data['Morality_Origin_Word_Count'].astype(int))
+    data['Verbosity'] = minmax_scale(np.log(data['Morality_Origin_Word_Count'].astype(int)))
     data['Brevity'] = (data['Verbosity'] < 3).astype(int)
-    data['Uncertainty'] = data['Morality_Origin_Uncertain_Terms'].astype(int) / data['Morality_Origin_Word_Count'].astype(int)
-    data['Readability'] = data['Morality_Origin_Readability'].astype(float)
-    data['Sentiment'] = data['Morality_Origin_Sentiment'].astype(float)
+    data['Uncertainty'] = minmax_scale(data['Morality_Origin_Uncertain_Terms'].astype(int) / data['Morality_Origin_Word_Count'].astype(int))
+    data['Readability'] = minmax_scale((data['Morality_Origin_Readability']).astype(float))
+    data['Sentiment'] = minmax_scale(data['Morality_Origin_Sentiment'].astype(float))
 
     data['Gender'] = (data['Gender'] == 'Male').astype(int)
     data['Race'] = (data['Race'] == 'White').astype(int)
@@ -326,7 +326,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

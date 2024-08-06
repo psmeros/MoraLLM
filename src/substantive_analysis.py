@@ -196,7 +196,7 @@ def compute_morality_correlations(interviews, model, show_plots=False):
                 'morality ~ Gender + Race + Household_Income + Parent_Education + Age + Church_Attendance']
 
     #Display Results
-    compute_coef = lambda x: str(round(x[0], 4)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+    compute_coef = lambda x: str(round(x[0], 2)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
     for formula in formulas:
         results = []
         for mo in MORALITY_ORIGIN:

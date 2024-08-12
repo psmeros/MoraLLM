@@ -75,12 +75,13 @@ def plot_morality_shifts(interviews, attributes):
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(20, 10))
     g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, legend=False, palette=sns.color_palette('Set2')[:4])
-    g.set(xlim=(-11, 11))
+    g.set(xlim=(-7, 7))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     ax.set_ylabel('')
-    plt.title('Crosswave Morality Shift')
+    ax.set_xlabel('Morality')
+    plt.title('Crosswave Shift')
     plt.savefig('data/plots/substantive-morality_shift.png', bbox_inches='tight')
     plt.show()
 
@@ -126,6 +127,29 @@ def plot_morality_shifts(interviews, attributes):
         ax.set_ylabel('')
     plt.subplots_adjust(hspace=0.6)
     plt.savefig('data/plots/substantive-morality_shift_by_attribute.png', bbox_inches='tight')
+    plt.show()
+
+def compute_consistency(interviews, consistency_threshold):
+    data = interviews.copy()
+    
+    #Prepare Data
+    data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = minmax_scale(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]])
+    consistency = interviews.apply(lambda i: pd.Series(abs(i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] - (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) < consistency_threshold) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
+    consistency = (1 - consistency.mean()) * 100
+    consistency = consistency.reset_index()
+    consistency.columns = ['y', 'x']
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=consistency, x='x', y='y', hue='y', orient='h', order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, legend=False, palette=sns.color_palette('Set2')[:4])
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    ax.set_ylabel('')
+    ax.set_xlabel('Interviewees')
+    plt.title('Crosswave Inconsistency')
+    plt.savefig('data/plots/substantive-morality_consistency.png', bbox_inches='tight')
     plt.show()
 
 def compute_decisiveness(interviews):
@@ -326,7 +350,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [5]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -334,17 +358,20 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
-            compute_decisiveness(interviews)
+            consistency_threshold=.1
+            compute_consistency(interviews, consistency_threshold)
         elif c == 2:
+            compute_decisiveness(interviews)
+        elif c == 3:
             model = 'rlm'
             compute_morality_correlations(interviews, model)
-        elif c == 3:
-            attributes = DEMOGRAPHICS
-            compute_std_diff(interviews, attributes)
         elif c == 4:
             attributes = DEMOGRAPHICS
-            plot_morality_shifts(interviews, attributes)
+            compute_std_diff(interviews, attributes)
         elif c == 5:
+            attributes = DEMOGRAPHICS
+            plot_morality_shifts(interviews, attributes)
+        elif c == 6:
             demographics_cases = [
                      (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
                       ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),

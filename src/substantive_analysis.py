@@ -4,11 +4,11 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import statsmodels.formula.api as smf
-from statsmodels.stats.diagnostic import het_white
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 from IPython.display import display
-from sklearn.preprocessing import minmax_scale, scale
+from sklearn.preprocessing import minmax_scale, normalize, scale
+from statsmodels.stats.diagnostic import het_white
 
 from __init__ import *
 from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
@@ -30,14 +30,9 @@ def plot_morality_shifts(interviews, attributes):
         wave_source.columns = MORALITY_ORIGIN
         wave_target.columns = MORALITY_ORIGIN
 
-        #Outgoing percentage
-        outgoing = (wave_source - wave_target).clip(lower=0)
-
-        #Incoming coefficients
-        incoming = (wave_target - wave_source).clip(lower=0)
-        incoming_coefs = incoming.div(incoming.sum(axis=1), axis=0).fillna(0)
-
         #Compute normalized shift
+        outgoing = (wave_source - wave_target).clip(lower=0)
+        incoming_coefs = normalize((wave_target - wave_source).clip(lower=0), norm='l1')
         shift = (outgoing.T @ incoming_coefs) / len(interviews)
 
         #Reshape shift

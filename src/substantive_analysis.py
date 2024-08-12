@@ -32,8 +32,8 @@ def plot_morality_shifts(interviews, attributes):
 
         #Compute normalized shift
         outgoing = (wave_source - wave_target).clip(lower=0)
-        incoming_coefs = normalize((wave_target - wave_source).clip(lower=0), norm='l1')
-        shift = (outgoing.T @ incoming_coefs) / len(interviews)
+        incoming = normalize((wave_target - wave_source).clip(lower=0), norm='l1')
+        shift = (outgoing.T @ incoming) / len(interviews)
 
         #Reshape shift
         shift = pd.DataFrame(shift.values, index=[CODED_WAVES[0] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN], columns=[CODED_WAVES[1] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN])

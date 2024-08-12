@@ -103,7 +103,7 @@ def plot_morality_shifts(interviews, attributes):
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.8)
     plt.figure(figsize=(10, 10))
     g = sns.catplot(data=shifts[shifts['Estimator'] == MORALITY_ESTIMATORS[0]], x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette='Set1')
-    g.figure.suptitle('Morality Crosswave Shift', y=1.15)
+    g.figure.suptitle('Crosswave Shift by Social Categories', y=1.15)
     g.set(xlim=(-11, 11))
     g.set_xlabels('')
     ax = plt.gca()

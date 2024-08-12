@@ -59,7 +59,7 @@ def plot_model_evaluation(interviews, models):
     plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(min_loss, 1)).replace('0.', '.')])
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.title('Model Evaluation')
-    plt.savefig('data/plots/evaluation-model_comparison.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')
     plt.show()
 
 #Plot coders agreement using Cohen's Kappa
@@ -87,7 +87,7 @@ def plot_coders_agreement(interviews):
     colorbar.set_ticks([-.05, .25, .55, .85])
     colorbar.set_ticklabels(['Poor', 'Slight', 'Moderate', 'Perfect'])
     plt.title('Cohen\'s Kappa Agreement between Annotators')
-    plt.savefig('data/plots/evaluation-coders_agreement.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-coders_agreement.png', bbox_inches='tight')
     plt.show()
 
 #Show benefits of quantification by plotting ecdf
@@ -112,7 +112,7 @@ def plot_ecdf(interviews):
     g.set_ylabels('')
     ax = plt.gca()
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * 100:.0f}%'))
-    plt.savefig('data/plots/evaluation-morality_ecdf.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-morality_ecdf.png', bbox_inches='tight')
     plt.show()
 
 if __name__ == '__main__':

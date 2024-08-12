@@ -75,7 +75,7 @@ def plot_morality_shifts(interviews, attributes):
     ax.set_ylabel('')
     ax.set_xlabel('Morality')
     plt.title('Crosswave Shift')
-    plt.savefig('data/plots/substantive-morality_shift.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-morality_shift.png', bbox_inches='tight')
     plt.show()
 
     #Prepare data
@@ -119,7 +119,7 @@ def plot_morality_shifts(interviews, attributes):
     for ax in g.axes:
         ax.set_ylabel('')
     plt.subplots_adjust(hspace=0.6)
-    plt.savefig('data/plots/substantive-morality_shift_by_attribute.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
 def compute_consistency(interviews, consistency_threshold):
@@ -142,7 +142,7 @@ def compute_consistency(interviews, consistency_threshold):
     ax.set_ylabel('')
     ax.set_xlabel('Interviewees')
     plt.title('Crosswave Inconsistency')
-    plt.savefig('data/plots/substantive-morality_consistency.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-morality_consistency.png', bbox_inches='tight')
     plt.show()
 
 #Compute overall morality distribution
@@ -162,7 +162,7 @@ def compute_distribution(interviews):
     ax.set_ylabel('')
     ax.set_xlabel('')
     plt.title('Overall Distribution')
-    plt.savefig('data/plots/substantive-morality_distro.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-morality_distro.png', bbox_inches='tight')
     plt.show()
 
 def compute_decisiveness(interviews):
@@ -189,7 +189,7 @@ def compute_decisiveness(interviews):
     plt.ylabel('')
     plt.title('Crosswave Morality Rigidity')
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
-    plt.savefig('data/plots/substantive-decisiveness.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-decisiveness.png', bbox_inches='tight')
     plt.show()
 
 def compute_morality_correlations(interviews, model, show_plots=False):
@@ -266,7 +266,7 @@ def compute_morality_correlations(interviews, model, show_plots=False):
         for ax, label in zip(g.axes.flat, ['Log(Word Count)', 'Years']):
             ax.set_xlabel(label)
         g.legend.set_title('')
-        plt.savefig('data/plots/substantive-morality_correlations.png', bbox_inches='tight')
+        plt.savefig('data/plots/fig-morality_correlations.png', bbox_inches='tight')
         plt.show()
 
 def compute_std_diff(interviews, attributes):
@@ -310,7 +310,7 @@ def compute_std_diff(interviews, attributes):
         ax.set_ylabel('')
         labels = stds.iloc[2*j:2*j+2]['Attribute Value'].to_list()
         ax.set(yticks=range(len(labels)), yticklabels=labels)
-    plt.savefig('data/plots/substantive-std_diff.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-std_diff.png', bbox_inches='tight')
     plt.show()
 
 def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases):
@@ -363,7 +363,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [1,2,3,4,5,6]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

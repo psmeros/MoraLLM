@@ -145,6 +145,26 @@ def compute_consistency(interviews, consistency_threshold):
     plt.savefig('data/plots/substantive-morality_consistency.png', bbox_inches='tight')
     plt.show()
 
+#Compute overall morality distribution
+def compute_distribution(interviews):
+    #Prepare Data
+    data = interviews.copy()
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
+    data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    data['Value'] = data['Value'] * 100
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
+    plt.figure(figsize=(20, 10))
+    g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, palette=sns.color_palette('Set2')[:4])
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    ax.set_ylabel('')
+    ax.set_xlabel('')
+    plt.title('Overall Distribution')
+    plt.savefig('data/plots/substantive-morality_distro.png', bbox_inches='tight')
+    plt.show()
+
 def compute_decisiveness(interviews):
     decisive_threshold = {mo + ':' + wave : np.mean(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) for mo in MORALITY_ORIGIN for wave in CODED_WAVES}
 
@@ -343,7 +363,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [1]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -351,20 +371,22 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
+            compute_distribution(interviews)
+        elif c == 2:
             consistency_threshold=.1
             compute_consistency(interviews, consistency_threshold)
-        elif c == 2:
-            compute_decisiveness(interviews)
         elif c == 3:
+            compute_decisiveness(interviews)
+        elif c == 4:
             model = 'rlm'
             compute_morality_correlations(interviews, model)
-        elif c == 4:
-            attributes = DEMOGRAPHICS
-            compute_std_diff(interviews, attributes)
         elif c == 5:
             attributes = DEMOGRAPHICS
-            plot_morality_shifts(interviews, attributes)
+            compute_std_diff(interviews, attributes)
         elif c == 6:
+            attributes = DEMOGRAPHICS
+            plot_morality_shifts(interviews, attributes)
+        elif c == 7:
             demographics_cases = [
                      (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
                       ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),

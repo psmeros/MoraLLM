@@ -31,10 +31,10 @@ def plot_morality_shifts(interviews, attributes):
         wave_target.columns = MORALITY_ORIGIN
 
         #Outgoing percentage
-        outgoing = (wave_source - wave_target > 0) * abs(wave_source - wave_target)
+        outgoing = (wave_source - wave_target).clip(lower=0)
 
         #Incoming coefficients
-        incoming = (wave_source - wave_target < 0) * abs(wave_source - wave_target)
+        incoming = (wave_target - wave_source).clip(lower=0)
         incoming_coefs = incoming.div(incoming.sum(axis=1), axis=0).fillna(0)
 
         #Compute normalized shift

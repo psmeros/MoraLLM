@@ -61,12 +61,12 @@ def plot_morality_shifts(interviews, attributes):
     target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
     shifts = pd.concat([source_shifts, target_shifts])
     shifts['morality'] = shifts['morality'].str.split('_').apply(lambda x: x[0])
-    shifts = shifts.groupby(['morality'])['value'].sum().reset_index()
+    shifts = shifts.groupby(['morality'], sort=False)['value'].sum().reset_index()
     shifts['value'] = shifts['value'] * 100
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(10, 10))
     g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, legend=False, palette=sns.color_palette('Set2')[:4])
     g.set(xlim=(-7, 7))
     g.set_xlabels('')

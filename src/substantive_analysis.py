@@ -30,26 +30,19 @@ def plot_morality_shifts(interviews, attributes):
         wave_source.columns = MORALITY_ORIGIN
         wave_target.columns = MORALITY_ORIGIN
 
-        #Combine outgoing percentage, incoming coefficients, and remaining percentage
+        #Outgoing percentage
         outgoing = (wave_source - wave_target > 0) * abs(wave_source - wave_target)
+
+        #Incoming coefficients
         incoming = (wave_source - wave_target < 0) * abs(wave_source - wave_target)
+        incoming_coefs = incoming.div(incoming.sum(axis=1), axis=0).fillna(0)
 
-        outgoing_percentage = (outgoing / wave_source).fillna(0)
-        coefs = incoming.div(incoming.sum(axis=1), axis=0).fillna(0)
-
-        remaining_percentage = (1 - outgoing_percentage)
-        remaining_percentage = pd.DataFrame(np.diag(remaining_percentage.sum()), index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
-
-        #Normalize shift
-        shift = ((outgoing_percentage.T @ coefs) + remaining_percentage) / len(interviews)
+        #Compute normalized shift
+        shift = (outgoing.T @ incoming_coefs) / len(interviews)
 
         #Reshape shift
         shift = pd.DataFrame(shift.values, index=[CODED_WAVES[0] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN], columns=[CODED_WAVES[1] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN])
         shift = shift.stack().reset_index().rename(columns={'level_0':'source', 'level_1':'target', 0:'value'})
-
-        #Compute the prior shift
-        shift = shift.merge(pd.DataFrame(interviews[[CODED_WAVES[0] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN]].mean().reset_index().values, columns=['source', 'prior']))
-        shift['value'] = shift['value'] * shift['prior']
 
         return shift, N
 

@@ -16,30 +16,34 @@ from src.parser import merge_codings, merge_matches, merge_surveys
 
 
 #Plot morality shifts
-def plot_morality_shifts(interviews, attributes):
+def plot_morality_shifts(interviews, attributes, shift_threshold):
 
     #Compute morality shifts across waves
-    def compute_morality_shifts(interviews, estimator, attribute_name=None, attribute_value=None):
+    def compute_morality_shifts(interviews, attribute_name=None, attribute_value=None):
         #Prepare data 
         if attribute_name is not None:
             interviews = interviews[interviews[CODED_WAVES[0] + ':' + attribute_name] == attribute_value]
         N = len(interviews)
 
-        wave_source = interviews[[CODED_WAVES[0] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN]]
-        wave_target = interviews[[CODED_WAVES[1] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN]]
+        wave_source = interviews[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]]
+        wave_target = interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]]
         wave_source.columns = MORALITY_ORIGIN
         wave_target.columns = MORALITY_ORIGIN
 
         #Compute normalized shift
         outgoing = (wave_source - wave_target).clip(lower=0)
-        incoming = normalize((wave_target - wave_source).clip(lower=0), norm='l1')
-        shift = (outgoing.T @ incoming) / len(interviews)
+        incoming = pd.DataFrame(normalize((wave_target - wave_source).clip(lower=0), norm='l1'))
 
-        #Reshape shift
-        shift = pd.DataFrame(shift.values, index=[CODED_WAVES[0] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN], columns=[CODED_WAVES[1] + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN])
-        shift = shift.stack().reset_index().rename(columns={'level_0':'source', 'level_1':'target', 0:'value'})
+        #Compute shifts
+        shifts = []
+        for i in range(N):
+            shift = pd.DataFrame(outgoing.iloc[i]).values.reshape(-1, 1) @ pd.DataFrame(incoming.iloc[i]).values.reshape(1, -1)
+            shift = pd.DataFrame(shift, index=[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN], columns=[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN])
+            shift = shift.stack().reset_index().rename(columns={'level_0':'source', 'level_1':'target', 0:'value'})
+            shifts.append(shift)
+        shifts = pd.concat(shifts)
 
-        return shift, N
+        return shifts, N
 
     data = interviews.copy()
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
@@ -47,7 +51,7 @@ def plot_morality_shifts(interviews, attributes):
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
 
     #Prepare data
-    shifts, _ = compute_morality_shifts(data, MORALITY_ESTIMATORS[0])
+    shifts, _ = compute_morality_shifts(data)
     shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
     shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
     shifts['target'] = shifts['target'].apply(lambda x: x.split(':')[-1])
@@ -55,15 +59,14 @@ def plot_morality_shifts(interviews, attributes):
     source_shifts['value'] = -source_shifts['value']
     target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
     shifts = pd.concat([source_shifts, target_shifts])
-    shifts['morality'] = shifts['morality'].str.split('_').apply(lambda x: x[0])
-    shifts = shifts.groupby(['morality'], sort=False)['value'].sum().reset_index()
+    shifts = shifts[abs(shifts['value']) > shift_threshold]
     shifts['value'] = shifts['value'] * 100
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, legend=False, palette=sns.color_palette('Set2')[:4])
-    g.set(xlim=(-7, 7))
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, legend=False, palette='Set2')
+    g.set(xlim=(-5, 5))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
@@ -76,17 +79,15 @@ def plot_morality_shifts(interviews, attributes):
     #Prepare data
     shifts = []
     legends = []
-    for estimator in MORALITY_ESTIMATORS:
-        for i, attribute in enumerate(attributes):
-            legends.insert(i, {})
-            for j, attribute_value in enumerate(attribute['values']):
-                shift, N = compute_morality_shifts(data, estimator=estimator, attribute_name=attribute['name'], attribute_value=attribute_value)
-                if not shift.empty:
-                    shift['Attribute'] = attribute['name']
-                    legends[i][j] = attribute_value + ' (N = ' + str(N) + ')'
-                    shift['Attribute Position'] = j
-                    shift['Estimator'] = estimator
-                    shifts.append(shift)
+    for i, attribute in enumerate(attributes):
+        legends.insert(i, {})
+        for j, attribute_value in enumerate(attribute['values']):
+            shift, N = compute_morality_shifts(data, attribute_name=attribute['name'], attribute_value=attribute_value)
+            if not shift.empty:
+                shift['Attribute'] = attribute['name']
+                legends[i][j] = attribute_value + ' (N = ' + str(N) + ')'
+                shift['Attribute Position'] = j
+                shifts.append(shift)
     shifts = pd.concat(shifts)
     shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
     shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
@@ -95,16 +96,15 @@ def plot_morality_shifts(interviews, attributes):
     source_shifts['value'] = -source_shifts['value']
     target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
     shifts = pd.concat([source_shifts, target_shifts])
-    shifts['morality'] = shifts['morality'].str.split('_').apply(lambda x: x[0])
-    shifts = shifts.groupby(['morality', 'Estimator', 'Attribute', 'Attribute Position'])['value'].sum().reset_index()
+    shifts = shifts[abs(shifts['value']) > shift_threshold]
     shifts['value'] = shifts['value'] * 100
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.8)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=shifts[shifts['Estimator'] == MORALITY_ESTIMATORS[0]], x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette='Set1')
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette='Set1')
     g.figure.suptitle('Crosswave Shift by Social Categories', y=1.15)
-    g.set(xlim=(-11, 11))
+    g.set(xlim=(-5, 5))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
@@ -358,7 +358,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5,6]
+    config = [6]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -368,7 +368,7 @@ if __name__ == '__main__':
         if c == 1:
             compute_distribution(interviews)
         elif c == 2:
-            consistency_threshold=.1
+            consistency_threshold = .1
             compute_consistency(interviews, consistency_threshold)
         elif c == 3:
             compute_decisiveness(interviews)
@@ -379,8 +379,9 @@ if __name__ == '__main__':
             attributes = DEMOGRAPHICS
             compute_std_diff(interviews, attributes)
         elif c == 6:
+            shift_threshold = 0
             attributes = DEMOGRAPHICS
-            plot_morality_shifts(interviews, attributes)
+            plot_morality_shifts(interviews, attributes, shift_threshold)
         elif c == 7:
             demographics_cases = [
                      (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),

@@ -128,15 +128,15 @@ def compute_consistency(interviews, consistency_threshold):
     consistency.columns = ['y', 'x']
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(10, 10))
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(20, 10))
     g = sns.catplot(data=consistency, x='x', y='y', hue='y', orient='h', order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, legend=False, palette=sns.color_palette('Set2')[:4])
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     ax.set_ylabel('')
-    ax.set_xlabel('Interviewees')
-    plt.title('Crosswave Inconsistency')
+    ax.set_xlabel('')
+    plt.title('Crosswave Interviewees Inconsistency')
     plt.savefig('data/plots/fig-morality_consistency.png', bbox_inches='tight')
     plt.show()
 
@@ -149,7 +149,7 @@ def compute_distribution(interviews):
     data['Value'] = data['Value'] * 100
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4.5)
     plt.figure(figsize=(20, 10))
     g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, palette=sns.color_palette('Set2')[:4])
     ax = plt.gca()
@@ -166,7 +166,7 @@ def compute_distribution(interviews):
     data['Value'] = data['Value'] * 100
     
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4.5)
     plt.figure(figsize=(20, 10))
     g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, palette=sns.color_palette('Set2')[:4])
     g.set_xlim(-100, 100)
@@ -175,7 +175,7 @@ def compute_distribution(interviews):
     ax.set_ylabel('')
     ax.set_xlabel('')
     plt.axvline(x=0, linestyle='--', linewidth=4, color='indianred', label='')
-    plt.title('Crosswave Difference Distribution')
+    plt.title('Crosswave Morality Change')
     plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
     plt.show()
 
@@ -377,7 +377,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [1,2]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

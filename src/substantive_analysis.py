@@ -160,6 +160,25 @@ def compute_distribution(interviews):
     plt.savefig('data/plots/fig-morality_distro.png', bbox_inches='tight')
     plt.show()
 
+    data = interviews.copy()
+    data = pd.DataFrame(data[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - data[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    data['Value'] = data['Value'] * 100
+    
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
+    plt.figure(figsize=(20, 10))
+    g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, palette=sns.color_palette('Set2')[:4])
+    g.set_xlim(-100, 100)
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    ax.set_ylabel('')
+    ax.set_xlabel('')
+    plt.axvline(x=0, linestyle='--', linewidth=4, color='indianred', label='')
+    plt.title('Crosswave Difference Distribution')
+    plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
+    plt.show()
+
 def compute_decisiveness(interviews):
     decisive_threshold = {mo + ':' + wave : np.mean(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) for mo in MORALITY_ORIGIN for wave in CODED_WAVES}
 
@@ -358,7 +377,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [6]
+    config = [1]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

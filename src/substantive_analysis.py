@@ -102,7 +102,7 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.8)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette='Set1')
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette=sns.color_palette('Set2')[-2:])
     g.figure.suptitle('Crosswave Shift by Social Categories', y=1.15)
     g.set(xlim=(-7, 7))
     g.set_xlabels('')
@@ -110,7 +110,7 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     g.set_titles('')
     for (j, attribute), pos in zip(enumerate(g.col_names), [(ax.get_position().x0 + ax.get_position().x1)/2 - (i%3)*.03 for i, ax in enumerate(g.axes)]):
-        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Set1')[i]) for i, v in enumerate(legends[j].values())}, bbox_to_anchor=(pos - (len(''.join(legends[0].values()))/2)*0.001, 1.1 - (j // 3) * 0.5), adjust_subtitles=True, loc='upper center')
+        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Set2')[-2:][i]) for i, v in enumerate(legends[j].values())}, bbox_to_anchor=(pos - (len(''.join(legends[0].values()))/2)*0.001, 1.1 - (j // 3) * 0.5), adjust_subtitles=True, loc='upper center')
     for ax in g.axes:
         ax.set_ylabel('')
     plt.subplots_adjust(hspace=0.6)
@@ -151,11 +151,11 @@ def compute_distribution(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4.5)
     plt.figure(figsize=(20, 10))
-    g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, palette=sns.color_palette('Set2')[:4])
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    ax.set_ylabel('')
-    ax.set_xlabel('')
+    g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, line_kws={'linewidth':3}, palette='Set2')
+    g.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    g.set_ylabel('')
+    g.set_xlabel('')
+    sns.despine(top=True, right=True)
     plt.title('Overall Distribution')
     plt.savefig('data/plots/fig-morality_distro.png', bbox_inches='tight')
     plt.show()
@@ -168,13 +168,13 @@ def compute_distribution(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4.5)
     plt.figure(figsize=(20, 10))
-    g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, palette=sns.color_palette('Set2')[:4])
+    g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, line_kws={'linewidth':3}, palette='Set2')
     g.set_xlim(-100, 100)
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    ax.set_ylabel('')
-    ax.set_xlabel('')
+    g.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    g.set_ylabel('')
+    g.set_xlabel('')
     plt.axvline(x=0, linestyle='--', linewidth=4, color='indianred', label='')
+    sns.despine(top=True, right=True)
     plt.title('Crosswave Morality Change')
     plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
     plt.show()
@@ -312,7 +312,7 @@ def compute_std_diff(interviews, attributes):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=2, orient='h', kind='bar', seed=42, aspect=4, legend=False, palette=sns.color_palette('Set1')[:2])
+    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=2, orient='h', kind='bar', seed=42, aspect=4, legend=False, palette=sns.color_palette('Set2')[-2:])
     g.set(xlim=(-30, 0))
     g.figure.subplots_adjust(wspace=0.55)
     g.figure.suptitle('Standard Deviation Crosswave Shift', y=1.03)
@@ -377,7 +377,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2]
+    config = [6]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

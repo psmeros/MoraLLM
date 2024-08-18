@@ -65,16 +65,16 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     shifts, _ = compute_morality_shifts(data)
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', markers=['D', 'D', 'D','D'], err_kws={'linewidth': 3}, dodge=.4, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
-    g.figure.suptitle('Crosswave Morality Shift', y=.9, x=.6)
-    g.map(plt.axvline, x=0, color='indianred', linestyle='--', linewidth=4)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5)
+    plt.figure(figsize=(20, 10))
+    g = sns.pointplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, markers=['D', 'D', 'D','D'], err_kws={'linewidth': 5}, dodge=.4, markersize=20, legend=False, seed=42, palette='Set2')
     g.set(xlim=(-10, 10))
-    g.set_xlabels('')
-    g.set_ylabels('')
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    g.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    g.set_ylabel('')
+    g.set_xlabel('')
+    plt.axvline(x=0, linestyle='--', linewidth=4, color='indianred', label='')
+    sns.despine(top=True, right=True)
+    plt.title('Crosswave Morality Shift')
     plt.savefig('data/plots/fig-morality_shift.png', bbox_inches='tight')
     plt.show()
 
@@ -143,9 +143,10 @@ def compute_distribution(interviews):
     data['Value'] = data['Value'] * 100
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5)
     plt.figure(figsize=(20, 10))
-    g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, line_kws={'linewidth':3}, palette='Set2')
+    g = sns.pointplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, markers=['D', 'D', 'D','D'], err_kws={'linewidth': 5}, dodge=.4, markersize=20, legend=False, seed=42, palette='Set2')
+    g.set_xlim(0, 60)
     g.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     g.set_ylabel('')
     g.set_xlabel('')
@@ -160,10 +161,10 @@ def compute_distribution(interviews):
     data['Value'] = data['Value'] * 100
     
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4.5)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5)
     plt.figure(figsize=(20, 10))
-    g = sns.boxenplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, legend=False, line_kws={'linewidth':3}, palette='Set2')
-    g.set_xlim(-100, 100)
+    g = sns.pointplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, markers=['D', 'D', 'D','D'], err_kws={'linewidth': 5}, dodge=.4, markersize=20, legend=False, seed=42, palette='Set2')
+    g.set_xlim(-10, 10)
     g.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     g.set_ylabel('')
     g.set_xlabel('')
@@ -371,7 +372,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [6]
+    config = [1,6]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

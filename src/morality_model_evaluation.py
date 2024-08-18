@@ -79,7 +79,7 @@ def plot_coders_agreement(interviews):
     #Plot coders agreement
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    ax = sns.heatmap(heatmap, cmap = sns.color_palette('pink_r', n_colors=4), square=True, cbar_kws={'shrink': .8}, vmin=-0.2, vmax=1)
+    ax = sns.heatmap(heatmap, cmap = sns.color_palette('Purples', n_colors=4), square=True, cbar_kws={'shrink': .8}, vmin=-0.2, vmax=1)
     plt.ylabel('')
     plt.xlabel('')
     colorbar = ax.collections[0].colorbar

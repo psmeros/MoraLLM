@@ -40,6 +40,17 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
             shift = pd.DataFrame(outgoing.iloc[i]).values.reshape(-1, 1) @ pd.DataFrame(incoming.iloc[i]).values.reshape(1, -1)
             shift = pd.DataFrame(shift, index=[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN], columns=[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN])
             shift = shift.stack().reset_index().rename(columns={'level_0':'source', 'level_1':'target', 0:'value'})
+
+            shift['wave'] = shift.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
+            shift['source'] = shift['source'].apply(lambda x: x.split(':')[-1])
+            shift['target'] = shift['target'].apply(lambda x: x.split(':')[-1])
+            source_shift = shift.drop('target', axis=1).rename(columns={'source':'morality'})
+            source_shift['value'] = -source_shift['value']
+            target_shift = shift.drop('source', axis=1).rename(columns={'target':'morality'})
+            shift = pd.concat([source_shift, target_shift])
+            shift = shift[abs(shift['value']) > shift_threshold]
+            shift['value'] = shift['value'] * 100
+
             shifts.append(shift)
         shifts = pd.concat(shifts)
 
@@ -52,27 +63,18 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
 
     #Prepare data
     shifts, _ = compute_morality_shifts(data)
-    shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
-    shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
-    shifts['target'] = shifts['target'].apply(lambda x: x.split(':')[-1])
-    source_shifts = shifts.drop('target', axis=1).rename(columns={'source':'morality'})
-    source_shifts['value'] = -source_shifts['value']
-    target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
-    shifts = pd.concat([source_shifts, target_shifts])
-    shifts = shifts[abs(shifts['value']) > shift_threshold]
-    shifts['value'] = shifts['value'] * 100
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='bar', seed=42, aspect=2, legend=False, palette='Set2')
-    g.set(xlim=(-7, 7))
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', markers=['D', 'D', 'D','D'], err_kws={'linewidth': 3}, dodge=.4, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Crosswave Morality Shift', y=.9, x=.6)
+    g.map(plt.axvline, x=0, color='indianred', linestyle='--', linewidth=4)
+    g.set(xlim=(-10, 10))
     g.set_xlabels('')
+    g.set_ylabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    ax.set_ylabel('')
-    ax.set_xlabel('Morality')
-    plt.title('Crosswave Shift')
     plt.savefig('data/plots/fig-morality_shift.png', bbox_inches='tight')
     plt.show()
 
@@ -89,31 +91,23 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
                 shift['Attribute Position'] = j
                 shifts.append(shift)
     shifts = pd.concat(shifts)
-    shifts['wave'] = shifts.apply(lambda x: x['source'].split(':')[0] + '->' + x['target'].split(':')[0].split()[1], axis=1)
-    shifts['source'] = shifts['source'].apply(lambda x: x.split(':')[-1])
-    shifts['target'] = shifts['target'].apply(lambda x: x.split(':')[-1])
-    source_shifts = shifts.drop('target', axis=1).rename(columns={'source':'morality'})
-    source_shifts['value'] = -source_shifts['value']
-    target_shifts = shifts.drop('source', axis=1).rename(columns={'target':'morality'})
-    shifts = pd.concat([source_shifts, target_shifts])
-    shifts = shifts[abs(shifts['value']) > shift_threshold]
-    shifts['value'] = shifts['value'] * 100
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.8)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='bar', legend=False, seed=42, palette=sns.color_palette('Set2')[-2:])
-    g.figure.suptitle('Crosswave Shift by Social Categories', y=1.15)
-    g.set(xlim=(-7, 7))
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='point', linestyles='', markers=['D', 'D'], err_kws={'linewidth': 3}, dodge=.4, markersize=10, legend=False, seed=42, aspect=.8, palette=sns.color_palette('Purples_r', n_colors=2))
+    g.figure.suptitle('Crosswave Shift by Social Categories', y=1.1, x=.6)
+    g.map(plt.axvline, x=0, color='indianred', linestyle='--', linewidth=4)
+    g.set(xlim=(-10, 10))
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     g.set_titles('')
     for (j, attribute), pos in zip(enumerate(g.col_names), [(ax.get_position().x0 + ax.get_position().x1)/2 - (i%3)*.03 for i, ax in enumerate(g.axes)]):
-        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Set2')[-2:][i]) for i, v in enumerate(legends[j].values())}, bbox_to_anchor=(pos - (len(''.join(legends[0].values()))/2)*0.001, 1.1 - (j // 3) * 0.5), adjust_subtitles=True, loc='upper center')
+        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Purples_r', n_colors=2)[i]) for i, v in enumerate(legends[j].values())}, bbox_to_anchor=(pos - (len(''.join(legends[0].values()))/2)*0.001, 1.05 - (j // 3) * 0.5), adjust_subtitles=True, loc='upper center')
     for ax in g.axes:
         ax.set_ylabel('')
-    plt.subplots_adjust(hspace=0.6)
+    plt.subplots_adjust(hspace=1)
     plt.savefig('data/plots/fig-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 

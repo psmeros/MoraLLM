@@ -67,7 +67,7 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, dodge=.7, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
     g.figure.suptitle('Crosswave Morality Shift', x=.5)
     g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
     g.set(xlim=(-10, 10))
@@ -148,9 +148,9 @@ def compute_distribution(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, dodge=.7, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
-    g.figure.suptitle('Overall Distribution', y= 1.1, x=.5)
-    g.set(xlim=(0, 60))
+    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='boxen', width=.7, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Overall Distribution', y= 1.05, x=.5)
+    # g.set(xlim=(0, 60))
     g.set_ylabels('')
     g.set_xlabels('')
     ax = plt.gca()
@@ -166,7 +166,7 @@ def compute_distribution(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, dodge=.7, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
     g.figure.suptitle('Crosswave Morality Change', x=.5)
     g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
     g.set(xlim=(-10, 10))

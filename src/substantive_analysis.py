@@ -58,56 +58,59 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
 
     data = interviews.copy()
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
-    data[CODED_WAVES[0] + ':Age'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
+    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
 
     #Prepare data
     shifts, _ = compute_morality_shifts(data)
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5)
-    plt.figure(figsize=(20, 10))
-    g = sns.pointplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, markers=['D', 'D', 'D','D'], err_kws={'linewidth': 5}, dodge=.4, markersize=20, legend=False, seed=42, palette='Set2')
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, dodge=.7, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Crosswave Morality Shift', x=.5)
+    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
     g.set(xlim=(-10, 10))
-    g.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    g.set_ylabel('')
-    g.set_xlabel('')
-    plt.axvline(x=0, linestyle='--', linewidth=4, color='indianred', label='')
-    sns.despine(top=True, right=True)
-    plt.title('Crosswave Morality Shift')
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     plt.savefig('data/plots/fig-morality_shift.png', bbox_inches='tight')
     plt.show()
 
     #Prepare data
     shifts = []
-    legends = []
-    for i, attribute in enumerate(attributes):
-        legends.insert(i, {})
-        for j, attribute_value in enumerate(attribute['values']):
+    legends = {}
+    symbols = ['■ ', '▼ ']
+
+    for attribute in attributes:
+        legend = []
+        for attribute_value in attribute['values']:
             shift, N = compute_morality_shifts(data, attribute_name=attribute['name'], attribute_value=attribute_value)
             if not shift.empty:
                 shift['Attribute'] = attribute['name']
-                legends[i][j] = attribute_value + ' (N = ' + str(N) + ')'
-                shift['Attribute Position'] = j
+                legend.append(symbols[attribute['values'].index(attribute_value)] + attribute_value + ' (N = ' + str(N) + ')')
+                shift['order'] = str(attribute['values'].index(attribute_value)) + shift['morality'].apply(lambda mo: str(MORALITY_ORIGIN.index(mo)))
                 shifts.append(shift)
+        legends[attribute['name']] = attribute['name'] + '\n' + ', '.join(legend) + '\n'
+
     shifts = pd.concat(shifts)
+    shifts = shifts.sort_values(by='order')
+    shifts['Attribute'] = shifts['Attribute'].map(legends)
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3)
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=shifts, x='value', y='morality', hue='Attribute Position', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=[attribute['name'] for attribute in attributes], col_wrap=3, kind='point', linestyles='', markers=['D', 'D'], err_kws={'linewidth': 3}, dodge=.4, markersize=10, legend=False, seed=42, aspect=.8, palette=sns.color_palette('Purples_r', n_colors=2))
-    g.figure.suptitle('Crosswave Shift by Social Categories', y=1.1, x=.6)
-    g.map(plt.axvline, x=0, color='indianred', linestyle='--', linewidth=4)
+    g = sns.catplot(data=shifts, x='value', y='morality', hue='order', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=legends.values(), col_wrap=3, kind='point', err_kws={'linewidth': 3}, dodge=.7, markers=['s']*len(MORALITY_ORIGIN)+['v']*len(MORALITY_ORIGIN), markersize=15, legend=False, seed=42, aspect=1.5, palette=2*sns.color_palette('Set2', n_colors=len(MORALITY_ORIGIN)))
+    g.figure.suptitle('Crosswave Shift by Social Categories', x=.5)
+    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
     g.set(xlim=(-10, 10))
     g.set_xlabels('')
+    g.set_ylabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    g.set_titles('')
-    for (j, attribute), pos in zip(enumerate(g.col_names), [(ax.get_position().x0 + ax.get_position().x1)/2 - (i%3)*.03 for i, ax in enumerate(g.axes)]):
-        g = g.add_legend(title=attribute, legend_data={v:mpatches.Patch(color=sns.color_palette('Purples_r', n_colors=2)[i]) for i, v in enumerate(legends[j].values())}, bbox_to_anchor=(pos - (len(''.join(legends[0].values()))/2)*0.001, 1.05 - (j // 3) * 0.5), adjust_subtitles=True, loc='upper center')
-    for ax in g.axes:
-        ax.set_ylabel('')
-    plt.subplots_adjust(hspace=1)
+    g.set_titles('{col_name}')
+    plt.subplots_adjust(wspace=.3)
     plt.savefig('data/plots/fig-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
@@ -143,15 +146,15 @@ def compute_distribution(interviews):
     data['Value'] = data['Value'] * 100
 
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5)
-    plt.figure(figsize=(20, 10))
-    g = sns.pointplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, markers=['D', 'D', 'D','D'], err_kws={'linewidth': 5}, dodge=.4, markersize=20, legend=False, seed=42, palette='Set2')
-    g.set_xlim(0, 60)
-    g.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    g.set_ylabel('')
-    g.set_xlabel('')
-    sns.despine(top=True, right=True)
-    plt.title('Overall Distribution')
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, dodge=.7, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Overall Distribution', y= 1.1, x=.5)
+    g.set(xlim=(0, 60))
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     plt.savefig('data/plots/fig-morality_distro.png', bbox_inches='tight')
     plt.show()
 
@@ -159,18 +162,18 @@ def compute_distribution(interviews):
     data = pd.DataFrame(data[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - data[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
     data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
     data['Value'] = data['Value'] * 100
-    
+
     #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5)
-    plt.figure(figsize=(20, 10))
-    g = sns.pointplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, markers=['D', 'D', 'D','D'], err_kws={'linewidth': 5}, dodge=.4, markersize=20, legend=False, seed=42, palette='Set2')
-    g.set_xlim(-10, 10)
-    g.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    g.set_ylabel('')
-    g.set_xlabel('')
-    plt.axvline(x=0, linestyle='--', linewidth=4, color='indianred', label='')
-    sns.despine(top=True, right=True)
-    plt.title('Crosswave Morality Change')
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, dodge=.7, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Crosswave Morality Change', x=.5)
+    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
+    g.set(xlim=(-10, 10))
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
     plt.show()
 
@@ -282,7 +285,7 @@ def compute_std_diff(interviews, attributes):
     #Prepare Data
     data = interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
-    data[CODED_WAVES[0] + ':Age'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
+    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
 
     #Melt Data
@@ -326,7 +329,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
     #Prepare Data
     data = interviews.copy()
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
-    data[CODED_WAVES[0] + ':Age'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early Adolescence' if x is not pd.NA and x in ['13', '14', '15'] else 'Late Adolescence' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
+    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
 
     #Print Demographics Cases
@@ -398,10 +401,10 @@ if __name__ == '__main__':
             plot_morality_shifts(interviews, attributes, shift_threshold)
         elif c == 7:
             demographics_cases = [
-                     (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
-                      ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),
-                     (({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Social', 'ascending' : True}),
-                      ({'demographics' : {'Age' : 'Late Adolescence', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Lower', 'Parent Education' : 'Secondary'}, 'pos' : 3, 'morality' : 'Social', 'ascending' : True}))
+                     (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
+                      ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),
+                     (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Social', 'ascending' : True}),
+                      ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Lower', 'Parent Education' : 'Secondary'}, 'pos' : 3, 'morality' : 'Social', 'ascending' : True}))
                     ]
             incoherent_cases = [2]
             max_diff_cases = [1]

@@ -256,7 +256,7 @@ DEMOGRAPHICS = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                 {'name' : 'Race', 'values' : ['White', 'Other']},
                 {'name' : 'Household Income', 'values' : ['High', 'Low']},
                 {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']},
-                {'name' : 'Age', 'values' : ['Early Adolescence', 'Late Adolescence']},
+                {'name' : 'Adolescence', 'values' : ['Early', 'Late']},
                 {'name' : 'Church Attendance', 'values' : ['Regular', 'Irregular']}]
 
 CODED_WAVES = ['Wave 1', 'Wave 3']

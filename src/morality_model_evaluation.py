@@ -52,7 +52,7 @@ def plot_model_evaluation(interviews, models):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     min_loss = losses[MORALITY_ORIGIN].sum(axis=1).min()
-    plt.axvline(x=coders_agreement, linestyle='--', linewidth=4, color='indianred', label='Annotators Agreement')
+    plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
     plt.xlabel('Normalized Mean Squared Error')
     plt.ylabel('')
     plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(min_loss, 1)).replace('0.', '.')])

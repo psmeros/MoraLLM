@@ -111,6 +111,7 @@ def plot_ecdf(interviews):
     g.set_ylabels('')
     ax = plt.gca()
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * 100:.0f}%'))
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * 100:.0f}%'))
     plt.savefig('data/plots/fig-morality_ecdf.png', bbox_inches='tight')
     plt.show()
 

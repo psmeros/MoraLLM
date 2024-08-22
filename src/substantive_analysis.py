@@ -141,7 +141,7 @@ def compute_consistency(interviews, plot_type, consistency_threshold):
         num_levels = 4
         for i in range(1, num_levels + 1):
             level =  100 * i / num_levels
-            level_values = [level] * len(consistency)    
+            level_values = [level] * len(consistency)
             ax.plot(consistency['angles'], level_values, color='gray', linestyle='--', linewidth=0.7)
         for i in range(len(consistency)):
             ax.plot([consistency['angles'].iloc[i], consistency['angles'].iloc[i]], [0, 100], color='gray', linestyle='-', linewidth=0.7)
@@ -149,7 +149,7 @@ def compute_consistency(interviews, plot_type, consistency_threshold):
             ax.text(consistency['angles'].iloc[i], r, consistency['morality-r'].iloc[i], size=15, horizontalalignment=horizontalalignment, verticalalignment=verticalalignment, rotation=rotation)
         ax.set_rlabel_position(0)
         plt.yticks([25, 50, 75, 100], [])
-        plt.title('Crosswave Interviewees Consistency', y=1.15)
+        plt.title('Crosswave Interviewees Consistency', y=1.15, size=20)
         plt.savefig('data/plots/fig-morality_consistency.png', bbox_inches='tight')
         plt.show()
     

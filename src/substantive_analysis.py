@@ -131,16 +131,24 @@ def compute_consistency(interviews, plot_type, consistency_threshold):
     if plot_type == 'spider':
         plt.figure(figsize=(10, 10))
         _, ax = plt.subplots(subplot_kw=dict(polar=True))
+        ax.plot(consistency['angles'], consistency['r'], linewidth=2, linestyle='solid', color='rosybrown', alpha=0.8)
+        ax.fill(consistency['angles'], consistency['r'], 'rosybrown', alpha=0.7)
         ax.set_theta_offset(np.pi)
         ax.set_theta_direction(-1)
+        ax.grid(False)
+        ax.spines['polar'].set_visible(False)
         ax.set_xticks(consistency['angles'], [])
+        num_levels = 4
+        for i in range(1, num_levels + 1):
+            level =  100 * i / num_levels
+            level_values = [level] * len(consistency)    
+            ax.plot(consistency['angles'], level_values, color='gray', linestyle='--', linewidth=0.7)
+        for i in range(len(consistency)):
+            ax.plot([consistency['angles'].iloc[i], consistency['angles'].iloc[i]], [0, 100], color='gray', linestyle='-', linewidth=0.7)
         for i, (r, horizontalalignment, verticalalignment, rotation) in enumerate(zip([105, 115, 105, 115], ['right', 'center', 'left', 'center'], ['center', 'top', 'center', 'bottom'], [90, 0, -90, 0])):
             ax.text(consistency['angles'].iloc[i], r, consistency['morality-r'].iloc[i], size=15, horizontalalignment=horizontalalignment, verticalalignment=verticalalignment, rotation=rotation)
         ax.set_rlabel_position(0)
         plt.yticks([25, 50, 75, 100], [])
-        plt.ylim(0, 100)
-        ax.plot(consistency['angles'], consistency['r'], linewidth=2, linestyle='solid', color='rosybrown', alpha=0.8)
-        ax.fill(consistency['angles'], consistency['r'], 'rosybrown', alpha=0.7)
         plt.title('Crosswave Interviewees Consistency', y=1.15)
         plt.savefig('data/plots/fig-morality_consistency.png', bbox_inches='tight')
         plt.show()

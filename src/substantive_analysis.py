@@ -414,7 +414,7 @@ if __name__ == '__main__':
         if c == 1:
             compute_distribution(interviews)
         elif c == 2:
-            consistency_threshold = .1
+            consistency_threshold = .05
             plot_type = 'spider'
             compute_consistency(interviews, plot_type, consistency_threshold)
         elif c == 3:

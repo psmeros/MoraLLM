@@ -353,6 +353,36 @@ def compute_std_diff(interviews, attributes):
     plt.savefig('data/plots/fig-std_diff.png', bbox_inches='tight')
     plt.show()
 
+#Plot Intuitive-Consequentialist and Social-Theistic Morality Distinction
+def plot_morality_distinction(interviews):
+
+    #Prepare Data
+    data = interviews.copy()
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
+
+    #Normalize Data
+    data = pd.DataFrame(minmax_scale(data), columns=MORALITY_ORIGIN)
+    data = data * 100
+
+    #Compute Distinction
+    data = data.apply(lambda x: pd.Series([abs(x['Intuitive'] - x['Consequentialist']), abs(x['Social'] - x['Theistic'])]), axis=1)
+
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
+    plt.figure(figsize=(10, 10))
+    g = sns.jointplot(data=data, x=0, y=1, kind='hex', color='rosybrown')
+    g.figure.suptitle('Morality Sources Distinction', y=1.03)
+    ax = plt.gca()
+    ax.xaxis.set_ticks([0, 50, 100])
+    ax.yaxis.set_ticks([0, 50, 100])
+    ax.set_xlabel('Intuitive-Consequentialist Distinction')
+    ax.set_ylabel('Social-Theistic Distinction')
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/fig-morality_distinction.png', bbox_inches='tight')
+    plt.show()
+
 def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases):
     #Prepare Data
     data = interviews.copy()
@@ -403,7 +433,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,6]
+    config = [7]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -429,6 +459,8 @@ if __name__ == '__main__':
             attributes = DEMOGRAPHICS
             plot_morality_shifts(interviews, attributes, shift_threshold)
         elif c == 7:
+            plot_morality_distinction(interviews)
+        elif c == 8:
             demographics_cases = [
                      (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
                       ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),

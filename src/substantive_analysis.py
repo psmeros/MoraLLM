@@ -6,6 +6,7 @@ import seaborn as sns
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from IPython.display import display
+from scipy.stats import pearsonr
 from sklearn.preprocessing import minmax_scale, normalize, scale
 from statsmodels.stats.diagnostic import het_white
 
@@ -430,10 +431,53 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
             print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
             print('\n----------\n')
 
+#Compute Correlations
+def compute_correlations(interviews):
+    desicion_taking = pd.concat([pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Decision Taking'])] * 2, ignore_index=True)
+    Age = pd.concat([interviews[wave + ':Age'].astype('Int64').bfill() for wave in CODED_WAVES], ignore_index=True)
+    Grades = pd.concat([interviews[CODED_WAVES[0] + ':Grades'].astype('Int64').bfill()] * 2, ignore_index=True)
+    Gender = pd.concat([pd.Series(pd.factorize(interviews[CODED_WAVES[0] + ':Gender'])[0])] * 2, ignore_index=True)
+    Race = pd.concat([pd.Series(pd.factorize(interviews[CODED_WAVES[0] + ':Race'])[0])] * 2, ignore_index=True)
+    Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance'].astype('Int64').bfill()] * 2, ignore_index=True)
+    Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
+    Parent_Income = pd.concat([interviews[CODED_WAVES[0] + ':Income (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
+
+    Intuitive = pd.concat([interviews[wave + ':Intuitive'] for wave in CODED_WAVES])
+    Consequentialist = pd.concat([interviews[wave + ':Consequentialist'] for wave in CODED_WAVES])
+    Social = pd.concat([interviews[wave + ':Social'] for wave in CODED_WAVES])
+    Theistic = pd.concat([interviews[wave + ':Theistic'] for wave in CODED_WAVES])
+
+    compute_correlation = lambda x: str(round(x[0], 2)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+
+    correlations = {}
+    correlations['Intuitive - Consequentialist'] = compute_correlation(pearsonr(Intuitive, Consequentialist))
+    correlations['Intuitive - Social'] = compute_correlation(pearsonr(Intuitive, Social))
+    correlations['Intuitive - Theistic'] = compute_correlation(pearsonr(Intuitive, Theistic))
+    correlations['Consequentialist - Social'] = compute_correlation(pearsonr(Consequentialist, Social))
+    correlations['Consequentialist - Theistic'] = compute_correlation(pearsonr(Consequentialist, Theistic))
+    correlations['Social - Theistic'] = compute_correlation(pearsonr(Social, Theistic))
+    
+    correlations['Intuitive - Expressive Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Expressive Individualist']))
+    correlations['Intuitive - Utilitarian Individualist'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Utilitarian Individualist']))
+    correlations['Intuitive - Relational'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Relational']))
+    correlations['Intuitive - Theistic'] = compute_correlation(pearsonr(Intuitive, desicion_taking['Theistic']))
+
+    correlations['Intuitive - Age'] = compute_correlation(pearsonr(Intuitive, Age))
+    correlations['Intuitive - GPA'] = compute_correlation(pearsonr(Intuitive, Grades))
+    correlations['Intuitive - Gender'] = compute_correlation(pearsonr(Intuitive, Gender))
+    correlations['Intuitive - Race'] = compute_correlation(pearsonr(Intuitive, Race))
+    correlations['Intuitive - Church Attendance'] = compute_correlation(pearsonr(Intuitive, Church_Attendance))
+    correlations['Intuitive - Parent Education'] = compute_correlation(pearsonr(Intuitive, Parent_Education))
+    correlations['Intuitive - Parent Income'] = compute_correlation(pearsonr(Intuitive, Parent_Income))
+    
+    correlations['Theistic - Church Attendance'] = compute_correlation(pearsonr(Theistic, Church_Attendance))
+
+    print(pd.Series(correlations).to_latex())
+
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [7]
+    config = [8]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -461,6 +505,8 @@ if __name__ == '__main__':
         elif c == 7:
             plot_morality_distinction(interviews)
         elif c == 8:
+            compute_correlations(interviews)
+        elif c == 9:
             demographics_cases = [
                      (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
                       ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),

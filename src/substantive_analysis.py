@@ -440,7 +440,6 @@ def compute_correlations(interviews):
     Race = pd.concat([pd.Series(pd.factorize(interviews[CODED_WAVES[0] + ':Race'])[0])] * 2, ignore_index=True)
     Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance'].astype('Int64').bfill()] * 2, ignore_index=True)
     Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
-    Parent_Income = pd.concat([interviews[CODED_WAVES[0] + ':Income (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
 
     Intuitive = pd.concat([interviews[wave + ':Intuitive'] for wave in CODED_WAVES])
     Consequentialist = pd.concat([interviews[wave + ':Consequentialist'] for wave in CODED_WAVES])
@@ -468,7 +467,6 @@ def compute_correlations(interviews):
     correlations['Intuitive - Race'] = compute_correlation(pearsonr(Intuitive, Race))
     correlations['Intuitive - Church Attendance'] = compute_correlation(pearsonr(Intuitive, Church_Attendance))
     correlations['Intuitive - Parent Education'] = compute_correlation(pearsonr(Intuitive, Parent_Education))
-    correlations['Intuitive - Parent Income'] = compute_correlation(pearsonr(Intuitive, Parent_Income))
     
     correlations['Theistic - Church Attendance'] = compute_correlation(pearsonr(Theistic, Church_Attendance))
 

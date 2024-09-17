@@ -57,8 +57,6 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
         return shifts, N
 
     data = interviews.copy()
-    data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
-    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
 
     #Prepare data
     shifts, _ = compute_morality_shifts(data)
@@ -250,7 +248,7 @@ def compute_morality_correlations(interviews, model, show_plots=False):
     data['Race'] = (data['Race'] == 'White').astype(int)
     data['Household_Income'] = (data['Household Income'] == 'High').astype(int)
     data['Parent_Education'] = (data['Parent Education'] == 'Tertiary').astype(int)
-    data['Age'] = data['Age'].fillna(data['Age'].dropna().astype(int).mean()).astype(int)
+    data['Age'] = data['Age'].bfill()
     data['Church_Attendance'] = (data['Church Attendance'] == 'Regular').astype(int)
     data['Wave'] = (data['Wave'] == CODED_WAVES[0]).astype(int)
 
@@ -311,8 +309,6 @@ def compute_morality_correlations(interviews, model, show_plots=False):
 def compute_std_diff(interviews, attributes):
     #Prepare Data
     data = interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
-    data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
-    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
 
     #Melt Data
     data = data.melt(id_vars=[CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes], value_vars=[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
@@ -384,10 +380,10 @@ def plot_morality_distinction(interviews):
 #Compute Correlations
 def compute_correlations(interviews, correlation_type):
     desicion_taking = pd.concat([pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Decision Taking'])] * 2, ignore_index=True).astype('Int64')
-    Age = pd.concat([interviews[wave + ':Age'].astype('Int64').bfill() for wave in CODED_WAVES], ignore_index=True)
+    Age = pd.concat([interviews[wave + ':Age'].bfill() for wave in CODED_WAVES], ignore_index=True)
     Grades = pd.concat([interviews[CODED_WAVES[0] + ':Grades'].astype('Int64').bfill()] * 2, ignore_index=True)
-    Gender = pd.concat([pd.Series(pd.factorize(interviews[CODED_WAVES[0] + ':Gender'])[0])] * 2, ignore_index=True)
-    Race = pd.concat([pd.Series(pd.factorize(interviews[CODED_WAVES[0] + ':Race'])[0])] * 2, ignore_index=True)
+    Gender = pd.concat([pd.Series(pd.factorize(interviews[wave + ':Gender'])[0]) for wave in CODED_WAVES], ignore_index=True)
+    Race = pd.concat([pd.Series(pd.factorize(interviews[wave + ':Race'])[0]) for wave in CODED_WAVES], ignore_index=True)
     Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
     Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
 
@@ -434,7 +430,7 @@ def compute_correlations(interviews, correlation_type):
 
 def predict_behavior(interviews, actions):
     #Prepare Data
-    data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN + actions + [d['name'] for d in DEMOGRAPHICS]]]
+    data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN + actions]]
     data.columns = MORALITY_ORIGIN + actions
     data = data.dropna(subset=actions)
     data[actions] = data[actions].map(lambda d: int(d != 1))
@@ -452,7 +448,7 @@ def predict_behavior(interviews, actions):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,6,7,8]
+    config = [9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

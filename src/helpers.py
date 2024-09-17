@@ -206,13 +206,19 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'EARNINGS':'Income (raw)'}}
 
 #Income: Low < 70K < High
-HOUSEHOLD_CLASS = {**dict.fromkeys(range(1, 8), 'Low'), **dict.fromkeys(range(8, 12), 'High')}
+INCOME_RANGE = {**dict.fromkeys(range(1, 8), 'Low'), **dict.fromkeys(range(8, 12), 'High')}
 
 #Education: Basic < College < Higher < PhD < Advanced
-EDUCATION = {**dict.fromkeys(range(0, 3), 'Primary'), **dict.fromkeys(range(3, 8), 'Secondary'), **dict.fromkeys(range(8, 15), 'Tertiary')}
+EDUCATION_RANGE = {**dict.fromkeys(range(0, 3), 'Primary'), **dict.fromkeys(range(3, 8), 'Secondary'), **dict.fromkeys(range(8, 15), 'Tertiary')}
 
 #Church Attendance: Irregular vs Regular
 CHURCH_ATTENDANCE_RANGE = {**dict.fromkeys(range(1, 5), 'Irregular'), **dict.fromkeys(range(5, 7), 'Regular')}
+
+#Adolescence: Early vs Late
+ADOLESCENCE_RANGE = {**dict.fromkeys(range(13, 16), 'Early'), **dict.fromkeys(range(16, 20), 'Late')}
+
+#Race: White vs Other
+RACE_RANGE = {**dict.fromkeys(['White'], 'White'), **dict.fromkeys(['Asian', 'Black', 'Hispanic', 'Native American' 'Other'], 'Other')}
 
 #Survey max values
 MAX_POT_VALUE = 4

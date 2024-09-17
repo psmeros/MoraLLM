@@ -5,7 +5,7 @@ import pandas as pd
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DECISION_TAKING, EDUCATION, HOUSEHOLD_CLASS, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DECISION_TAKING, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -297,16 +297,21 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     surveys['Decision Taking'] = surveys['Decision Taking'].apply(lambda x: DECISION_TAKING.get(x, pd.NA))
     surveys['Grades'] = surveys['Grades'].apply(lambda x: x if x in range(1, MAX_GRADES_VALUE + 1) else pd.NA)
 
-    surveys['Parent Education (raw)'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION.keys())) and (x.iloc[1] <= max(EDUCATION.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
-    surveys['Parent Education'] = surveys['Parent Education (raw)'].apply(lambda x: EDUCATION.get(x, pd.NA))
+    surveys['Parent Education (raw)'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION_RANGE.keys())) and (x.iloc[1] <= max(EDUCATION_RANGE.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
+    surveys['Parent Education'] = surveys['Parent Education (raw)'].map(EDUCATION_RANGE)
 
     surveys['Church Attendance (raw)'] = surveys['Church Attendance (raw)'].apply(lambda x: x if x in range(1, MAX_CHURCH_ATTENDANCE_VALUE + 1) else pd.NA)
-    surveys['Church Attendance'] = surveys['Church Attendance (raw)'].apply(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, pd.NA))
+    surveys['Church Attendance'] = surveys['Church Attendance (raw)'].map(CHURCH_ATTENDANCE_RANGE)
 
-    surveys['Income (raw)'] = surveys['Income (raw)'].apply(lambda i: i if i in HOUSEHOLD_CLASS.keys() else pd.NA)
-    surveys['Household Income'] = surveys['Income (raw)'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))
+    surveys['Income (raw)'] = surveys['Income (raw)'].apply(lambda i: i if i in INCOME_RANGE.keys() else pd.NA)
+    surveys['Household Income'] = surveys['Income (raw)'].map(INCOME_RANGE)
 
     interviews = interviews.merge(surveys, on = ['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
+    
+    interviews['Age'] = interviews['Age'].astype('Int64')
+    interviews['Adolescence'] = interviews['Age'].map(ADOLESCENCE_RANGE)
+
+    interviews['Race'] = interviews['Race'].map(RACE_RANGE)
 
     return interviews
 

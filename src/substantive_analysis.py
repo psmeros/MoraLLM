@@ -482,10 +482,27 @@ def compute_correlations(interviews, correlation_type):
     correlations = pd.DataFrame(correlations, index=MORALITY_ESTIMATORS).T[MORALITY_ESTIMATORS[::-1]]
     print(correlations.to_latex())
 
+def predict_behavior(interviews, actions):
+    #Prepare Data
+    data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN + actions]]
+    data.columns = MORALITY_ORIGIN + actions
+    data = data.dropna(subset=actions)
+    data[actions] = data[actions].map(lambda d: int(d != 1))
+
+    #Display Results
+    formulas = [action + ' ~ ' + ' + '.join(MORALITY_ORIGIN) for action in actions]
+    compute_coef = lambda x: str(round(x[0], 2)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+    results = []
+    for formula in formulas:
+        probit = smf.probit(formula=formula, data=data).fit()
+        results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)})
+        
+    results = pd.DataFrame(results, index=actions).T
+    display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [8]
+    config = [9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -515,6 +532,9 @@ if __name__ == '__main__':
         elif c == 8:
             compute_correlations(interviews, correlation_type='pearsonr')
         elif c == 9:
+            actions = ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
+            predict_behavior(interviews, actions)
+        elif c == 10:
             demographics_cases = [
                      (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
                       ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),

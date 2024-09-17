@@ -11,7 +11,7 @@ from sklearn.preprocessing import minmax_scale, normalize, scale
 from statsmodels.stats.diagnostic import het_white
 
 from __init__ import *
-from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
+from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
 from src.parser import merge_codings, merge_matches, merge_surveys
 
 
@@ -270,7 +270,6 @@ def compute_morality_correlations(interviews, model, show_plots=False):
                 'morality ~ Gender + Race + Household_Income + Parent_Education + Age + Church_Attendance']
 
     #Display Results
-    compute_coef = lambda x: str(round(x[0], 2)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
     for formula in formulas:
         results = []
         for mo in MORALITY_ORIGIN:
@@ -279,7 +278,7 @@ def compute_morality_correlations(interviews, model, show_plots=False):
                 lm = smf.ols(formula=formula, data=slice).fit(cov_type='HC3')
             elif model == 'rlm':
                 lm = smf.rlm(formula=formula, data=slice, M=sm.robust.norms.AndrewWave()).fit()
-            results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
+            results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
         results = pd.DataFrame(results, index=MORALITY_ORIGIN)
         display(results)
 
@@ -289,7 +288,7 @@ def compute_morality_correlations(interviews, model, show_plots=False):
             slice = data[data['Morality Category'] == mo]
             lm = smf.ols(formula=formula, data=slice).fit()
             white_test = het_white(lm.resid, sm.add_constant(slice[['Verbosity', 'Age']]))
-            heteroscedasticity.append({'Heteroscedasticity':compute_coef((white_test[0], white_test[1]))})
+            heteroscedasticity.append({'Heteroscedasticity':format_pvalue((white_test[0], white_test[1]))})
         display(pd.DataFrame(heteroscedasticity, index=MORALITY_ORIGIN))
 
         data = data.melt(id_vars=['Morality Category', 'morality'], value_vars=['Verbosity', 'Age'], var_name='Attribute Name', value_name='Attribute')
@@ -361,7 +360,6 @@ def plot_morality_distinction(interviews):
     #Compute Distinction
     data = data.apply(lambda x: pd.Series([abs(x['Intuitive'] - x['Consequentialist']), abs(x['Social'] - x['Theistic'])]), axis=1)
 
-
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
@@ -386,14 +384,12 @@ def compute_correlations(interviews, correlation_type):
     Race = pd.concat([pd.Series(pd.factorize(interviews[wave + ':Race'])[0]) for wave in CODED_WAVES], ignore_index=True)
     Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
     Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
-
-    format_output = lambda x: '{:.2f}'.format(x[0]).replace('-0.', '-.').replace('0.', '~.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
     
     compute_pearsonr = lambda x, y: pearsonr(x, y)
     compute_fisher = lambda x, y: (lambda x, y: fisher_exact([[np.sum(x & y), np.sum(~x & y)], [np.sum(x & ~y), np.sum(~x & ~y)]]))(x.round().astype(bool), y.round().astype(bool))
     compute_rlm = lambda x, y: (lambda lm: (lm.params['x'],lm.pvalues['x']))(smf.rlm(formula='y ~ x', data=pd.concat([x, y], axis=1).rename(columns={0:'x', 1:'y'}), M=sm.robust.norms.AndrewWave()).fit())
     
-    compute_correlation = lambda x, y: format_output(compute_pearsonr(x, y)) if correlation_type == 'pearsonr' else format_output(compute_rlm(x, y)) if correlation_type == 'rlm' else format_output(compute_fisher(x, y)) if correlation_type == 'fisher' else None
+    compute_correlation = lambda x, y: format_pvalue(compute_pearsonr(x, y)) if correlation_type == 'pearsonr' else format_pvalue(compute_rlm(x, y)) if correlation_type == 'rlm' else format_pvalue(compute_fisher(x, y)) if correlation_type == 'fisher' else None
 
     correlations = []
     for estimator in MORALITY_ESTIMATORS:
@@ -426,8 +422,9 @@ def compute_correlations(interviews, correlation_type):
         correlations.append(correlation)
 
     correlations = pd.DataFrame(correlations, index=MORALITY_ESTIMATORS).T[MORALITY_ESTIMATORS[::-1]]
-    print(correlations.to_latex())
+    display(correlations)
 
+#Predict Survey Answers of Wave 1 based on Interviews in Wave 1
 def predict_behavior(interviews, actions):
     #Prepare Data
     data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN + actions]]
@@ -437,18 +434,17 @@ def predict_behavior(interviews, actions):
 
     #Display Results
     formulas = [action + ' ~ ' + ' + '.join(MORALITY_ORIGIN) for action in actions]
-    compute_coef = lambda x: str(round(x[0], 2)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
     results = []
     for formula in formulas:
         probit = smf.probit(formula=formula, data=data).fit()
-        results.append({param:compute_coef((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)})
+        results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)})
         
     results = pd.DataFrame(results, index=actions).T
     display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [9]
+    config = [4,8,9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

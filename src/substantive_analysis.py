@@ -11,7 +11,7 @@ from sklearn.preprocessing import minmax_scale, normalize, scale
 from statsmodels.stats.diagnostic import het_white
 
 from __init__ import *
-from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
+from src.helpers import BEHAVIOR, CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
 from src.parser import merge_codings, merge_matches, merge_surveys
 
 
@@ -380,8 +380,8 @@ def compute_correlations(interviews, correlation_type):
     desicion_taking = pd.concat([pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Decision Taking'])] * 2, ignore_index=True).astype('Int64')
     Age = pd.concat([interviews[wave + ':Age'].bfill() for wave in CODED_WAVES], ignore_index=True)
     Grades = pd.concat([interviews[CODED_WAVES[0] + ':Grades'].astype('Int64').bfill()] * 2, ignore_index=True)
-    Gender = pd.concat([pd.Series(pd.factorize(interviews[wave + ':Gender'])[0]) for wave in CODED_WAVES], ignore_index=True)
-    Race = pd.concat([pd.Series(pd.factorize(interviews[wave + ':Race'])[0]) for wave in CODED_WAVES], ignore_index=True)
+    Gender = pd.Series(pd.factorize(pd.concat([interviews[wave + ':Gender'] for wave in CODED_WAVES], ignore_index=True))[0])
+    Race = pd.Series(pd.factorize(pd.concat([interviews[wave + ':Race'] for wave in CODED_WAVES], ignore_index=True))[0])
     Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
     Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
     
@@ -425,26 +425,26 @@ def compute_correlations(interviews, correlation_type):
     display(correlations)
 
 #Predict Survey Answers of Wave 1 based on Interviews in Wave 1
-def predict_behavior(interviews, actions):
+def predict_behavior(interviews):
     #Prepare Data
-    data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN + actions]]
-    data.columns = MORALITY_ORIGIN + actions
-    data = data.dropna(subset=actions)
-    data[actions] = data[actions].map(lambda d: int(d != 1))
+    data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN + BEHAVIOR]]
+    data.columns = MORALITY_ORIGIN + BEHAVIOR
+    data = data.dropna(subset=BEHAVIOR)
+    data[BEHAVIOR] = data[BEHAVIOR].map(lambda d: int(d != 1))
 
     #Display Results
-    formulas = [action + ' ~ ' + ' + '.join(MORALITY_ORIGIN) for action in actions]
+    formulas = [b + ' ~ ' + ' + '.join(MORALITY_ORIGIN) for b in BEHAVIOR]
     results = []
     for formula in formulas:
         probit = smf.probit(formula=formula, data=data).fit()
         results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)})
         
-    results = pd.DataFrame(results, index=actions).T
+    results = pd.DataFrame(results, index=BEHAVIOR).T
     display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4,8,9]
+    config = [8]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -474,5 +474,4 @@ if __name__ == '__main__':
         elif c == 8:
             compute_correlations(interviews, correlation_type='pearsonr')
         elif c == 9:
-            actions = ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
-            predict_behavior(interviews, actions)
+            predict_behavior(interviews)

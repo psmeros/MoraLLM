@@ -5,7 +5,7 @@ import pandas as pd
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CODED_WAVES, CODERS, DECISION_TAKING, EDUCATION, HOUSEHOLD_CLASS, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DECISION_TAKING, EDUCATION, HOUSEHOLD_CLASS, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -287,8 +287,6 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     alignment = pd.read_csv(alignment_file)
     surveys = surveys.merge(alignment, on = ['Wave', 'Survey Id'], how = 'inner')
 
-    surveys['Parent Education (raw)'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION.keys())) and (x.iloc[1] <= max(EDUCATION.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
-    surveys['Parent Education'] = surveys['Parent Education (raw)'].apply(lambda x: EDUCATION.get(x, pd.NA))
     surveys['Pot'] = surveys['Pot'].apply(lambda x: x if x in range(1, MAX_POT_VALUE + 1) else pd.NA)
     surveys['Drink'] = surveys['Drink'].apply(lambda x: MAX_DRINK_VALUE + 1 - x if x in range(1, MAX_DRINK_VALUE + 1) else pd.NA)
     surveys['Cheat'] = surveys['Cheat'].apply(lambda x: MAX_CHEAT_VALUE + 1 - x if x in range(1, MAX_CHEAT_VALUE + 1) else pd.NA)
@@ -296,10 +294,14 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     surveys['Secret'] = surveys['Secret'].apply(lambda x: MAX_SECRET_VALUE + 1 - x if x in range(1, MAX_SECRET_VALUE + 1) else pd.NA)
     surveys['Volunteer'] = surveys['Volunteer'].apply(lambda x: x if x in range(1, MAX_VOLUNTEER_VALUE + 1) else pd.NA)
     surveys['Help'] = surveys['Help'].apply(lambda x: MAX_HELP_VALUE + 1 - x if x in range(1, MAX_HELP_VALUE + 1) else pd.NA)
-
     surveys['Decision Taking'] = surveys['Decision Taking'].apply(lambda x: DECISION_TAKING.get(x, pd.NA))
     surveys['Grades'] = surveys['Grades'].apply(lambda x: x if x in range(1, MAX_GRADES_VALUE + 1) else pd.NA)
-    surveys['Church Attendance'] = surveys['Church Attendance'].apply(lambda x: x if x in range(1, MAX_CHURCH_ATTENDANCE_VALUE + 1) else pd.NA)
+
+    surveys['Parent Education (raw)'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION.keys())) and (x.iloc[1] <= max(EDUCATION.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
+    surveys['Parent Education'] = surveys['Parent Education (raw)'].apply(lambda x: EDUCATION.get(x, pd.NA))
+
+    surveys['Church Attendance (raw)'] = surveys['Church Attendance (raw)'].apply(lambda x: x if x in range(1, MAX_CHURCH_ATTENDANCE_VALUE + 1) else pd.NA)
+    surveys['Church Attendance'] = surveys['Church Attendance (raw)'].apply(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, pd.NA))
 
     surveys['Income (raw)'] = surveys['Income (raw)'].apply(lambda i: i if i in HOUSEHOLD_CLASS.keys() else pd.NA)
     surveys['Household Income'] = surveys['Income (raw)'].apply(lambda x: HOUSEHOLD_CLASS.get(x, pd.NA))

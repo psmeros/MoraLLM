@@ -200,40 +200,19 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'HELPED':'Help',
                                'HOWDECID':'Decision Taking',
                                'GRADES':'Grades',
-                               'ATTEND':'Church Attendance'},
+                               'ATTEND':'Church Attendance (raw)'},
                      'Wave 2':{'IDS':'Survey Id'},
                      'Wave 3':{'IDS':'Survey Id',
                                'EARNINGS':'Income (raw)'}}
 
-#Income: Lower Class < 70K < Upper Class
-HOUSEHOLD_CLASS = {1:'Low',
-                   2:'Low',
-                   3:'Low',
-                   4:'Low',
-                   5:'Low',
-                   6:'Low',
-                   7:'Low',
-                   8:'High',
-                   9:'High',
-                   10:'High',
-                   11:'High'}
+#Income: Low < 70K < High
+HOUSEHOLD_CLASS = {**dict.fromkeys(range(1, 8), 'Low'), **dict.fromkeys(range(8, 12), 'High')}
 
 #Education: Basic < College < Higher < PhD < Advanced
-EDUCATION = {0:'Primary',
-             1:'Primary',
-             2:'Primary',
-             3:'Secondary',
-             4:'Secondary',
-             5:'Secondary',
-             6:'Secondary',
-             7:'Secondary',
-             8:'Tertiary',
-             9:'Tertiary',
-             10:'Tertiary',
-             11:'Tertiary',
-             12:'Tertiary',
-             13:'Tertiary',
-             14:'Tertiary'}
+EDUCATION = {**dict.fromkeys(range(0, 3), 'Primary'), **dict.fromkeys(range(3, 8), 'Secondary'), **dict.fromkeys(range(8, 15), 'Tertiary')}
+
+#Church Attendance: Irregular vs Regular
+CHURCH_ATTENDANCE_RANGE = {**dict.fromkeys(range(1, 5), 'Irregular'), **dict.fromkeys(range(5, 7), 'Regular')}
 
 #Survey max values
 MAX_POT_VALUE = 4

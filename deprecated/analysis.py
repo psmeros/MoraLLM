@@ -546,6 +546,52 @@ def compare_areas(interviews, by_age):
     plt.savefig('data/plots/deprecated-area_comparison.png', bbox_inches='tight')
     plt.show()
 
+def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases):
+    #Prepare Data
+    data = interviews.copy()
+    data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
+    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
+
+    #Print Demographics Cases
+    for case in demographics_cases:
+        for c in case:
+            slice = data[pd.concat([data[CODED_WAVES[0] + ':' + attribute] == c['demographics'][attribute] for attribute in c['demographics'].keys()], axis=1).all(axis=1)]
+            slice['Diff'] = slice[CODED_WAVES[1] + ':' + c['morality']] - slice[CODED_WAVES[0] + ':' + c['morality']]
+            slice = slice.sort_values(by='Diff', ascending=c['ascending'])
+            print(slice.iloc[c['pos']][CODED_WAVES[0] + ':Morality_Origin'])
+            print(slice.iloc[c['pos']][CODED_WAVES[1] + ':Morality_Origin'])
+            print(str(round(slice.iloc[c['pos']][CODED_WAVES[0] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(slice.iloc[c['pos']][CODED_WAVES[1] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (' + c['morality'] + ')')
+            print('\n----------\n')
+        print('\n==========\n')
+
+    #Print Incoherent Cases
+    slice = data[pd.DataFrame([data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].sum(axis=1) > len(MORALITY_ORIGIN)/2 for wave in CODED_WAVES]).T.apply(lambda w: w[0] | w[1], axis=1)]
+    for ic in incoherent_cases:
+        print(slice.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Household Income', ':Parent Education']]].values)
+        for wave in CODED_WAVES:
+            print(wave)
+            print(slice.iloc[ic][wave + ':Morality_Origin'])
+            print(slice.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print(slice.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print('\n----------\n')
+
+    #Print Max Diff Cases
+    model_diff = pd.DataFrame(data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    coders_diff = pd.DataFrame(data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    data['model-coders_diff'] = abs(model_diff - coders_diff).max(axis=1)
+    data['model-coders_diff_morality'] = abs(model_diff - coders_diff).idxmax(axis=1)
+    data = data.sort_values(by='model-coders_diff', ascending=False)
+
+    for ic in max_diff_cases:
+        print(data.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Household Income', ':Parent Education']]].values)
+        print(data.iloc[ic]['model-coders_diff_morality'])
+        for wave in CODED_WAVES:
+            print(wave)
+            print(data.iloc[ic][wave + ':Morality_Origin'])
+            print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
+            print('\n----------\n')
+
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -600,3 +646,13 @@ if __name__ == '__main__':
         elif c == 15:
             by_age = False
             compare_areas(interviews, by_age=by_age)
+        elif c == 16:
+            demographics_cases = [
+                     (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Household Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
+                      ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Female', 'Race' : 'White', 'Household Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),
+                     (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Household Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Social', 'ascending' : True}),
+                      ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Household Income' : 'Lower', 'Parent Education' : 'Secondary'}, 'pos' : 3, 'morality' : 'Social', 'ascending' : True}))
+                    ]
+            incoherent_cases = [2]
+            max_diff_cases = [1]
+            print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases)

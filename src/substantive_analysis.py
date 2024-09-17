@@ -59,7 +59,6 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     data = interviews.copy()
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
     data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
 
     #Prepare data
     shifts, _ = compute_morality_shifts(data)
@@ -236,7 +235,6 @@ def compute_decisiveness(interviews):
 def compute_morality_correlations(interviews, model, show_plots=False):
     #Prepare Data
     data = interviews.copy()
-    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
     data[CODED_WAVES[1] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education']
     data[CODED_WAVES[1] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance']
     attribute_list = ['Morality_Origin_Word_Count', 'Morality_Origin_Uncertain_Terms', 'Morality_Origin_Readability', 'Morality_Origin_Sentiment', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Age', 'Church Attendance', 'Wave']
@@ -315,7 +313,6 @@ def compute_std_diff(interviews, attributes):
     data = interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
     data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
     data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
 
     #Melt Data
     data = data.melt(id_vars=[CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes], value_vars=[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
@@ -384,53 +381,6 @@ def plot_morality_distinction(interviews):
     plt.savefig('data/plots/fig-morality_distinction.png', bbox_inches='tight')
     plt.show()
 
-def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases):
-    #Prepare Data
-    data = interviews.copy()
-    data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
-    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].apply(lambda x: 'Irregular' if x is not pd.NA and x in [1,2,3,4] else 'Regular' if x is not pd.NA and x in [5,6] else '')
-
-    #Print Demographics Cases
-    for case in demographics_cases:
-        for c in case:
-            slice = data[pd.concat([data[CODED_WAVES[0] + ':' + attribute] == c['demographics'][attribute] for attribute in c['demographics'].keys()], axis=1).all(axis=1)]
-            slice['Diff'] = slice[CODED_WAVES[1] + ':' + c['morality']] - slice[CODED_WAVES[0] + ':' + c['morality']]
-            slice = slice.sort_values(by='Diff', ascending=c['ascending'])
-            print(slice.iloc[c['pos']][CODED_WAVES[0] + ':Morality_Origin'])
-            print(slice.iloc[c['pos']][CODED_WAVES[1] + ':Morality_Origin'])
-            print(str(round(slice.iloc[c['pos']][CODED_WAVES[0] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(slice.iloc[c['pos']][CODED_WAVES[1] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (' + c['morality'] + ')')
-            print('\n----------\n')
-        print('\n==========\n')
-
-    #Print Incoherent Cases
-    slice = data[pd.DataFrame([data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].sum(axis=1) > len(MORALITY_ORIGIN)/2 for wave in CODED_WAVES]).T.apply(lambda w: w[0] | w[1], axis=1)]
-    for ic in incoherent_cases:
-        print(slice.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Income', ':Parent Education']]].values)
-        for wave in CODED_WAVES:
-            print(wave)
-            print(slice.iloc[ic][wave + ':Morality_Origin'])
-            print(slice.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
-            print(slice.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
-            print('\n----------\n')
-
-    #Print Max Diff Cases
-    model_diff = pd.DataFrame(data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    coders_diff = pd.DataFrame(data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    data['model-coders_diff'] = abs(model_diff - coders_diff).max(axis=1)
-    data['model-coders_diff_morality'] = abs(model_diff - coders_diff).idxmax(axis=1)
-    data = data.sort_values(by='model-coders_diff', ascending=False)
-
-    for ic in max_diff_cases:
-        print(data.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Income', ':Parent Education']]].values)
-        print(data.iloc[ic]['model-coders_diff_morality'])
-        for wave in CODED_WAVES:
-            print(wave)
-            print(data.iloc[ic][wave + ':Morality_Origin'])
-            print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
-            print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
-            print('\n----------\n')
-
 #Compute Correlations
 def compute_correlations(interviews, correlation_type):
     desicion_taking = pd.concat([pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Decision Taking'])] * 2, ignore_index=True).astype('Int64')
@@ -438,7 +388,7 @@ def compute_correlations(interviews, correlation_type):
     Grades = pd.concat([interviews[CODED_WAVES[0] + ':Grades'].astype('Int64').bfill()] * 2, ignore_index=True)
     Gender = pd.concat([pd.Series(pd.factorize(interviews[CODED_WAVES[0] + ':Gender'])[0])] * 2, ignore_index=True)
     Race = pd.concat([pd.Series(pd.factorize(interviews[CODED_WAVES[0] + ':Race'])[0])] * 2, ignore_index=True)
-    Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance'].astype('Int64').bfill()] * 2, ignore_index=True)
+    Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
     Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
 
     format_output = lambda x: '{:.2f}'.format(x[0]).replace('-0.', '-.').replace('0.', '~.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
@@ -484,7 +434,7 @@ def compute_correlations(interviews, correlation_type):
 
 def predict_behavior(interviews, actions):
     #Prepare Data
-    data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN + actions]]
+    data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN + actions + [d['name'] for d in DEMOGRAPHICS]]]
     data.columns = MORALITY_ORIGIN + actions
     data = data.dropna(subset=actions)
     data[actions] = data[actions].map(lambda d: int(d != 1))
@@ -502,7 +452,7 @@ def predict_behavior(interviews, actions):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [9]
+    config = [1,2,3,4,6,7,8]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)
@@ -534,13 +484,3 @@ if __name__ == '__main__':
         elif c == 9:
             actions = ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
             predict_behavior(interviews, actions)
-        elif c == 10:
-            demographics_cases = [
-                     (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
-                      ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Female', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),
-                     (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Social', 'ascending' : True}),
-                      ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Income' : 'Lower', 'Parent Education' : 'Secondary'}, 'pos' : 3, 'morality' : 'Social', 'ascending' : True}))
-                    ]
-            incoherent_cases = [2]
-            max_diff_cases = [1]
-            print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases)

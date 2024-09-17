@@ -234,30 +234,6 @@ def plot_moral_foundations(interviews, moral_foundations):
     #Aggregate similarity
     print(interviews.groupby('Wave').mean(numeric_only=True))
 
-#Plot semantic shift by morality origin
-def plot_semantic_shift(interviews, wave_list=['Wave 1', 'Wave 2', 'Wave 3']):
-    #Compute semantic shift between all pairs of waves
-    compute_shift = lambda i: np.sum([distance.cosine(i[w[0] + ':R:Morality_Embeddings'], i[w[1] + ':R:Morality_Embeddings']) for w in list(combinations(wave_list, 2))])
-    interviews['Shift'] = interviews.apply(compute_shift, axis=1)
-
-    #Prepare data for plotting
-    interviews = interviews[MORALITY_ORIGIN + ['Shift']]
-    interviews = interviews.melt(id_vars=['Shift'], value_vars=MORALITY_ORIGIN, var_name='Morality Origin', value_name='Check')
-    interviews = interviews[interviews['Check'] == True].drop(columns=['Check'])
-
-    #Plot
-    sns.set(context='paper', style='white', color_codes=True, font_scale=4)
-    plt.figure(figsize=(20, 10))
-    ax = sns.boxplot(data=interviews, y='Morality Origin', x='Shift', orient='h', palette='Set2')
-    plt.xlabel('')
-    plt.ylabel('')
-    plt.title('Semantic Shift by Morality Origin')
-    plt.savefig('data/plots/deprecated-semantic_shift.png', bbox_inches='tight')
-    plt.show()
-
-    #Print order by median
-    print(' < '.join(interviews.groupby('Morality Origin').median().sort_values(by='Shift').index.tolist()))    
-
 #Plot silhouette score for each wave
 def plot_silhouette_score(interviews):
     #Compute cosine distance between all pairs of interviews
@@ -287,42 +263,6 @@ def plot_silhouette_score(interviews):
     plt.savefig('data/plots/deprecated-silhouette_score.png', bbox_inches='tight')
     plt.show()
 
-#Plot morality evolution
-def plot_morality_evolution(interviews, attributes):
-    for attribute in attributes:
-        #Compute evolution for each data slice
-        interviews_list = []
-        for estimator in MORALITY_ESTIMATORS:
-            for attribute_value in attribute['values']:
-                filtered_interviews = interviews[interviews[CODED_WAVES[0] + ':' + attribute['name']] == attribute_value]
-                N = len(filtered_interviews)
-                filtered_interviews = pd.concat([pd.DataFrame(filtered_interviews.filter(regex='^' + wave + '.*(' + estimator + '|Wave)$').values, columns=['Wave']+MORALITY_ORIGIN) for wave in CODED_WAVES])
-                filtered_interviews['estimator'] = estimator
-                filtered_interviews[attribute['name']] = attribute_value + ' (N = ' + str(N) + ')'
-                interviews_list.append(filtered_interviews)
-        interviews = pd.concat(interviews_list)
-
-        #Prepare data for plotting
-        interviews = pd.melt(interviews, id_vars=['Wave', 'estimator', attribute['name']], value_vars=MORALITY_ORIGIN, var_name='Morality Origin', value_name='Value')
-        interviews['Value'] = interviews['Value'] * 100
-
-        #Plot
-        sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-        plt.figure(figsize=(10, 10))
-        g = sns.relplot(data=interviews, y='Value', x='Wave', hue='Morality Origin', col=attribute['name'], row='estimator', kind='line', linewidth=4, palette='Set2')
-        g.fig.subplots_adjust(wspace=0.05)
-        ax = plt.gca()
-        ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-        g.set_ylabels('')
-        g.set_titles('\n' + attribute['name'] + ': {col_name}\n Estimator: {row_name}')
-        plt.xticks(interviews['Wave'].unique())
-        plt.xlim(interviews['Wave'].min(), interviews['Wave'].max())
-        legend = g._legend
-        for line in legend.get_lines():
-            line.set_linewidth(4)
-        plt.savefig('data/plots/deprecated-morality_evolution_by_'+attribute['name'].lower()+'.png', bbox_inches='tight')
-        plt.show()
-
 #Plot morality shift
 def plot_sankey_morality_shift(interviews):
     figs = []
@@ -351,29 +291,6 @@ def plot_sankey_morality_shift(interviews):
     fig.update_layout(title=go.layout.Title(text='Morality Shift by Model (left) and Coders (right)', x=0.08, xanchor='left'))
     fig.write_image('data/plots/deprecated-morality_shift.png')
     fig.show()
-
-def plot_class_movement(interviews):
-    #Prepare data
-    interviews['Household Income Change'] = (interviews[CODED_WAVES[1] + ':Income (raw)'] - interviews[CODED_WAVES[0] + ':Income (raw)'])
-    interviews['Household Income Change'] = pd.to_numeric(interviews['Household Income Change'])
-
-    interviews = pd.concat([pd.melt(interviews, id_vars=['Household Income Change'], value_vars=[CODED_WAVES[0] + ':' + mo + '_' + e for mo in MORALITY_ORIGIN], var_name='Morality Origin', value_name='Value').dropna() for e in MORALITY_ESTIMATORS])
-    interviews['Estimator'] = interviews['Morality Origin'].apply(lambda x: x.split('_')[1])
-    interviews['Morality Origin'] = interviews['Morality Origin'].apply(lambda x: x.split('_')[0].split(':')[1])
-    interviews['Value'] = interviews['Value'] * 100
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(10, 10))
-    g = sns.lmplot(data=interviews, x='Household Income Change', y='Value', hue='Estimator', col='Morality Origin', truncate=False, x_jitter=.3, seed=42, aspect=1.2, palette=sns.color_palette('Set1'))
-    g.set_ylabels('')
-    g.set_titles('Morality: {col_name}')
-    g.fig.subplots_adjust(wspace=0.1)
-    ax = plt.gca()
-    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    ax.set_xlim(-abs(interviews['Household Income Change']).max(), abs(interviews['Household Income Change']).max())
-    plt.savefig('data/plots/deprecated-class_movement.png', bbox_inches='tight')
-    plt.show()
 
 def plot_action_probability(interviews, n_clusters, actions):
     # Perform clustering, dimensionality reduction, and probability estimation
@@ -407,98 +324,6 @@ def plot_action_probability(interviews, n_clusters, actions):
         ax.yaxis.set_major_locator(mtick.MaxNLocator(nbins=4))
     g.set_titles('Estimator: {row_name}' + '\n' + 'Action: {col_name}')
     plt.savefig('data/plots/deprecated-action_probability', bbox_inches='tight')
-    plt.show()
-
-def action_prediction(interviews, actions):
-    #Train Classifier
-    action_prediction = []
-    for action in actions:
-        for estimator in MORALITY_ESTIMATORS:
-            input_interviews = interviews[[CODED_WAVES[0] + ':' + mo + '_' + estimator  for mo in MORALITY_ORIGIN]+[CODED_WAVES[0] + ':' + action]].dropna()
-            y = input_interviews[CODED_WAVES[0] + ':' + action].apply(lambda d: False if d == 1 else True).values
-            X = input_interviews.drop([CODED_WAVES[0] + ':' + action], axis=1).values
-
-            classifier = LogisticRegressionCV(cv=5, random_state=42, fit_intercept=False, scoring=make_scorer(lambda y_true, y_pred: f1_score(y_true, y_pred, average='weighted')))
-            classifier.fit(X, y)
-            score = np.asarray(list(classifier.scores_.values())).reshape(-1)
-            coefs = {mo:coef for mo, coef in zip(MORALITY_ORIGIN, classifier.coef_[0])}
-            
-            action_prediction.append(pd.DataFrame({'F1-Weighted Score' : score, 'Coefs' : [coefs] * len(score), 'Action' : action, 'Estimator' : estimator}))
-    action_prediction = pd.concat(action_prediction)
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=4)
-    plt.figure(figsize=(10, 10))
-    ax = sns.barplot(action_prediction, x='F1-Weighted Score', y='Action', hue='Estimator', hue_order=MORALITY_ESTIMATORS, orient='h', palette='Set1')
-    ax.set_ylabel('')
-    ax.legend(loc='upper left', bbox_to_anchor=(1, 1), title='Estimator')
-    plt.savefig('data/plots/deprecated-action_prediction.png', bbox_inches='tight')
-    plt.show()
-
-    action_prediction = action_prediction.drop_duplicates(subset=['Action', 'Estimator', 'F1-Weighted Score']).groupby('Action')['Coefs'].apply(list).apply(lambda l: (pd.Series(l[0]) + pd.Series(l[1])).idxmax())
-    action_prediction = pd.DataFrame(action_prediction.reindex(actions).reset_index().values, columns=['Action', 'Key Morality'])
-    print(action_prediction)
-
-def moral_consciousness(interviews, outlier_threshold):
-    if outlier_threshold:
-        outliers = pd.DataFrame([abs(zscore(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]])) > outlier_threshold for wave in CODED_WAVES for mo in MORALITY_ORIGIN]).any()
-        interviews = interviews[~outliers]
-    desicion_taking = pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Decision Taking'])
-    Age = interviews[CODED_WAVES[0] + ':Age'].dropna().astype(int)
-    Grades = interviews[CODED_WAVES[0] + ':Grades'].dropna().astype(int)
-    Gender = pd.factorize(interviews[CODED_WAVES[0] + ':Gender'])[0]
-    Race = pd.factorize(interviews[CODED_WAVES[0] + ':Race'])[0]
-    Church_Attendance = interviews[CODED_WAVES[0] + ':Church Attendance'].dropna()
-    Parent_Education = interviews[CODED_WAVES[0] + ':Parent Education (raw)'].dropna()
-    Parent_Income = interviews[CODED_WAVES[0] + ':Income (raw)'].dropna()
-
-    compute_correlation = lambda x: str(round(x[0], 3)).replace('0.', '.') + ('***' if float(x[1])<.005 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
-
-    data = []
-    correlations = pd.DataFrame(columns=[estimator + ':' + wave for estimator in MORALITY_ESTIMATORS for wave in CODED_WAVES], index=['Intuitive - Consequentialist', 'Social - Consequentialist', 'Intuitive - Social', 'Intuitive - Expressive Individualist', 'Intuitive - Utilitarian Individualist', 'Intuitive - Relational', 'Intuitive - Theistic', 'Intuitive - Age', 'Intuitive - GPA', 'Intuitive - Gender', 'Intuitive - Race', 'Intuitive - Church Attendance', 'Intuitive - Parent Education', 'Intuitive - Parent Income', 'Theistic - Church Attendance'])
-    for estimator in MORALITY_ESTIMATORS:
-        for wave in CODED_WAVES:
-            Intuitive = interviews[wave + ':Intuitive_' + estimator]
-            Consequentialist = interviews[wave + ':Consequentialist_' + estimator]
-            Social = interviews[wave + ':Social_' + estimator]
-
-            data.append(pd.concat([pd.Series(Intuitive.values), pd.Series(Consequentialist.values), pd.Series(['Intuitive - Consequentialist']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([estimator]*len(interviews))], axis=1))
-            data.append(pd.concat([pd.Series(Social.values), pd.Series(Consequentialist.values), pd.Series(['Social - Consequentialist']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([estimator]*len(interviews))], axis=1))
-            data.append(pd.concat([pd.Series(Intuitive.values), pd.Series(Social.values), pd.Series(['Intuitive - Social']*len(interviews)), pd.Series([wave]*len(interviews)), pd.Series([estimator]*len(interviews))], axis=1))
-
-            correlations.loc['Intuitive - Consequentialist', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, Consequentialist))
-            correlations.loc['Social - Consequentialist', estimator + ':' + wave] = compute_correlation(pearsonr(Social, Consequentialist))
-            correlations.loc['Intuitive - Social', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, Social))
-            
-            correlations.loc['Intuitive - Expressive Individualist', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, desicion_taking['Expressive Individualist']))
-            correlations.loc['Intuitive - Utilitarian Individualist', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, desicion_taking['Utilitarian Individualist']))
-            correlations.loc['Intuitive - Relational', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, desicion_taking['Relational']))
-            correlations.loc['Intuitive - Theistic', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, desicion_taking['Theistic']))
-
-            correlations.loc['Intuitive - Age', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Age.index], Age))
-            correlations.loc['Intuitive - GPA', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Grades.index], Grades))
-            correlations.loc['Intuitive - Gender', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, Gender))
-            correlations.loc['Intuitive - Race', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive, Race))
-            correlations.loc['Intuitive - Church Attendance', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Church_Attendance.index], Church_Attendance))
-            correlations.loc['Intuitive - Parent Education', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Parent_Education.index], Parent_Education))
-            correlations.loc['Intuitive - Parent Income', estimator + ':' + wave] = compute_correlation(pearsonr(Intuitive.loc[Parent_Income.index], Parent_Income))
-            
-            correlations.loc['Theistic - Church Attendance', estimator + ':' + wave] = compute_correlation(pearsonr(interviews[wave + ':Theistic_' + estimator].loc[Church_Attendance.index], Church_Attendance))
-
-
-    correlations.astype(str).to_csv('data/plots/deprecated-correlations.csv')
-    print(correlations)
-    data = pd.concat(data, axis=0, ignore_index=True)
-    data.columns = ['x', 'y', 'Correlation', 'Wave', 'Estimator']
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(10, 20))
-    g = sns.lmplot(data=data[data['Estimator'] == 'Model'], x='x', y='y', row='Correlation', hue='Wave', seed=42, palette=sns.color_palette('Set1'))
-    g.set_titles('{row_name}')
-    g.set_xlabels('')
-    g.set_ylabels('')
-    plt.savefig('data/plots/deprecated-correlations', bbox_inches='tight')
     plt.show()
 
 def compare_deviations(interviews):
@@ -595,7 +420,7 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = []
 
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
@@ -622,31 +447,19 @@ if __name__ == '__main__':
             plot_moral_foundations(interviews)
         elif c == 6:
             plot_silhouette_score(interviews)
-        elif c == 7:
-            plot_semantic_shift(interviews)
         #morality inference level
-        elif c == 8:
-            plot_morality_evolution(interviews)
-        elif c == 9:
+        elif c == 7:
             plot_sankey_morality_shift(interviews)
-        elif c == 10:
-            plot_class_movement(interviews)
-        elif c == 11:
+        elif c == 8:
             actions = ['Pot', 'Drink', 'Cheat']
             n_clusters = 2
             plot_action_probability(interviews, actions=actions, n_clusters=n_clusters)
-        elif c == 12:
-            actions=['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']
-            action_prediction(interviews, actions=actions)
-        elif c == 13:
-            outlier_threshold = 2
-            moral_consciousness(interviews, outlier_threshold=outlier_threshold)
-        elif c == 14:
+        elif c == 9:
             compare_deviations(interviews)
-        elif c == 15:
+        elif c == 10:
             by_age = False
             compare_areas(interviews, by_age=by_age)
-        elif c == 16:
+        elif c == 11:
             demographics_cases = [
                      (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Household Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
                       ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Female', 'Race' : 'White', 'Household Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),

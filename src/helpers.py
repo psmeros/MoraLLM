@@ -203,7 +203,11 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'ATTEND':'Church Attendance (raw)'},
                      'Wave 2':{'IDS':'Survey Id'},
                      'Wave 3':{'IDS':'Survey Id',
-                               'EARNINGS':'Income (raw)'}}
+                               'EARNINGS':'Income (raw)',
+                               'POT':'Pot',
+                               'DRINK':'Drink',
+                               'VOLUNTER':'Volunteer',
+                               'HELPED':'Help'}}
 
 #Income: Low < 70K < High
 INCOME_RANGE = {**dict.fromkeys(range(1, 8), 'Low'), **dict.fromkeys(range(8, 12), 'High')}
@@ -219,17 +223,6 @@ ADOLESCENCE_RANGE = {**dict.fromkeys(range(13, 16), 'Early'), **dict.fromkeys(ra
 
 #Race: White vs Other
 RACE_RANGE = {**dict.fromkeys(['White'], 'White'), **dict.fromkeys(['Asian', 'Black', 'Hispanic', 'Native American' 'Other'], 'Other')}
-
-#Survey max values
-MAX_POT_VALUE = 4
-MAX_DRINK_VALUE = 7
-MAX_CHEAT_VALUE = 6
-MAX_CUTCLASS_VALUE = 4
-MAX_SECRET_VALUE = 6
-MAX_VOLUNTEER_VALUE = 4
-MAX_HELP_VALUE = 4
-MAX_GRADES_VALUE = 10
-MAX_CHURCH_ATTENDANCE_VALUE = 6
 
 #Decision taking map
 DECISION_TAKING = {1:'Expressive Individualist',
@@ -253,5 +246,3 @@ MORALITY_ORIGIN = ['Intuitive', 'Consequentialist', 'Social', 'Theistic'] if MER
 UNCERTAINT_TERMS = ['hypothetically speaking', 'possibly', 'potentially', 'must', 'equivocal', 'it looks like', 'is likely to', 'unclear', 'could be', 'it is conceivable', 'reportedly', 'could', 'allegedly', 'seemingly', 'tends to', 'conceivably', 'apparently', 'likely', 'probably', 'there is a chance', 'will', 'unsure', 'there is a possibility', 'supposedly', 'feasibly', 'suggests that', 'it is feasible', 'is unlikely to', 'may', 'arguably', 'might', 'is probable', 'perhaps', 'might be', 'vague', 'it is possible', 'maybe', 'presumably', 'uncertain', 'ambiguous', 'it appears', 'hypothetically', 'would', 'is improbable', 'doubtful', 'imaginably', 'it seems', 'can', 'ostensibly', 'should']
 
 format_pvalue = lambda x: ('{:.2f}'.format(x[0]).replace('0.', '.') if abs(x[0]) < 1 else '{:.2f}'.format(x[0])) + ('***' if float(x[1])<.001 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
-
-BEHAVIOR = ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']

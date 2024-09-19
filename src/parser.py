@@ -5,7 +5,7 @@ import pandas as pd
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DECISION_TAKING, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MAX_CHEAT_VALUE, MAX_CHURCH_ATTENDANCE_VALUE, MAX_CUTCLASS_VALUE, MAX_DRINK_VALUE, MAX_GRADES_VALUE, MAX_HELP_VALUE, MAX_POT_VALUE, MAX_SECRET_VALUE, MAX_VOLUNTEER_VALUE, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DECISION_TAKING, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -287,23 +287,33 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     alignment = pd.read_csv(alignment_file)
     surveys = surveys.merge(alignment, on = ['Wave', 'Survey Id'], how = 'inner')
 
-    surveys['Pot'] = surveys['Pot'].apply(lambda x: x if x in range(1, MAX_POT_VALUE + 1) else pd.NA)
-    surveys['Drink'] = surveys['Drink'].apply(lambda x: MAX_DRINK_VALUE + 1 - x if x in range(1, MAX_DRINK_VALUE + 1) else pd.NA)
-    surveys['Cheat'] = surveys['Cheat'].apply(lambda x: MAX_CHEAT_VALUE + 1 - x if x in range(1, MAX_CHEAT_VALUE + 1) else pd.NA)
-    surveys['Cutclass'] = surveys['Cutclass'].apply(lambda x: x if x in range(1, MAX_CUTCLASS_VALUE + 1) else pd.NA)
-    surveys['Secret'] = surveys['Secret'].apply(lambda x: MAX_SECRET_VALUE + 1 - x if x in range(1, MAX_SECRET_VALUE + 1) else pd.NA)
-    surveys['Volunteer'] = surveys['Volunteer'].apply(lambda x: x if x in range(1, MAX_VOLUNTEER_VALUE + 1) else pd.NA)
-    surveys['Help'] = surveys['Help'].apply(lambda x: MAX_HELP_VALUE + 1 - x if x in range(1, MAX_HELP_VALUE + 1) else pd.NA)
-    surveys['Decision Taking'] = surveys['Decision Taking'].apply(lambda x: DECISION_TAKING.get(x, pd.NA))
-    surveys['Grades'] = surveys['Grades'].apply(lambda x: x if x in range(1, MAX_GRADES_VALUE + 1) else pd.NA)
+
+    surveys.loc[surveys['Wave'] == 1, 'Pot'] = surveys.loc[surveys['Wave'] == 1, 'Pot'].apply(lambda x: x if x in range(1, 5) else None)
+    surveys.loc[surveys['Wave'] == 3, 'Pot'] = surveys.loc[surveys['Wave'] == 3, 'Pot'].apply(lambda x: 8 - x if x in range(1, 8) else None)
+
+    surveys.loc[surveys['Wave'] == 1, 'Drink'] = surveys.loc[surveys['Wave'] == 1, 'Drink'].apply(lambda x: 8 - x if x in range(1, 8) else None)
+    surveys.loc[surveys['Wave'] == 3, 'Drink'] = surveys.loc[surveys['Wave'] == 3, 'Drink'].apply(lambda x: 8 - x if x in range(1, 8) else None)
+    
+    surveys.loc[surveys['Wave'] == 1, 'Cheat'] = surveys.loc[surveys['Wave'] == 1, 'Cheat'].apply(lambda x: 7 - x if x in range(1, 7) else None)
+    surveys.loc[surveys['Wave'] == 1, 'Cutclass'] = surveys.loc[surveys['Wave'] == 1, 'Cutclass'].apply(lambda x: x if x in range(1, 5) else None)
+    surveys.loc[surveys['Wave'] == 1, 'Secret'] = surveys.loc[surveys['Wave'] == 1, 'Secret'].apply(lambda x: 7 - x if x in range(1, 7) else None)
+    
+    surveys.loc[surveys['Wave'] == 1, 'Volunteer'] = surveys.loc[surveys['Wave'] == 1, 'Volunteer'].apply(lambda x: x if x in range(1, 5) else None)
+    surveys.loc[surveys['Wave'] == 3, 'Volunteer'] = surveys.loc[surveys['Wave'] == 3, 'Volunteer'].apply(lambda x: x + 1 if x in range(0, 2) else None)
+    
+    surveys.loc[surveys['Wave'] == 1, 'Help'] = surveys.loc[surveys['Wave'] == 1, 'Help'].apply(lambda x: 5 - x if x in range(1, 5) else None)
+    surveys.loc[surveys['Wave'] == 3, 'Help'] = surveys.loc[surveys['Wave'] == 3, 'Help'].apply(lambda x: 5 - x if x in range(1, 5) else None)
+    
+    surveys.loc[surveys['Wave'] == 1, 'Grades'] = surveys.loc[surveys['Wave'] == 1, 'Grades'].apply(lambda x: x if x in range(1, 11) else None)
+    surveys['Decision Taking'] = surveys['Decision Taking'].map(DECISION_TAKING)
 
     surveys['Parent Education (raw)'] = surveys[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION_RANGE.keys())) and (x.iloc[1] <= max(EDUCATION_RANGE.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
     surveys['Parent Education'] = surveys['Parent Education (raw)'].map(EDUCATION_RANGE)
 
-    surveys['Church Attendance (raw)'] = surveys['Church Attendance (raw)'].apply(lambda x: x if x in range(1, MAX_CHURCH_ATTENDANCE_VALUE + 1) else pd.NA)
+    surveys['Church Attendance (raw)'] = surveys['Church Attendance (raw)'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
     surveys['Church Attendance'] = surveys['Church Attendance (raw)'].map(CHURCH_ATTENDANCE_RANGE)
 
-    surveys['Income (raw)'] = surveys['Income (raw)'].apply(lambda i: i if i in INCOME_RANGE.keys() else pd.NA)
+    surveys['Income (raw)'] = surveys['Income (raw)'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
     surveys['Household Income'] = surveys['Income (raw)'].map(INCOME_RANGE)
 
     interviews = interviews.merge(surveys, on = ['Wave', 'Interview Code'], how = 'inner', validate = '1:1')

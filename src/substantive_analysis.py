@@ -8,7 +8,6 @@ import statsmodels.formula.api as smf
 from IPython.display import display
 from scipy.stats import fisher_exact, pearsonr
 from sklearn.preprocessing import minmax_scale, normalize, scale
-from statsmodels.stats.diagnostic import het_white
 
 from __init__ import *
 from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
@@ -230,7 +229,7 @@ def compute_decisiveness(interviews):
     plt.savefig('data/plots/fig-decisiveness.png', bbox_inches='tight')
     plt.show()
 
-def compute_morality_correlations(interviews, model, show_plots=False):
+def compute_morality_correlations(interviews, model):
     #Prepare Data
     data = interviews.copy()
     data[CODED_WAVES[1] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education']
@@ -244,30 +243,18 @@ def compute_morality_correlations(interviews, model, show_plots=False):
     data['Readability'] = minmax_scale((data['Morality_Origin_Readability']).astype(float))
     data['Sentiment'] = minmax_scale(data['Morality_Origin_Sentiment'].astype(float))
 
-    data['Gender'] = (data['Gender'] == 'Male').astype(int)
-    data['Race'] = (data['Race'] == 'White').astype(int)
-    data['Household_Income'] = (data['Household Income'] == 'High').astype(int)
-    data['Parent_Education'] = (data['Parent Education'] == 'Tertiary').astype(int)
-    data['Age'] = data['Age'].bfill()
-    data['Church_Attendance'] = (data['Church Attendance'] == 'Regular').astype(int)
-    data['Wave'] = (data['Wave'] == CODED_WAVES[0]).astype(int)
-
-    data[MORALITY_ORIGIN] = scale(data[MORALITY_ORIGIN], with_mean=True, with_std=False) + .5
+    for attribute in attribute_list[4:]:
+        data[attribute] = pd.factorize(data[attribute].bfill())[0] + 1
+    
+    data['Household_Income'] = data['Household Income']
+    data['Parent_Education'] = data['Parent Education']
+    data['Church_Attendance'] = data['Church Attendance']
+    data = pd.DataFrame(scale(data), columns=data.columns)
 
     data = data.melt(id_vars=['Verbosity', 'Brevity', 'Uncertainty', 'Readability', 'Sentiment', 'Gender', 'Race', 'Household_Income', 'Parent_Education', 'Age', 'Church_Attendance', 'Wave'], value_vars=MORALITY_ORIGIN, var_name='Morality Category', value_name='morality').dropna()
     data['morality'] = data['morality'].astype(float)
-    formulas = ['morality ~ Verbosity',
-                'morality ~ Uncertainty',
-                'morality ~ Readability',
-                'morality ~ Sentiment',
-                'morality ~ Verbosity + Uncertainty + Readability + Sentiment',
-                'morality ~ Gender',
-                'morality ~ Race',
-                'morality ~ Household_Income',
-                'morality ~ Parent_Education',
-                'morality ~ Age',
-                'morality ~ Church_Attendance',
-                'morality ~ Gender + Race + Household_Income + Parent_Education + Age + Church_Attendance']
+    formulas = ['morality ~ Verbosity + Uncertainty + Readability + Sentiment - 1',
+                'morality ~ Gender + Race + Household_Income + Parent_Education + Age + Church_Attendance - 1']
 
     #Display Results
     for formula in formulas:
@@ -279,31 +266,8 @@ def compute_morality_correlations(interviews, model, show_plots=False):
             elif model == 'rlm':
                 lm = smf.rlm(formula=formula, data=slice, M=sm.robust.norms.AndrewWave()).fit()
             results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
-        results = pd.DataFrame(results, index=MORALITY_ORIGIN)
+        results = pd.DataFrame(results, index=MORALITY_ORIGIN).T
         display(results)
-
-    if show_plots:
-        heteroscedasticity = []
-        for mo in MORALITY_ORIGIN:
-            slice = data[data['Morality Category'] == mo]
-            lm = smf.ols(formula=formula, data=slice).fit()
-            white_test = het_white(lm.resid, sm.add_constant(slice[['Verbosity', 'Age']]))
-            heteroscedasticity.append({'Heteroscedasticity':format_pvalue((white_test[0], white_test[1]))})
-        display(pd.DataFrame(heteroscedasticity, index=MORALITY_ORIGIN))
-
-        data = data.melt(id_vars=['Morality Category', 'morality'], value_vars=['Verbosity', 'Age'], var_name='Attribute Name', value_name='Attribute')
-
-        #Plot
-        sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-        plt.figure(figsize=(20, 10))
-        g = sns.lmplot(data=data, x='Attribute', y='morality', hue='Morality Category', col='Attribute Name', scatter=False, seed=42, facet_kws={'sharex':False}, robust=True, aspect=1.2, palette=sns.color_palette('Set2'))
-        g.set_titles('{col_name}')
-        g.set_ylabels('Mean-Centered Morality')
-        for ax, label in zip(g.axes.flat, ['Log(Word Count)', 'Years']):
-            ax.set_xlabel(label)
-        g.legend.set_title('')
-        plt.savefig('data/plots/fig-morality_correlations.png', bbox_inches='tight')
-        plt.show()
 
 def compute_std_diff(interviews, attributes):
     #Prepare Data
@@ -445,7 +409,7 @@ def predict_behaviors(interviews, behaviors):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [9]
+    config = [4]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_surveys(interviews)
     interviews = merge_codings(interviews)

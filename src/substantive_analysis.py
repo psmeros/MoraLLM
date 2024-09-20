@@ -11,7 +11,7 @@ from sklearn.preprocessing import minmax_scale, normalize, scale
 
 from __init__ import *
 from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
-from src.parser import merge_codings, merge_matches, merge_surveys
+from src.parser import merge_all
 
 
 #Plot morality shifts
@@ -409,11 +409,9 @@ def predict_behaviors(interviews, behaviors):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [1,2,3,4,5,6,7,8,9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
-    interviews = merge_surveys(interviews)
-    interviews = merge_codings(interviews)
-    interviews = merge_matches(interviews)
+    interviews = merge_all(interviews)
 
     for c in config:
         if c == 1:

@@ -11,7 +11,7 @@ from sklearn.preprocessing import minmax_scale, normalize, scale
 
 from __init__ import *
 from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
-from src.parser import merge_all
+from src.parser import prepare_data
 
 
 #Plot morality shifts
@@ -166,7 +166,7 @@ def compute_consistency(interviews, plot_type, consistency_threshold):
 def compute_distribution(interviews):
     #Prepare Data
     data = interviews.copy()
-    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
     data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
     data['Value'] = data['Value'] * 100
 
@@ -184,7 +184,7 @@ def compute_distribution(interviews):
     plt.show()
 
     data = interviews.copy()
-    data = pd.DataFrame(data[[CODED_WAVES[1] + ':' + mo for mo in MORALITY_ORIGIN]].values - data[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    data = pd.DataFrame(data[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values - data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
     data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
     data['Value'] = data['Value'] * 100
 
@@ -234,14 +234,8 @@ def compute_morality_correlations(interviews, model):
     data = interviews.copy()
     data[CODED_WAVES[1] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education']
     data[CODED_WAVES[1] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance']
-    attribute_list = ['Morality_Origin_Word_Count', 'Morality_Origin_Uncertain_Terms', 'Morality_Origin_Readability', 'Morality_Origin_Sentiment', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Age', 'Church Attendance', 'Wave']
-    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo for mo in MORALITY_ORIGIN + attribute_list]].values, columns=MORALITY_ORIGIN + attribute_list) for wave in CODED_WAVES]).reset_index(drop=True)
-
-    data['Verbosity'] = minmax_scale(np.log(data['Morality_Origin_Word_Count'].astype(int)))
-    data['Brevity'] = (data['Verbosity'] < 3).astype(int)
-    data['Uncertainty'] = minmax_scale(data['Morality_Origin_Uncertain_Terms'].astype(int) / data['Morality_Origin_Word_Count'].astype(int))
-    data['Readability'] = minmax_scale((data['Morality_Origin_Readability']).astype(float))
-    data['Sentiment'] = minmax_scale(data['Morality_Origin_Sentiment'].astype(float))
+    attribute_list = ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Age', 'Church Attendance']
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [wave + ':' + attribute for attribute in attribute_list]].values, columns=MORALITY_ORIGIN + attribute_list) for wave in CODED_WAVES]).reset_index(drop=True)
 
     for attribute in attribute_list[4:]:
         data[attribute] = pd.factorize(data[attribute].bfill())[0] + 1
@@ -251,7 +245,7 @@ def compute_morality_correlations(interviews, model):
     data['Church_Attendance'] = data['Church Attendance']
     data = pd.DataFrame(scale(data), columns=data.columns)
 
-    data = data.melt(id_vars=['Verbosity', 'Brevity', 'Uncertainty', 'Readability', 'Sentiment', 'Gender', 'Race', 'Household_Income', 'Parent_Education', 'Age', 'Church_Attendance', 'Wave'], value_vars=MORALITY_ORIGIN, var_name='Morality Category', value_name='morality').dropna()
+    data = data.melt(id_vars=['Verbosity', 'Uncertainty', 'Readability', 'Sentiment', 'Gender', 'Race', 'Household_Income', 'Parent_Education', 'Age', 'Church_Attendance'], value_vars=MORALITY_ORIGIN, var_name='Morality Category', value_name='morality').dropna()
     data['morality'] = data['morality'].astype(float)
     formulas = ['morality ~ Verbosity + Uncertainty + Readability + Sentiment - 1',
                 'morality ~ Gender + Race + Household_Income + Parent_Education + Age + Church_Attendance - 1']
@@ -271,10 +265,10 @@ def compute_morality_correlations(interviews, model):
 
 def compute_std_diff(interviews, attributes):
     #Prepare Data
-    data = interviews[[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
+    data = interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
 
     #Melt Data
-    data = data.melt(id_vars=[CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes], value_vars=[wave + ':' + mo for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
+    data = data.melt(id_vars=[CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes], value_vars=[wave + ':' + mo  + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
     data['Wave'] = data['Morality'].apply(lambda x: x.split(':')[0])
     data['Morality'] = data['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
     data = data.rename(columns = {CODED_WAVES[0] + ':' + attribute['name'] : attribute['name'] for attribute in attributes})
@@ -315,7 +309,7 @@ def plot_morality_distinction(interviews):
 
     #Prepare Data
     data = interviews.copy()
-    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
 
     #Normalize Data
     data = pd.DataFrame(minmax_scale(data), columns=MORALITY_ORIGIN)
@@ -392,7 +386,7 @@ def compute_correlations(interviews, correlation_type):
 def predict_behaviors(interviews, behaviors):
     for behavior in behaviors:
         #Prepare Data
-        data = interviews[[behavior['From-Wave'] + ':' + mo for mo in MORALITY_ORIGIN] + [behavior['To-Wave'] + ':' + b for b in behavior['Actions']]]
+        data = interviews[[behavior['From-Wave'] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [behavior['To-Wave'] + ':' + b for b in behavior['Actions']]]
         data.columns = MORALITY_ORIGIN + behavior['Actions']
         data = data.dropna(subset=behavior['Actions'])
         data[behavior['Actions']] = data[behavior['Actions']].map(lambda d: int(d != 1))
@@ -409,9 +403,9 @@ def predict_behaviors(interviews, behaviors):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [9]
+    config = [1,2,3,4,5,6,7,8,9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
-    interviews = merge_all(interviews)
+    interviews = prepare_data(interviews)
 
     for c in config:
         if c == 1:

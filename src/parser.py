@@ -1,7 +1,9 @@
 import os
 import re
 
+import numpy as np
 import pandas as pd
+from sklearn.preprocessing import minmax_scale
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
@@ -322,35 +324,39 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     return interviews
 
 #Merge all different types of data
-def merge_all(interviews):
-    interviews['Age'] = interviews['Age'].astype('Int64')
-    interviews['Adolescence'] = interviews['Age'].map(ADOLESCENCE_RANGE)
+def prepare_data(interviews):
     interviews['Race'] = interviews['Race'].map(RACE_RANGE)
+    interviews['Age'] = interviews['Age'].astype('Int64')
+    interviews = interviews.rename(columns={'Morality_Origin': 'Morality Response (raw)'})
+
+    interviews['Verbosity'] = minmax_scale(np.log(interviews['Morality_Origin_Word_Count'].astype(int)))
+    interviews['Uncertainty'] = minmax_scale(interviews['Morality_Origin_Uncertain_Terms'].astype(int) / interviews['Morality_Origin_Word_Count'].astype(int))
+    interviews['Readability'] = minmax_scale((interviews['Morality_Origin_Readability']).astype(float))
+    interviews['Sentiment'] = minmax_scale(interviews['Morality_Origin_Sentiment'].astype(float))
+
     interviews = merge_codings(interviews)
     interviews = merge_matches(interviews)
     interviews = merge_surveys(interviews)
-    return interviews
+    interviews['Wave 1:Adolescence'] = interviews['Wave 1:Age'].map(ADOLESCENCE_RANGE)
 
-def filter_columns(interviews):
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
-    
     columns += [wave + ':' + mo + '_' + estimatior for wave in CODED_WAVES for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Income (raw)', 'Household Income']]
     columns += [CODED_WAVES[0] + ':' + demographic for demographic in ['Adolescence', 'Grades', 'Church Attendance (raw)', 'Church Attendance', 'Parent Education (raw)', 'Parent Education', 'Decision Taking']]
 
-    columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Morality_Origin_Word_Count', 'Morality_Origin_Uncertain_Terms', 'Morality_Origin_Readability', 'Morality_Origin_Sentiment']]
+    columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
 
     columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2'] for action in ['Secret', 'Cheat', 'Volunteer', 'Help', 'Cutclass', 'Drink', 'Pot']]
 
-    columns += [wave + ':' + 'Morality_Origin' for wave in CODED_WAVES]
+    columns += [wave + ':' + 'Morality Response (raw)' for wave in CODED_WAVES]
 
     interviews = interviews[columns]
     return interviews
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [4]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     for c in config:
@@ -363,7 +369,4 @@ if __name__ == '__main__':
         elif c == 3:
             interviews = merge_surveys(interviews)
         elif c == 4:
-            interviews = merge_all(interviews)
-        elif c == 5:
-            interviews = merge_all(interviews)
-            interviews = filter_columns(interviews)
+            interviews = prepare_data(interviews)

@@ -390,26 +390,26 @@ def compute_correlations(interviews, correlation_type):
 
 #Predict Survey Answers based on Interviews in Wave 1
 def predict_behaviors(interviews, behaviors):
-    for wave in CODED_WAVES:
+    for behavior in behaviors:
         #Prepare Data
-        data = interviews[[CODED_WAVES[0] + ':' + mo for mo in MORALITY_ORIGIN] + [wave + ':' + b for b in behaviors[wave]]]
-        data.columns = MORALITY_ORIGIN + behaviors[wave]
-        data = data.dropna(subset=behaviors[wave])
-        data[behaviors[wave]] = data[behaviors[wave]].map(lambda d: int(d != 1))
-
+        data = interviews[[behavior['From-Wave'] + ':' + mo for mo in MORALITY_ORIGIN] + [behavior['To-Wave'] + ':' + b for b in behavior['Actions']]]
+        data.columns = MORALITY_ORIGIN + behavior['Actions']
+        data = data.dropna(subset=behavior['Actions'])
+        data[behavior['Actions']] = data[behavior['Actions']].map(lambda d: int(d != 1))
+        
         #Display Results
-        formulas = [b + ' ~ ' + ' + '.join(MORALITY_ORIGIN) for b in behaviors[wave]]
+        formulas = [a + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + ' - 1' for a in behavior['Actions']]
         results = []
         for formula in formulas:
             probit = smf.probit(formula=formula, data=data).fit()
             results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)})
             
-        results = pd.DataFrame(results, index=behaviors[wave]).T
+        results = pd.DataFrame(results, index=behavior['Actions']).T
         display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5,6,7,8,9]
+    config = [9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = merge_all(interviews)
 
@@ -437,5 +437,6 @@ if __name__ == '__main__':
         elif c == 8:
             compute_correlations(interviews, correlation_type='pearsonr')
         elif c == 9:
-            behaviors = {'Wave 1' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'], 'Wave 3' : ['Pot', 'Drink', 'Volunteer', 'Help']}
+            behaviors = [{'From-Wave' : 'Wave 1', 'To-Wave' : 'Wave 1', 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
+                         {'From-Wave' : 'Wave 1', 'To-Wave' : 'Wave 2', 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']}]
             predict_behaviors(interviews, behaviors)

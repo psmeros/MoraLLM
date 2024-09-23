@@ -298,6 +298,14 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Church Attendance'] = survey['Church Attendance (raw)'].map(CHURCH_ATTENDANCE_RANGE)
                 survey['Income (raw)'] = survey['Income (raw)'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
                 survey['Household Income'] = survey['Income (raw)'].map(INCOME_RANGE)
+            elif wave == 2:
+                survey['Pot'] = survey['Pot'].apply(lambda x: 8 - x if x in range(1, 8) else None)
+                survey['Drink'] = survey['Drink'].apply(lambda x: 8 - x if x in range(1, 8) else None)
+                survey['Cheat'] = survey['Cheat'].apply(lambda x: 7 - x if x in range(1, 7) else None)
+                survey['Cutclass'] = survey['Cutclass'].apply(lambda x: x if x in range(1, 5) else None)
+                survey['Secret'] = survey['Secret'].apply(lambda x: 7 - x if x in range(1, 7) else None)
+                survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x if x in range(1, 5) else None)
+                survey['Help'] = survey['Help'].apply(lambda x: 5 - x if x in range(1, 5) else None)
             elif wave == 3:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 8 - x if x in range(1, 8) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 8 - x if x in range(1, 8) else None)

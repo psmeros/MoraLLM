@@ -331,15 +331,39 @@ def merge_all(interviews):
     interviews = merge_surveys(interviews)
     return interviews
 
+def filter_columns(interviews):
+    columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
+    
+    columns += [wave + ':' + mo + '_' + estimatior for wave in CODED_WAVES for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
+
+    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Income (raw)', 'Household Income']]
+    columns += [CODED_WAVES[0] + ':' + demographic for demographic in ['Adolescence', 'Grades', 'Church Attendance (raw)', 'Church Attendance', 'Parent Education (raw)', 'Parent Education', 'Decision Taking']]
+
+    columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Morality_Origin_Word_Count', 'Morality_Origin_Uncertain_Terms', 'Morality_Origin_Readability', 'Morality_Origin_Sentiment']]
+
+    columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2'] for action in ['Secret', 'Cheat', 'Volunteer', 'Help', 'Cutclass', 'Drink', 'Pot']]
+
+    columns += [wave + ':' + 'Morality_Origin' for wave in CODED_WAVES]
+
+    interviews = interviews[columns]
+    return interviews
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = []
-    interviews = wave_parser()
+    config = [5]
+    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
 
     for c in config:
+        if c == 0:
+            interviews = wave_parser()
         if c == 1:            
             interviews = merge_codings(interviews)
         elif c == 2:
             interviews = merge_matches(interviews)
         elif c == 3:
             interviews = merge_surveys(interviews)
+        elif c == 4:
+            interviews = merge_all(interviews)
+        elif c == 5:
+            interviews = merge_all(interviews)
+            interviews = filter_columns(interviews)

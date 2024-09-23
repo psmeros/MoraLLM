@@ -401,7 +401,7 @@ def predict_behaviors(interviews, behaviors):
         formulas = [a + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + ' - 1' for a in behavior['Actions']]
         results = []
         for formula in formulas:
-            probit = smf.probit(formula=formula, data=data).fit()
+            probit = smf.probit(formula=formula, data=data).fit(disp=False)
             results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)})
             
         results = pd.DataFrame(results, index=behavior['Actions']).T

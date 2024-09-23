@@ -281,7 +281,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
         file = os.path.join(surveys_folder, file)
         if os.path.isfile(file) and file.endswith('.csv'):
             wave = int(file.split('_')[1].split('.')[0])
-            survey = pd.read_csv(file)[SURVEY_ATTRIBUTES['Wave ' + str(wave)].keys()].rename(columns=SURVEY_ATTRIBUTES['Wave ' + str(wave)])
+            survey = pd.read_csv(file, usecols=SURVEY_ATTRIBUTES['Wave ' + str(wave)].keys()).rename(columns=SURVEY_ATTRIBUTES['Wave ' + str(wave)])
             if wave == 1:
                 survey['Pot'] = survey['Pot'].apply(lambda x: x if x in range(1, 5) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 8 - x if x in range(1, 8) else None)
@@ -315,7 +315,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Household Income'] = survey['Income (raw)'].map(INCOME_RANGE)
 
             survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
-            surveys = surveys.merge(survey, on = 'Survey Id', how = 'inner')
+            surveys = surveys.merge(survey, on = 'Survey Id', how = 'left')
 
     interviews = interviews.merge(surveys, left_on = 'Wave 1:Interview Code',  right_on = 'Interview Code', how = 'inner')
 

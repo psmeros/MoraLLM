@@ -432,5 +432,7 @@ if __name__ == '__main__':
             compute_correlations(interviews, correlation_type='pearsonr')
         elif c == 9:
             behaviors = [{'From-Wave' : 'Wave 1', 'To-Wave' : 'Wave 1', 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
-                         {'From-Wave' : 'Wave 1', 'To-Wave' : 'Wave 2', 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']}]
+                         {'From-Wave' : 'Wave 1', 'To-Wave' : 'Wave 2', 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
+                         {'From-Wave' : 'Wave 3', 'To-Wave' : 'Wave 3', 'Actions' : ['Pot', 'Drink', 'Volunteer', 'Help']},
+                         {'From-Wave' : 'Wave 3', 'To-Wave' : 'Wave 4', 'Actions' : ['Pot', 'Drink', 'Volunteer', 'Help']}]
             predict_behaviors(interviews, behaviors)

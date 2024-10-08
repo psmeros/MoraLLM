@@ -389,7 +389,7 @@ def predict_behaviors(interviews, behaviors):
         data = interviews[[behavior['From-Wave'] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [behavior['To-Wave'] + ':' + b for b in behavior['Actions']]]
         data.columns = MORALITY_ORIGIN + behavior['Actions']
         data = data.dropna(subset=behavior['Actions'])
-        data[behavior['Actions']] = data[behavior['Actions']].map(lambda d: int(d != 1))
+        data[behavior['Actions']] = data[behavior['Actions']].map(lambda d: int(d > 1))
         
         #Display Results
         formulas = [a + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + ' - 1' for a in behavior['Actions']]
@@ -403,7 +403,7 @@ def predict_behaviors(interviews, behaviors):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5,6,7,8,9]
+    config = [9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = prepare_data(interviews)
 

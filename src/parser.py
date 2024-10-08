@@ -315,6 +315,11 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Help'] = survey['Help'].apply(lambda x: 5 - x if x in range(1, 5) else None)
                 survey['Income (raw)'] = survey['Income (raw)'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
                 survey['Household Income'] = survey['Income (raw)'].map(INCOME_RANGE)
+            elif wave == 4:
+                survey['Pot'] = survey['Pot'].apply(lambda x: 2 - x if x in range(0, 2) else None)
+                survey['Drink'] = survey['Drink'].apply(lambda x: 1 if x in range(7, 9) else 8 - x if x in range (1, 7) else None)
+                survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x + 1 if x in range(0, 2) else None)
+                survey['Help'] = survey['Help'].apply(lambda x: 5 - x if x in range(1, 5) else None)
 
             survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
             surveys = surveys.merge(survey, on = 'Survey Id', how = 'left')
@@ -347,7 +352,9 @@ def prepare_data(interviews):
 
     columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
 
-    columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2'] for action in ['Secret', 'Cheat', 'Volunteer', 'Help', 'Cutclass', 'Drink', 'Pot']]
+    columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2'] for action in ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']]
+
+    columns += [wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Pot', 'Drink', 'Volunteer', 'Help']]
 
     columns += [wave + ':' + 'Morality Response (raw)' for wave in CODED_WAVES]
 

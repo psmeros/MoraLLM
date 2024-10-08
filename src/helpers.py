@@ -215,7 +215,11 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'DRINK':'Drink',
                                'VOLUNTER':'Volunteer',
                                'HELPED':'Help'},
-                     'Wave 4':{'IDS':'Survey Id'}}
+                     'Wave 4':{'IDS':'Survey Id',
+                               'POTNEVER_W4':'Pot',
+                               'DRINK_W4':'Drink',
+                               'VOLUNTER_W4':'Volunteer',
+                               'HELPED_W4':'Help'}}
 
 #Income: Low < 70K < High
 INCOME_RANGE = {**dict.fromkeys(range(1, 8), 'Low'), **dict.fromkeys(range(8, 12), 'High')}

@@ -386,7 +386,7 @@ def compute_correlations(interviews, correlation_type):
 def predict_behaviors(interviews, behaviors):
     for behavior in behaviors:
         #Prepare Data
-        data = interviews[[behavior['From-Wave'] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [behavior['To-Wave'] + ':' + b for b in behavior['Actions']]]
+        data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [to_wave + ':' + b for b in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
         data.columns = MORALITY_ORIGIN + behavior['Actions']
         data = data.dropna(subset=behavior['Actions'])
         data[behavior['Actions']] = data[behavior['Actions']].map(lambda d: int(d > 1))
@@ -431,8 +431,9 @@ if __name__ == '__main__':
         elif c == 8:
             compute_correlations(interviews, correlation_type='pearsonr')
         elif c == 9:
-            behaviors = [{'From-Wave' : 'Wave 1', 'To-Wave' : 'Wave 1', 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
-                         {'From-Wave' : 'Wave 1', 'To-Wave' : 'Wave 2', 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
-                         {'From-Wave' : 'Wave 3', 'To-Wave' : 'Wave 3', 'Actions' : ['Pot', 'Drink', 'Volunteer', 'Help']},
-                         {'From-Wave' : 'Wave 3', 'To-Wave' : 'Wave 4', 'Actions' : ['Pot', 'Drink', 'Volunteer', 'Help']}]
+            behaviors = [{'From_Wave' : ['Wave 1'], 'To_Wave' : ['Wave 1'], 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
+                         {'From_Wave' : ['Wave 1'], 'To_Wave' : ['Wave 2'], 'Actions' : ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
+                         {'From_Wave' : ['Wave 3'], 'To_Wave' : ['Wave 3'], 'Actions' : ['Pot', 'Drink', 'Volunteer', 'Help']},
+                         {'From_Wave' : ['Wave 3'], 'To_Wave' : ['Wave 4'], 'Actions' : ['Pot', 'Drink', 'Volunteer', 'Help']},
+                         {'From_Wave' : ['Wave 1', 'Wave 3'], 'To_Wave' : ['Wave 2', 'Wave 4'], 'Actions' : ['Pot', 'Drink', 'Volunteer', 'Help']}]
             predict_behaviors(interviews, behaviors)

@@ -387,13 +387,13 @@ def predict_behaviors(interviews, behaviors):
     for behavior in behaviors:
         #Prepare Data
         data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
-        data.columns = MORALITY_ORIGIN + behavior['Controls'] + behavior['Actions']
+        data.columns = MORALITY_ORIGIN + behavior['Controls'] + [a + '_pred' for a in behavior['Actions']]
         data = data.dropna()
         data[behavior['Controls']] = pd.concat([data[control] == reference if reference else data[control] for control, reference in zip(behavior['Controls'], behavior['References'])], axis=1)
         data = data.astype(float)
 
         #Display Results
-        formulas = [a + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls']]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
+        formulas = [a + '_pred' + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls']]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
         results = []
         for formula in formulas:
             probit = smf.probit(formula=formula, data=data).fit(disp=False, cov_type='HC3')
@@ -401,6 +401,7 @@ def predict_behaviors(interviews, behaviors):
             
         results = pd.DataFrame(results, index=behavior['Actions']).T
         results.index = MORALITY_ORIGIN + behavior['Controls']
+        results.index = results.index.map(lambda x: {'Income (raw)':'Household Income', 'Parent Education (raw)': 'Parent Education'}.get(x, x))
         display(results)
 
 if __name__ == '__main__':
@@ -441,7 +442,13 @@ if __name__ == '__main__':
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Gender', 'Age', 'Race', 'Household Income', 'Parent Education', 'Grades'],
-                          'References': ['Male', None, 'White', 'High', 'Tertiary', None]}
+                          'Controls': ['Gender', 'Age', 'Race', 'Income (raw)', 'Parent Education (raw)', 'Grades'],
+                          'References': ['Male', None, 'White', None, None, None]},
+
+                         {'From_Wave': ['Wave 1', 'Wave 3'], 
+                          'To_Wave': ['Wave 2', 'Wave 4'], 
+                          'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
+                          'Controls': ['Pot', 'Drink', 'Volunteer', 'Help'],
+                          'References': [None, None, None, None]}
                         ]
             predict_behaviors(interviews, behaviors)

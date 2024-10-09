@@ -389,13 +389,12 @@ def predict_behaviors(interviews, behaviors):
         data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [to_wave + ':' + b for b in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
         data.columns = MORALITY_ORIGIN + behavior['Actions']
         data = data.dropna(subset=behavior['Actions'])
-        data[behavior['Actions']] = data[behavior['Actions']].map(lambda d: int(d > 1))
         
         #Display Results
         formulas = [a + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + ' - 1' for a in behavior['Actions']]
         results = []
         for formula in formulas:
-            probit = smf.probit(formula=formula, data=data).fit(disp=False)
+            probit = smf.probit(formula=formula, data=data).fit(disp=False, cov_type='HC3')
             results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)})
             
         results = pd.DataFrame(results, index=behavior['Actions']).T

@@ -348,12 +348,13 @@ def prepare_data(interviews):
     interviews = merge_matches(interviews)
     interviews = merge_surveys(interviews)
     interviews['Wave 1:Adolescence'] = interviews['Wave 1:Age'].map(ADOLESCENCE_RANGE)
+    interviews[['Wave 3:' + demographic for demographic in['Parent Education (raw)', 'Parent Education', 'Grades']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education (raw)', 'Parent Education', 'Grades']]]
 
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
     columns += [wave + ':' + mo + '_' + estimatior for wave in CODED_WAVES for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
 
-    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Income (raw)', 'Household Income']]
-    columns += [CODED_WAVES[0] + ':' + demographic for demographic in ['Adolescence', 'Grades', 'Church Attendance (raw)', 'Church Attendance', 'Parent Education (raw)', 'Parent Education', 'Decision Taking']]
+    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Income (raw)', 'Household Income', 'Parent Education (raw)', 'Parent Education', 'Grades']]
+    columns += [CODED_WAVES[0] + ':' + demographic for demographic in ['Adolescence', 'Church Attendance (raw)', 'Church Attendance', 'Decision Taking']]
 
     columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
 

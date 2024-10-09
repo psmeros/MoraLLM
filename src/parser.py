@@ -292,14 +292,11 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Secret'] = survey['Secret'].apply(lambda x: 6 - x if x in range(1, 7) else None)
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x - 1 if x in range(1, 5) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
-                survey['Grades'] = survey['Grades'].apply(lambda x: x if x in range(1, 11) else None)
+                survey['GPA'] = survey['GPA'].apply(lambda x: x if x in range(1, 11) else None)
                 survey['Decision Taking'] = survey['Decision Taking'].map(DECISION_TAKING)
-                survey['Parent Education (raw)'] = survey[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION_RANGE.keys())) and (x.iloc[1] <= max(EDUCATION_RANGE.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
-                survey['Parent Education'] = survey['Parent Education (raw)'].map(EDUCATION_RANGE)
-                survey['Church Attendance (raw)'] = survey['Church Attendance (raw)'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
-                survey['Church Attendance'] = survey['Church Attendance (raw)'].map(CHURCH_ATTENDANCE_RANGE)
-                survey['Income (raw)'] = survey['Income (raw)'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
-                survey['Household Income'] = survey['Income (raw)'].map(INCOME_RANGE)
+                survey['Parent Education'] = survey[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION_RANGE.keys())) and (x.iloc[1] <= max(EDUCATION_RANGE.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
+                survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
+                survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
             elif wave == 2:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 7 - x if x in range(1, 8) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 7 - x if x in range(1, 8) else None)
@@ -313,8 +310,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Drink'] = survey['Drink'].apply(lambda x: 7 - x if x in range(1, 8) else None)
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x if x in range(0, 2) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
-                survey['Income (raw)'] = survey['Income (raw)'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
-                survey['Household Income'] = survey['Income (raw)'].map(INCOME_RANGE)
+                survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
             elif wave == 4:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 1 - x if x in range(0, 2) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 0 if x in range(7, 9) else 7 - x if x in range (1, 7) else None)
@@ -347,14 +343,13 @@ def prepare_data(interviews):
     interviews = merge_codings(interviews)
     interviews = merge_matches(interviews)
     interviews = merge_surveys(interviews)
-    interviews['Wave 1:Adolescence'] = interviews['Wave 1:Age'].map(ADOLESCENCE_RANGE)
-    interviews[['Wave 3:' + demographic for demographic in['Parent Education (raw)', 'Parent Education', 'Grades']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education (raw)', 'Parent Education', 'Grades']]]
+    interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
 
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
     columns += [wave + ':' + mo + '_' + estimatior for wave in CODED_WAVES for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
 
-    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Income (raw)', 'Household Income', 'Parent Education (raw)', 'Parent Education', 'Grades']]
-    columns += [CODED_WAVES[0] + ':' + demographic for demographic in ['Adolescence', 'Church Attendance (raw)', 'Church Attendance', 'Decision Taking']]
+    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'GPA']]
+    columns += [CODED_WAVES[0] + ':' + demographic for demographic in ['Church Attendance', 'Decision Taking']]
 
     columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
 

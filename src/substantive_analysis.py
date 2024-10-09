@@ -10,7 +10,7 @@ from scipy.stats import fisher_exact, pearsonr
 from sklearn.preprocessing import minmax_scale, normalize, scale
 
 from __init__ import *
-from src.helpers import CODED_WAVES, DEMOGRAPHICS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
 from src.parser import prepare_data
 
 
@@ -56,6 +56,10 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
         return shifts, N
 
     data = interviews.copy()
+    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].map(lambda x: ADOLESCENCE_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Household Income'] = data[CODED_WAVES[0] + ':Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].map(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education'].map(lambda x: EDUCATION_RANGE.get(x, None))
 
     #Prepare data
     shifts, _ = compute_morality_shifts(data)
@@ -265,7 +269,12 @@ def compute_morality_correlations(interviews, model):
 
 def compute_std_diff(interviews, attributes):
     #Prepare Data
-    data = interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
+    data = interviews.copy()
+    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].map(lambda x: ADOLESCENCE_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Household Income'] = data[CODED_WAVES[0] + ':Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].map(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education'].map(lambda x: EDUCATION_RANGE.get(x, None))
+    data = data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
 
     #Melt Data
     data = data.melt(id_vars=[CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes], value_vars=[wave + ':' + mo  + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
@@ -337,11 +346,11 @@ def plot_morality_distinction(interviews):
 def compute_correlations(interviews, correlation_type):
     desicion_taking = pd.concat([pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Decision Taking'])] * 2, ignore_index=True).astype('Int64')
     Age = pd.concat([interviews[wave + ':Age'].bfill() for wave in CODED_WAVES], ignore_index=True)
-    Grades = pd.concat([interviews[CODED_WAVES[0] + ':Grades'].astype('Int64').bfill()] * 2, ignore_index=True)
+    GPA = pd.concat([interviews[CODED_WAVES[0] + ':GPA'].astype('Int64').bfill()] * 2, ignore_index=True)
     Gender = pd.Series(pd.factorize(pd.concat([interviews[wave + ':Gender'] for wave in CODED_WAVES], ignore_index=True))[0])
     Race = pd.Series(pd.factorize(pd.concat([interviews[wave + ':Race'] for wave in CODED_WAVES], ignore_index=True))[0])
-    Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
-    Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education (raw)'].astype('Int64').bfill()] * 2, ignore_index=True)
+    Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance'].astype('Int64').bfill()] * 2, ignore_index=True)
+    Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education'].astype('Int64').bfill()] * 2, ignore_index=True)
     
     compute_pearsonr = lambda x, y: pearsonr(x, y)
     compute_fisher = lambda x, y: (lambda x, y: fisher_exact([[np.sum(x & y), np.sum(~x & y)], [np.sum(x & ~y), np.sum(~x & ~y)]]))(x.round().astype(bool), y.round().astype(bool))
@@ -370,7 +379,7 @@ def compute_correlations(interviews, correlation_type):
         correlation['Intuitive - Theistic'] = compute_correlation(Intuitive, desicion_taking['Theistic'])
 
         correlation['Intuitive - Age'] = compute_correlation(Intuitive, Age)
-        correlation['Intuitive - GPA'] = compute_correlation(Intuitive, Grades)
+        correlation['Intuitive - GPA'] = compute_correlation(Intuitive, GPA)
         correlation['Intuitive - Gender'] = compute_correlation(Intuitive, Gender)
         correlation['Intuitive - Race'] = compute_correlation(Intuitive, Race)
         correlation['Intuitive - Church Attendance'] = compute_correlation(Intuitive, Church_Attendance)
@@ -401,12 +410,11 @@ def predict_behaviors(interviews, behaviors):
             
         results = pd.DataFrame(results, index=behavior['Actions']).T
         results.index = MORALITY_ORIGIN + behavior['Controls']
-        results.index = results.index.map(lambda x: {'Income (raw)':'Household Income', 'Parent Education (raw)': 'Parent Education'}.get(x, x))
         display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [9]
+    config = [1,2,3,4,5,6,7,8,9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = prepare_data(interviews)
 
@@ -442,7 +450,7 @@ if __name__ == '__main__':
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Gender', 'Age', 'Race', 'Income (raw)', 'Parent Education (raw)', 'Grades'],
+                          'Controls': ['Gender', 'Age', 'Race', 'Household Income', 'Parent Education', 'GPA'],
                           'References': ['Male', None, 'White', None, None, None]},
 
                          {'From_Wave': ['Wave 1', 'Wave 3'], 

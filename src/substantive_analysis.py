@@ -414,7 +414,7 @@ def predict_behaviors(interviews, behaviors):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5,6,7,8,9]
+    config = [9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     interviews = prepare_data(interviews)
 

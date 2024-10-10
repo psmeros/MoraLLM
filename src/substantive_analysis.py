@@ -443,10 +443,6 @@ if __name__ == '__main__':
             compute_correlations(interviews, correlation_type='pearsonr')
         elif c == 9:
             behaviors = [
-                        #  {'From_Wave': ['Wave 1'], 'To_Wave': ['Wave 1'], 'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
-                        #  {'From_Wave': ['Wave 1'], 'To_Wave': ['Wave 2'], 'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']},
-                        #  {'From_Wave': ['Wave 3'], 'To_Wave': ['Wave 3'], 'Actions': ['Pot', 'Drink', 'Volunteer', 'Help']},
-                        #  {'From_Wave': ['Wave 3'], 'To_Wave': ['Wave 4'], 'Actions': ['Pot', 'Drink', 'Volunteer', 'Help']},
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
@@ -457,6 +453,12 @@ if __name__ == '__main__':
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
                           'Controls': ['Pot', 'Drink', 'Volunteer', 'Help'],
+                          'References': {'Attribute Names': [], 'Attribute Values': []}},
+
+                         {'From_Wave': ['Wave 1', 'Wave 3'], 
+                          'To_Wave': ['Wave 2', 'Wave 4'], 
+                          'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
+                          'Controls': ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
                           'References': {'Attribute Names': [], 'Attribute Values': []}},
                         ]
             predict_behaviors(interviews, behaviors)

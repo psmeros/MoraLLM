@@ -446,19 +446,7 @@ if __name__ == '__main__':
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'],
+                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'] + ['Pot', 'Drink', 'Volunteer', 'Help'] + ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
                           'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}},
-
-                         {'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 2', 'Wave 4'], 
-                          'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'References': {'Attribute Names': [], 'Attribute Values': []}},
-
-                         {'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 2', 'Wave 4'], 
-                          'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
-                          'References': {'Attribute Names': [], 'Attribute Values': []}},
                         ]
             predict_behaviors(interviews, behaviors)

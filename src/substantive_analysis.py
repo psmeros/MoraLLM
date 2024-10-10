@@ -398,7 +398,7 @@ def predict_behaviors(interviews, behaviors):
         data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
         data.columns = MORALITY_ORIGIN + behavior['Controls'] + [a + '_pred' for a in behavior['Actions']]
         data = data.dropna()
-        data[behavior['Controls']] = pd.concat([data[control] == reference if reference else data[control] for control, reference in zip(behavior['Controls'], behavior['References'])], axis=1)
+        data[behavior['References']['Attribute Names']] = (data[behavior['References']['Attribute Names']] == behavior['References']['Attribute Values'])
         data = data.astype(float)
 
         #Display Results
@@ -451,12 +451,12 @@ if __name__ == '__main__':
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
                           'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'],
-                          'References': ['White', 'Male', None, None, None, None]},
+                          'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}},
 
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
                           'Controls': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'References': [None, None, None, None]}
+                          'References': {'Attribute Names': [], 'Attribute Values': []}},
                         ]
             predict_behaviors(interviews, behaviors)

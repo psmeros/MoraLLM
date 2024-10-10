@@ -450,8 +450,8 @@ if __name__ == '__main__':
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Gender', 'Age', 'Race', 'Household Income', 'Parent Education', 'GPA'],
-                          'References': ['Male', None, 'White', None, None, None]},
+                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'],
+                          'References': ['White', 'Male', None, None, None, None]},
 
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 

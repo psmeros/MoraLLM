@@ -214,7 +214,8 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'POT':'Pot',
                                'DRINK':'Drink',
                                'VOLUNTER':'Volunteer',
-                               'HELPED':'Help'},
+                               'HELPED':'Help',
+                               'ATTEND':'Church Attendance'},
                      'Wave 4':{'IDS':'Survey Id',
                                'POTNEVER_W4':'Pot',
                                'DRINK_W4':'Drink',
@@ -228,7 +229,7 @@ INCOME_RANGE = {**dict.fromkeys(range(1, 8), 'Low'), **dict.fromkeys(range(8, 12
 EDUCATION_RANGE = {**dict.fromkeys(range(0, 3), 'Primary'), **dict.fromkeys(range(3, 8), 'Secondary'), **dict.fromkeys(range(8, 15), 'Tertiary')}
 
 #Church Attendance: Irregular vs Regular
-CHURCH_ATTENDANCE_RANGE = {**dict.fromkeys(range(1, 5), 'Irregular'), **dict.fromkeys(range(5, 7), 'Regular')}
+CHURCH_ATTENDANCE_RANGE = {**dict.fromkeys(range(0, 5), 'Irregular'), **dict.fromkeys(range(5, 7), 'Regular')}
 
 #Adolescence: Early vs Late
 ADOLESCENCE_RANGE = {**dict.fromkeys(range(13, 16), 'Early'), **dict.fromkeys(range(16, 20), 'Late')}

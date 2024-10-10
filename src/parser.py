@@ -310,6 +310,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Drink'] = survey['Drink'].apply(lambda x: 7 - x if x in range(1, 8) else None)
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x if x in range(0, 2) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
+                survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
                 survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
             elif wave == 4:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 1 - x if x in range(0, 2) else None)
@@ -348,8 +349,8 @@ def prepare_data(interviews):
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
     columns += [wave + ':' + mo + '_' + estimatior for wave in CODED_WAVES for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
 
-    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'GPA']]
-    columns += [CODED_WAVES[0] + ':' + demographic for demographic in ['Church Attendance', 'Decision Taking']]
+    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA']]
+    columns += [CODED_WAVES[0] + ':' + demographic for demographic in ['Decision Taking']]
 
     columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
 

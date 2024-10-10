@@ -400,7 +400,8 @@ def predict_behaviors(interviews, behaviors):
         data = data.dropna()
         data[behavior['References']['Attribute Names']] = (data[behavior['References']['Attribute Names']] == behavior['References']['Attribute Values'])
         data = data.astype(float)
-
+        data[behavior['Controls']] = scale(data[behavior['Controls']])
+ 
         #Display Results
         formulas = [a + '_pred' + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls']]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
         results = []
@@ -446,7 +447,7 @@ if __name__ == '__main__':
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'] + ['Pot', 'Drink', 'Volunteer', 'Help'] + ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
+                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Church Attendance'] + ['Pot', 'Drink', 'Volunteer', 'Help'] + ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
                           'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}},
                         ]
             predict_behaviors(interviews, behaviors)

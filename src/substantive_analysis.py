@@ -344,7 +344,7 @@ def plot_morality_distinction(interviews):
 
 #Compute Correlations
 def compute_correlations(interviews, correlation_type):
-    desicion_taking = pd.concat([pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Decision Taking'])] * 2, ignore_index=True).astype('Int64')
+    moral_schemas = pd.concat([pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Moral Schemas'])] * 2, ignore_index=True).astype('Int64')
     Age = pd.concat([interviews[wave + ':Age'].bfill() for wave in CODED_WAVES], ignore_index=True)
     GPA = pd.concat([interviews[CODED_WAVES[0] + ':GPA'].astype('Int64').bfill()] * 2, ignore_index=True)
     Gender = pd.Series(pd.factorize(pd.concat([interviews[wave + ':Gender'] for wave in CODED_WAVES], ignore_index=True))[0])
@@ -373,10 +373,10 @@ def compute_correlations(interviews, correlation_type):
         correlation['Consequentialist - Theistic'] = compute_correlation(Consequentialist, Theistic)
         correlation['Social - Theistic'] = compute_correlation(Social, Theistic)
         
-        correlation['Intuitive - Expressive Individualist'] = compute_correlation(Intuitive, desicion_taking['Expressive Individualist'])
-        correlation['Intuitive - Utilitarian Individualist'] = compute_correlation(Intuitive, desicion_taking['Utilitarian Individualist'])
-        correlation['Intuitive - Relational'] = compute_correlation(Intuitive, desicion_taking['Relational'])
-        correlation['Intuitive - Theistic'] = compute_correlation(Intuitive, desicion_taking['Theistic'])
+        correlation['Intuitive - Expressive Individualist'] = compute_correlation(Intuitive, moral_schemas['Expressive Individualist'])
+        correlation['Intuitive - Utilitarian Individualist'] = compute_correlation(Intuitive, moral_schemas['Utilitarian Individualist'])
+        correlation['Intuitive - Relational'] = compute_correlation(Intuitive, moral_schemas['Relational'])
+        correlation['Intuitive - Theistic'] = compute_correlation(Intuitive, moral_schemas['Theistic'])
 
         correlation['Intuitive - Age'] = compute_correlation(Intuitive, Age)
         correlation['Intuitive - GPA'] = compute_correlation(Intuitive, GPA)

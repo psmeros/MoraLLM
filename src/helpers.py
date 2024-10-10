@@ -198,7 +198,7 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'SECRET':'Secret',
                                'VOLUNTER':'Volunteer',
                                'HELPED':'Help',
-                               'HOWDECID':'Decision Taking',
+                               'HOWDECID':'Moral Schemas',
                                'GRADES':'GPA',
                                'ATTEND':'Church Attendance'},
                      'Wave 2':{'IDS':'Survey Id',
@@ -215,7 +215,7 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'DRINK':'Drink',
                                'VOLUNTER':'Volunteer',
                                'HELPED':'Help',
-                               'HOWDECID':'Decision Taking',
+                               'HOWDECID':'Moral Schemas',
                                'ATTEND':'Church Attendance'},
                      'Wave 4':{'IDS':'Survey Id',
                                'POTNEVER_W4':'Pot',
@@ -238,8 +238,8 @@ ADOLESCENCE_RANGE = {**dict.fromkeys(range(13, 16), 'Early'), **dict.fromkeys(ra
 #Race: White vs Other
 RACE_RANGE = {**dict.fromkeys(['White'], 'White'), **dict.fromkeys(['Asian', 'Black', 'Hispanic', 'Native American' 'Other'], 'Other')}
 
-#Decision taking map
-DECISION_TAKING = {1:'Expressive Individualist',
+#Moral Schemas map
+MORAL_SCHEMAS = {1:'Expressive Individualist',
                    2:'Utilitarian Individualist',
                    3:'Relational',
                    4:'Theistic'}

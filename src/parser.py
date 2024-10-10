@@ -7,7 +7,7 @@ from sklearn.preprocessing import minmax_scale
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DECISION_TAKING, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -293,7 +293,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x - 1 if x in range(1, 5) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
                 survey['GPA'] = survey['GPA'].apply(lambda x: x if x in range(1, 11) else None)
-                survey['Decision Taking'] = survey['Decision Taking'].map(lambda x: DECISION_TAKING.get(x, None))
+                survey['Moral Schemas'] = survey['Moral Schemas'].map(lambda x: MORAL_SCHEMAS.get(x, None))
                 survey['Parent Education'] = survey[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION_RANGE.keys())) and (x.iloc[1] <= max(EDUCATION_RANGE.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
                 survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
                 survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
@@ -310,7 +310,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Drink'] = survey['Drink'].apply(lambda x: 7 - x if x in range(1, 8) else None)
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x if x in range(0, 2) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
-                survey['Decision Taking'] = survey['Decision Taking'].map(lambda x: DECISION_TAKING.get(x, None))
+                survey['Moral Schemas'] = survey['Moral Schemas'].map(lambda x: MORAL_SCHEMAS.get(x, None))
                 survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
                 survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
             elif wave == 4:
@@ -350,7 +350,7 @@ def prepare_data(interviews):
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
     columns += [wave + ':' + mo + '_' + estimatior for wave in CODED_WAVES for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
 
-    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Decision Taking']]
+    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas']]
 
     columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
 

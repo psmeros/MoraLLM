@@ -215,13 +215,13 @@ def wave_parser(waves_folder='data/interviews/waves', morality_breakdown=False):
     return waves
 
 #Merge matched interviews from different waves
-def merge_matches(interviews, wave_list = CODED_WAVES, matches_file = 'data/interviews/alignments/crosswave.csv'):
+def merge_matches(interviews, how, wave_list = CODED_WAVES, matches_file = 'data/interviews/alignments/crosswave.csv'):
     matches = pd.read_csv(matches_file)[wave_list].dropna()
 
     for wave in wave_list:
         wave_interviews = interviews[interviews['Wave'] == int(wave.split()[-1])]
         wave_interviews = wave_interviews.add_prefix(wave + ':')
-        matches = matches.merge(wave_interviews, left_on = wave, right_on = wave + ':Interview Code', how = 'outer')
+        matches = matches.merge(wave_interviews, left_on = wave, right_on = wave + ':Interview Code', how = how)
 
     matches = matches.drop(wave_list, axis=1)
 
@@ -332,7 +332,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     return interviews
 
 #Merge all different types of data
-def prepare_data(interviews):
+def prepare_data(interviews, how):
     interviews['Race'] = interviews['Race'].map(RACE_RANGE)
     interviews['Age'] = interviews['Age'].astype('Int64')
     interviews = interviews.rename(columns={'Morality_Origin': 'Morality Response (raw)'})
@@ -343,7 +343,7 @@ def prepare_data(interviews):
     interviews['Sentiment'] = minmax_scale(interviews['Morality_Origin_Sentiment'].astype(float))
 
     interviews = merge_codings(interviews)
-    interviews = merge_matches(interviews)
+    interviews = merge_matches(interviews, how)
     interviews = merge_surveys(interviews)
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
 
@@ -378,4 +378,4 @@ if __name__ == '__main__':
         elif c == 3:
             interviews = merge_surveys(interviews)
         elif c == 4:
-            interviews = prepare_data(interviews)
+            interviews = prepare_data(interviews, how='outer')

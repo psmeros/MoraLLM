@@ -398,22 +398,21 @@ def predict_behaviors(interviews, behaviors):
         #Prepare Data
         data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
         data.columns = MORALITY_ORIGIN + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
-        data = data.ffill()
         data[behavior['References']['Attribute Names']] = (data[behavior['References']['Attribute Names']] == behavior['References']['Attribute Values'])
-        data = data.astype(float)
+        data = data.apply(pd.to_numeric, errors='coerce').dropna()
         data[behavior['Controls'] + behavior['Actions']] = scale(data[behavior['Controls'] + behavior['Actions']])
 
         #Display Results
         formulas = [a + '_pred' + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
-        results = []
+        results = {}
         for formula, a in zip(formulas, behavior['Actions']):
             probit = smf.probit(formula=formula, data=data).fit(disp=False, cov_type='HC3')
             result = {param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
             result['Previous Behavior'] = result['Q("' + a + '")']
             result.pop('Q("' + a + '")')
-            results.append(result)
+            results[a + ' (N = ' + str(probit.nobs) + ')'] = result
             
-        results = pd.DataFrame(results, index=behavior['Actions']).T
+        results = pd.DataFrame(results)
         results.index = MORALITY_ORIGIN + behavior['Controls'] + ['Previous Behavior']
         display(results)
 
@@ -421,7 +420,7 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [9]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
-    interviews = prepare_data(interviews)
+    interviews = prepare_data(interviews, how='outer')
 
     for c in config:
         if c == 1:

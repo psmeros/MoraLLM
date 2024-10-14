@@ -10,9 +10,28 @@ from scipy.stats import fisher_exact, pearsonr
 from sklearn.preprocessing import minmax_scale, normalize, scale
 
 from __init__ import *
-from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, MORAL_SCHEMAS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
 from src.parser import prepare_data
 
+#Compute overall morality distribution
+def compute_distribution(interviews):
+    #Prepare Data
+    data = interviews.copy()
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
+    data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    data['Value'] = data['Value'] * 100
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='boxen', width=.7, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Overall Distribution', y= 1.05, x=.5)
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/fig-morality_distro.png', bbox_inches='tight')
+    plt.show()
 
 #Plot morality shifts
 def plot_morality_shifts(interviews, attributes, shift_threshold):
@@ -55,6 +74,27 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
 
         return shifts, N
 
+    #Prepare data
+    data = interviews.copy()
+    data = pd.DataFrame(data[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values - data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    data['Value'] = data['Value'] * 100
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Crosswave Morality Development', x=.5)
+    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
+    g.set(xlim=(-10, 10))
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
+    plt.show()
+
+    #Prepare data
     data = interviews.copy()
     data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].map(lambda x: ADOLESCENCE_RANGE.get(x, None))
     data[CODED_WAVES[0] + ':Household Income'] = data[CODED_WAVES[0] + ':Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
@@ -62,7 +102,6 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     data[CODED_WAVES[0] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education'].map(lambda x: EDUCATION_RANGE.get(x, None))
     data = data.dropna(subset=[wave + ':Interview Code' for wave in CODED_WAVES])
 
-    #Prepare data
     shifts, _ = compute_morality_shifts(data)
 
     #Plot
@@ -115,12 +154,14 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     plt.savefig('data/plots/fig-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
+#Compute crosswave consistency
 def compute_consistency(interviews, plot_type, consistency_threshold):
     data = interviews.copy()
+    data = data.dropna(subset=[wave + ':Interview Code' for wave in CODED_WAVES])
     
     #Prepare Data
     data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = minmax_scale(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]])
-    consistency = interviews.apply(lambda i: pd.Series(abs(i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] - (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) < consistency_threshold) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
+    consistency = data.apply(lambda i: pd.Series(abs(i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] - (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) < consistency_threshold) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
     consistency = (consistency.mean()) * 100
     consistency = consistency.reset_index()
     consistency.columns = ['morality', 'r']
@@ -167,153 +208,6 @@ def compute_consistency(interviews, plot_type, consistency_threshold):
         plt.savefig('data/plots/fig-morality_consistency.png', bbox_inches='tight')
         plt.show()
 
-#Compute overall morality distribution
-def compute_distribution(interviews):
-    #Prepare Data
-    data = interviews.copy()
-    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
-    data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-    data['Value'] = data['Value'] * 100
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='boxen', width=.7, legend=False, seed=42, aspect=2, palette='Set2')
-    g.figure.suptitle('Overall Distribution', y= 1.05, x=.5)
-    # g.set(xlim=(0, 60))
-    g.set_ylabels('')
-    g.set_xlabels('')
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.savefig('data/plots/fig-morality_distro.png', bbox_inches='tight')
-    plt.show()
-
-    data = interviews.copy()
-    data = pd.DataFrame(data[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values - data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-    data['Value'] = data['Value'] * 100
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
-    g.figure.suptitle('Crosswave Morality Development', x=.5)
-    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
-    g.set(xlim=(-10, 10))
-    g.set_ylabels('')
-    g.set_xlabels('')
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
-    plt.show()
-
-def compute_decisiveness(interviews):
-    decisive_threshold = {mo + ':' + wave : np.mean(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) for mo in MORALITY_ORIGIN for wave in CODED_WAVES}
-
-    #Prepare Data
-    decisiveness_options = ['Rigidly Decisive', 'Ambivalent', 'Rigidly Indecisive']
-    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] >= decisive_threshold[mo + ':' + CODED_WAVES[0]]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] >= decisive_threshold[mo + ':' + CODED_WAVES[1]])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
-    decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[1] if d[0] and not d[1] else decisiveness_options[2] if not d[0] and not d[1] else '')
-    
-    decisiveness = decisiveness.apply(lambda x: x.value_counts(normalize=True) * 100).T
-    decisiveness = decisiveness.stack().reset_index().rename(columns={'level_0':'Morality', 'level_1':'Decisiveness', 0:'Value'})
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
-    plt.figure(figsize=(10, 10))
-
-    sns.barplot(data=decisiveness, y='Morality', x='Value', hue='Decisiveness', order=MORALITY_ORIGIN, hue_order=decisiveness_options, palette=sns.color_palette('coolwarm', n_colors=len(decisiveness_options)))
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y :.0f}%'))
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    plt.xlabel('')
-    plt.ylabel('')
-    plt.title('Crosswave Morality Rigidity')
-    plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
-    plt.savefig('data/plots/fig-decisiveness.png', bbox_inches='tight')
-    plt.show()
-
-def compute_morality_correlations(interviews, model):
-    #Prepare Data
-    data = interviews.copy()
-    data[CODED_WAVES[1] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education']
-    data[CODED_WAVES[1] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance']
-    attribute_list = ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Age', 'Church Attendance']
-    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [wave + ':' + attribute for attribute in attribute_list]].values, columns=MORALITY_ORIGIN + attribute_list) for wave in CODED_WAVES]).reset_index(drop=True)
-
-    for attribute in attribute_list[4:]:
-        data[attribute] = pd.factorize(data[attribute].bfill())[0] + 1
-    
-    data['Household_Income'] = data['Household Income']
-    data['Parent_Education'] = data['Parent Education']
-    data['Church_Attendance'] = data['Church Attendance']
-    data = pd.DataFrame(scale(data), columns=data.columns)
-
-    data = data.melt(id_vars=['Verbosity', 'Uncertainty', 'Readability', 'Sentiment', 'Gender', 'Race', 'Household_Income', 'Parent_Education', 'Age', 'Church_Attendance'], value_vars=MORALITY_ORIGIN, var_name='Morality Category', value_name='morality').dropna()
-    data['morality'] = data['morality'].astype(float)
-    formulas = ['morality ~ Verbosity + Uncertainty + Readability + Sentiment - 1',
-                'morality ~ Gender + Race + Household_Income + Parent_Education + Age + Church_Attendance - 1']
-
-    #Display Results
-    for formula in formulas:
-        results = []
-        for mo in MORALITY_ORIGIN:
-            slice = data[data['Morality Category'] == mo]
-            if model == 'ols':
-                lm = smf.ols(formula=formula, data=slice).fit(cov_type='HC3')
-            elif model == 'rlm':
-                lm = smf.rlm(formula=formula, data=slice, M=sm.robust.norms.AndrewWave()).fit()
-            results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)})
-        results = pd.DataFrame(results, index=MORALITY_ORIGIN).T
-        display(results)
-
-def compute_std_diff(interviews, attributes):
-    #Prepare Data
-    data = interviews.copy()
-    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].map(lambda x: ADOLESCENCE_RANGE.get(x, None))
-    data[CODED_WAVES[0] + ':Household Income'] = data[CODED_WAVES[0] + ':Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
-    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].map(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, None))
-    data[CODED_WAVES[0] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education'].map(lambda x: EDUCATION_RANGE.get(x, None))
-    data = data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
-
-    #Melt Data
-    data = data.melt(id_vars=[CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes], value_vars=[wave + ':' + mo  + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
-    data['Wave'] = data['Morality'].apply(lambda x: x.split(':')[0])
-    data['Morality'] = data['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
-    data = data.rename(columns = {CODED_WAVES[0] + ':' + attribute['name'] : attribute['name'] for attribute in attributes})
-
-    #Compute Standard Deviation
-    stds = []
-    for attribute in attributes:
-        for j, attribute_value in enumerate(attribute['values']):
-            slice = data[data[attribute['name']] == attribute_value]
-            N = int(len(slice)/len(MORALITY_ORIGIN)/len(CODED_WAVES))
-            slice = slice.groupby(['Wave', 'Morality'])['Value'].std().reset_index()
-            slice = slice[slice['Wave'] == CODED_WAVES[0]][['Morality', 'Value']].merge(slice[slice['Wave'] == CODED_WAVES[1]][['Morality', 'Value']], on='Morality', suffixes=('_0', '_1'))
-            std = round(((slice['Value_1'] - slice['Value_0'])/slice['Value_0']).mean() * 100, 1)
-            std = {'Attribute Name' : attribute['name'], 'Attribute Position' : j, 'Attribute Value' : attribute_value + ' (N = ' + str(N) + ')', 'STD' : std}
-            stds.append(std)
-    stds = pd.DataFrame(stds)
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5.5)
-    plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=2, orient='h', kind='bar', seed=42, aspect=4, legend=False, palette=sns.color_palette('Set2')[-2:])
-    g.set(xlim=(-30, 0))
-    g.figure.subplots_adjust(wspace=0.55)
-    g.figure.suptitle('Standard Deviation Crosswave Shift', y=1.03)
-    g.set_titles('{col_name}')
-    g.set_xlabels('')
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    for j, ax in enumerate(g.axes):
-        ax.set_ylabel('')
-        labels = stds.iloc[2*j:2*j+2]['Attribute Value'].to_list()
-        ax.set(yticks=range(len(labels)), yticklabels=labels)
-    plt.savefig('data/plots/fig-std_diff.png', bbox_inches='tight')
-    plt.show()
-
 #Plot Intuitive-Consequentialist and Social-Theistic Morality Distinction
 def plot_morality_distinction(interviews):
 
@@ -343,114 +237,125 @@ def plot_morality_distinction(interviews):
     plt.savefig('data/plots/fig-morality_distinction.png', bbox_inches='tight')
     plt.show()
 
-#Compute Correlations
-def compute_correlations(interviews, correlation_type):
-    moral_schemas = pd.concat([pd.get_dummies(interviews[CODED_WAVES[0] + ':' + 'Moral Schemas'])] * 2, ignore_index=True).astype('Int64')
-    Age = pd.concat([interviews[wave + ':Age'].bfill() for wave in CODED_WAVES], ignore_index=True)
-    GPA = pd.concat([interviews[CODED_WAVES[0] + ':GPA'].astype('Int64').bfill()] * 2, ignore_index=True)
-    Gender = pd.Series(pd.factorize(pd.concat([interviews[wave + ':Gender'] for wave in CODED_WAVES], ignore_index=True))[0])
-    Race = pd.Series(pd.factorize(pd.concat([interviews[wave + ':Race'] for wave in CODED_WAVES], ignore_index=True))[0])
-    Church_Attendance = pd.concat([interviews[CODED_WAVES[0] + ':Church Attendance'].astype('Int64').bfill()] * 2, ignore_index=True)
-    Parent_Education = pd.concat([interviews[CODED_WAVES[0] + ':Parent Education'].astype('Int64').bfill()] * 2, ignore_index=True)
-    
+#Compute Morality and Behavioral Correlations
+def compute_morality_correlations(interviews, correlation_type, to_latex):
     compute_pearsonr = lambda x, y: pearsonr(x, y)
     compute_fisher = lambda x, y: (lambda x, y: fisher_exact([[np.sum(x & y), np.sum(~x & y)], [np.sum(x & ~y), np.sum(~x & ~y)]]))(x.round().astype(bool), y.round().astype(bool))
     compute_rlm = lambda x, y: (lambda lm: (lm.params['x'],lm.pvalues['x']))(smf.rlm(formula='y ~ x', data=pd.concat([x, y], axis=1).rename(columns={0:'x', 1:'y'}), M=sm.robust.norms.AndrewWave()).fit())
-    
     compute_correlation = lambda x, y: format_pvalue(compute_pearsonr(x, y)) if correlation_type == 'pearsonr' else format_pvalue(compute_rlm(x, y)) if correlation_type == 'rlm' else format_pvalue(compute_fisher(x, y)) if correlation_type == 'fisher' else None
 
-    correlations = []
+    #Prepare Data
+    data = interviews.copy()
+    data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS]].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}) for wave in CODED_WAVES])
+    data = data.dropna()
+    data = data.apply(pd.to_numeric)
+    
+    #Compute Morality Correlations
+    correlations = pd.DataFrame(index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
+    for i, mo1 in enumerate(MORALITY_ORIGIN):
+        for j, mo2 in enumerate(MORALITY_ORIGIN):
+            if i != j:
+                correlations.loc[mo1, mo2] = compute_correlation(data[mo1 + '_' + MORALITY_ESTIMATORS[i<j]], data[mo2 + '_' + MORALITY_ESTIMATORS[i<j]])
+
+    correlations = correlations.astype(str).replace('nan', '')
+    print(correlations.to_latex()) if to_latex else display(correlations)
+    print('N =', len(data))
+
+    #Prepare Data
+    data = interviews.copy()
+    data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS] + [wave + ':Moral Schemas']].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}).rename(columns = {wave + ':Moral Schemas' : 'Moral Schemas'}) for wave in CODED_WAVES])
+    data = data.dropna()
+    data = pd.concat([data, pd.get_dummies(data['Moral Schemas']).astype(float)], axis=1).drop('Moral Schemas', axis=1)
+    data = data.apply(pd.to_numeric)
+
+    #Compute Behavioral Correlations
+    correlations = pd.DataFrame(index=MORAL_SCHEMAS.values(), columns=pd.MultiIndex.from_tuples([(estimator, mo) for estimator in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]))
     for estimator in MORALITY_ESTIMATORS:
-        Intuitive = pd.concat([interviews[wave + ':Intuitive_' + estimator] for wave in CODED_WAVES], ignore_index=True)
-        Consequentialist = pd.concat([interviews[wave + ':Consequentialist_' + estimator] for wave in CODED_WAVES], ignore_index=True)
-        Social = pd.concat([interviews[wave + ':Social_' + estimator] for wave in CODED_WAVES], ignore_index=True)
-        Theistic = pd.concat([interviews[wave + ':Theistic_' + estimator] for wave in CODED_WAVES], ignore_index=True)
+        for i, ms in enumerate(MORAL_SCHEMAS.values()):
+            for j, mo in enumerate(MORALITY_ORIGIN):
+                correlations.loc[ms, (estimator, mo)] = compute_correlation(data[mo + '_' + estimator], data[ms])
 
-        correlation = {}
-        correlation['Intuitive - Consequentialist'] = compute_correlation(Intuitive, Consequentialist)
-        correlation['Intuitive - Social'] = compute_correlation(Intuitive, Social)
-        correlation['Intuitive - Theistic'] = compute_correlation(Intuitive, Theistic)
-        correlation['Consequentialist - Social'] = compute_correlation(Consequentialist, Social)
-        correlation['Consequentialist - Theistic'] = compute_correlation(Consequentialist, Theistic)
-        correlation['Social - Theistic'] = compute_correlation(Social, Theistic)
+    correlations = correlations.astype(str).replace('nan', '')
+    print(correlations.to_latex()) if to_latex else display(correlations)
+    print('N =', len(data))
+
+#Predict Morality Origin based on Linguistic Attributes
+def compute_linguistic_regressions(interviews, linguistic_attributes, to_latex):
+    #Prepare Data
+    data = interviews.copy()
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [wave + ':' + la for la in linguistic_attributes]].values) for wave in CODED_WAVES])
+    data.columns = MORALITY_ORIGIN + linguistic_attributes
+    data = data.dropna().apply(pd.to_numeric)
+    data = pd.DataFrame(scale(data), columns=data.columns)
+
+    formulas = [mo + ' ~ ' + ' + '.join(linguistic_attributes) + ' - 1' for mo in MORALITY_ORIGIN]
+
+    #Display Results
+    results = {}
+    for formula, mo in zip(formulas, MORALITY_ORIGIN):
+        lm = smf.rlm(formula=formula, data=data, M=sm.robust.norms.AndrewWave()).fit()
+        result = {param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)}
+        results[mo] = result
         
-        correlation['Intuitive - Expressive Individualist'] = compute_correlation(Intuitive, moral_schemas['Expressive Individualist'])
-        correlation['Intuitive - Utilitarian Individualist'] = compute_correlation(Intuitive, moral_schemas['Utilitarian Individualist'])
-        correlation['Intuitive - Relational'] = compute_correlation(Intuitive, moral_schemas['Relational'])
-        correlation['Intuitive - Theistic'] = compute_correlation(Intuitive, moral_schemas['Theistic'])
+    results = pd.DataFrame(results)
+    print(results.to_latex()) if to_latex else display(results)
+    print('N =', len(data))
 
-        correlation['Intuitive - Age'] = compute_correlation(Intuitive, Age)
-        correlation['Intuitive - GPA'] = compute_correlation(Intuitive, GPA)
-        correlation['Intuitive - Gender'] = compute_correlation(Intuitive, Gender)
-        correlation['Intuitive - Race'] = compute_correlation(Intuitive, Race)
-        correlation['Intuitive - Church Attendance'] = compute_correlation(Intuitive, Church_Attendance)
-        correlation['Intuitive - Parent Education'] = compute_correlation(Intuitive, Parent_Education)
+#Predict Behavioral Actions based on Morality Origin
+def compute_behavioral_regressions(interviews, behavior, to_latex):
+    #Prepare Data
+    data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
+    data.columns = MORALITY_ORIGIN + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
+    data = data.dropna()
+    data[behavior['References']['Attribute Names']] = (data[behavior['References']['Attribute Names']] == behavior['References']['Attribute Values'])
+    data = data.apply(pd.to_numeric)
+    data[behavior['Controls'] + behavior['Actions']] = scale(data[behavior['Controls'] + behavior['Actions']])
+
+    #Display Results
+    formulas = [a + '_pred' + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
+    results = {}
+    for formula, a in zip(formulas, behavior['Actions']):
+        probit = smf.probit(formula=formula, data=data).fit(disp=False, cov_type='HC3')
+        result = {param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
+        result['Previous Behavior'] = result['Q("' + a + '")']
+        result.pop('Q("' + a + '")')
+        results[a + ' (N = ' + str(probit.nobs) + ')'] = result
         
-        correlation['Theistic - Church Attendance'] = compute_correlation(Theistic, Church_Attendance)
-        correlations.append(correlation)
-
-    correlations = pd.DataFrame(correlations, index=MORALITY_ESTIMATORS).T[MORALITY_ESTIMATORS[::-1]]
-    display(correlations)
-
-#Predict Survey Answers based on Interviews in Wave 1
-def predict_behaviors(interviews, behaviors):
-    for behavior in behaviors:
-        #Prepare Data
-        data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
-        data.columns = MORALITY_ORIGIN + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
-        data[behavior['References']['Attribute Names']] = (data[behavior['References']['Attribute Names']] == behavior['References']['Attribute Values'])
-        data = data.apply(pd.to_numeric, errors='coerce').dropna()
-        data[behavior['Controls'] + behavior['Actions']] = scale(data[behavior['Controls'] + behavior['Actions']])
-
-        #Display Results
-        formulas = [a + '_pred' + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
-        results = {}
-        for formula, a in zip(formulas, behavior['Actions']):
-            probit = smf.probit(formula=formula, data=data).fit(disp=False, cov_type='HC3')
-            result = {param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
-            result['Previous Behavior'] = result['Q("' + a + '")']
-            result.pop('Q("' + a + '")')
-            results[a + ' (N = ' + str(probit.nobs) + ')'] = result
-            
-        results = pd.DataFrame(results)
-        results.index = MORALITY_ORIGIN + behavior['Controls'] + ['Previous Behavior']
-        display(results)
+    results = pd.DataFrame(results)
+    results.index = MORALITY_ORIGIN + behavior['Controls'] + ['Previous Behavior']
+    print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [9]
+    config = [5,6,7]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
-    interviews = prepare_data(interviews, how='outer')
+    extend_dataset = True
+    to_latex = False
+    interviews = prepare_data(interviews, extend_dataset)
 
     for c in config:
         if c == 1:
             compute_distribution(interviews)
         elif c == 2:
-            consistency_threshold = .05
-            plot_type = 'spider'
-            compute_consistency(interviews, plot_type, consistency_threshold)
-        elif c == 3:
-            compute_decisiveness(interviews)
-        elif c == 4:
-            model = 'rlm'
-            compute_morality_correlations(interviews, model)
-        elif c == 5:
-            attributes = DEMOGRAPHICS
-            compute_std_diff(interviews, attributes)
-        elif c == 6:
             shift_threshold = 0
             attributes = DEMOGRAPHICS
             plot_morality_shifts(interviews, attributes, shift_threshold)
-        elif c == 7:
+        elif c == 3:
+            consistency_threshold = .1
+            plot_type = 'spider'
+            compute_consistency(interviews, plot_type, consistency_threshold)
+        elif c == 4:
             plot_morality_distinction(interviews)
-        elif c == 8:
-            compute_correlations(interviews, correlation_type='pearsonr')
-        elif c == 9:
-            behaviors = [
-                         {'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 2', 'Wave 4'], 
-                          'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Church Attendance'],
-                          'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}},
-                        ]
-            predict_behaviors(interviews, behaviors)
+        elif c == 5:
+            correlation_type = 'pearsonr'
+            compute_morality_correlations(interviews, correlation_type, to_latex)
+        elif c == 6:
+            linguistic_attributes = ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']
+            compute_linguistic_regressions(interviews, linguistic_attributes, to_latex)
+        elif c == 7:
+            behavior = {'From_Wave': ['Wave 1', 'Wave 3'], 
+                        'To_Wave': ['Wave 2', 'Wave 4'], 
+                        'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
+                        'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Church Attendance'],
+                        'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}}
+            compute_behavioral_regressions(interviews, behavior, to_latex)

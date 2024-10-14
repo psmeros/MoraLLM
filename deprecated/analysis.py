@@ -1,4 +1,3 @@
-from itertools import combinations
 
 import matplotlib.ticker as mtick
 import numpy as np
@@ -10,16 +9,13 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from pandarallel import pandarallel
 from scipy.spatial import ConvexHull, distance
-from scipy.stats import pearsonr, zscore
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.linear_model import LogisticRegressionCV
 from sklearn.manifold import TSNE
-from sklearn.metrics import f1_score, make_scorer
 from sklearn.preprocessing import minmax_scale
 from wordcloud import WordCloud
 
-from src.helpers import CODED_WAVES, CODERS, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, REFINED_SECTIONS
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, REFINED_SECTIONS
 from src.parser import merge_codings, merge_matches, merge_surveys, wave_parser
 
 #Plot wordcloud for each morality origin
@@ -417,6 +413,79 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
             print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
             print('\n----------\n')
 
+def compute_decisiveness(interviews):
+    decisive_threshold = {mo + ':' + wave : np.mean(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) for mo in MORALITY_ORIGIN for wave in CODED_WAVES}
+
+    #Prepare Data
+    decisiveness_options = ['Rigidly Decisive', 'Ambivalent', 'Rigidly Indecisive']
+    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] >= decisive_threshold[mo + ':' + CODED_WAVES[0]]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] >= decisive_threshold[mo + ':' + CODED_WAVES[1]])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
+    decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[1] if d[0] and not d[1] else decisiveness_options[2] if not d[0] and not d[1] else '')
+    
+    decisiveness = decisiveness.apply(lambda x: x.value_counts(normalize=True) * 100).T
+    decisiveness = decisiveness.stack().reset_index().rename(columns={'level_0':'Morality', 'level_1':'Decisiveness', 0:'Value'})
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
+    plt.figure(figsize=(10, 10))
+
+    sns.barplot(data=decisiveness, y='Morality', x='Value', hue='Decisiveness', order=MORALITY_ORIGIN, hue_order=decisiveness_options, palette=sns.color_palette('coolwarm', n_colors=len(decisiveness_options)))
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y :.0f}%'))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Crosswave Morality Rigidity')
+    plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
+    plt.savefig('data/plots/fig-decisiveness.png', bbox_inches='tight')
+    plt.show()
+
+def compute_std_diff(interviews, attributes):
+    #Prepare Data
+    data = interviews.copy()
+    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].map(lambda x: ADOLESCENCE_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Household Income'] = data[CODED_WAVES[0] + ':Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].map(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, None))
+    data[CODED_WAVES[0] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education'].map(lambda x: EDUCATION_RANGE.get(x, None))
+    data = data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES] + [CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes]]
+
+    #Melt Data
+    data = data.melt(id_vars=[CODED_WAVES[0] + ':' + attribute['name'] for attribute in attributes], value_vars=[wave + ':' + mo  + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES], var_name='Morality', value_name='Value')
+    data['Wave'] = data['Morality'].apply(lambda x: x.split(':')[0])
+    data['Morality'] = data['Morality'].apply(lambda x: x.split(':')[1].split('_')[0])
+    data = data.rename(columns = {CODED_WAVES[0] + ':' + attribute['name'] : attribute['name'] for attribute in attributes})
+
+    #Compute Standard Deviation
+    stds = []
+    for attribute in attributes:
+        for j, attribute_value in enumerate(attribute['values']):
+            slice = data[data[attribute['name']] == attribute_value]
+            N = int(len(slice)/len(MORALITY_ORIGIN)/len(CODED_WAVES))
+            slice = slice.groupby(['Wave', 'Morality'])['Value'].std().reset_index()
+            slice = slice[slice['Wave'] == CODED_WAVES[0]][['Morality', 'Value']].merge(slice[slice['Wave'] == CODED_WAVES[1]][['Morality', 'Value']], on='Morality', suffixes=('_0', '_1'))
+            std = round(((slice['Value_1'] - slice['Value_0'])/slice['Value_0']).mean() * 100, 1)
+            std = {'Attribute Name' : attribute['name'], 'Attribute Position' : j, 'Attribute Value' : attribute_value + ' (N = ' + str(N) + ')', 'STD' : std}
+            stds.append(std)
+    stds = pd.DataFrame(stds)
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=5.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=stds, x='STD', y='Attribute Position', hue='Attribute Position', col='Attribute Name', sharey=False, col_wrap=2, orient='h', kind='bar', seed=42, aspect=4, legend=False, palette=sns.color_palette('Set2')[-2:])
+    g.set(xlim=(-30, 0))
+    g.figure.subplots_adjust(wspace=0.55)
+    g.figure.suptitle('Standard Deviation Crosswave Shift', y=1.03)
+    g.set_titles('{col_name}')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    for j, ax in enumerate(g.axes):
+        ax.set_ylabel('')
+        labels = stds.iloc[2*j:2*j+2]['Attribute Value'].to_list()
+        ax.set(yticks=range(len(labels)), yticklabels=labels)
+    plt.savefig('data/plots/fig-std_diff.png', bbox_inches='tight')
+    plt.show()
+
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -469,3 +538,8 @@ if __name__ == '__main__':
             incoherent_cases = [2]
             max_diff_cases = [1]
             print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases)
+        elif c == 12:
+            compute_decisiveness(interviews)
+        elif c == 13:
+            attributes = DEMOGRAPHICS
+            compute_std_diff(interviews, attributes)

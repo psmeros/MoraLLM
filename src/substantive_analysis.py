@@ -60,6 +60,7 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     data[CODED_WAVES[0] + ':Household Income'] = data[CODED_WAVES[0] + ':Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].map(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, None))
     data[CODED_WAVES[0] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education'].map(lambda x: EDUCATION_RANGE.get(x, None))
+    data = data.dropna(subset=[wave + ':Interview Code' for wave in CODED_WAVES])
 
     #Prepare data
     shifts, _ = compute_morality_shifts(data)
@@ -395,22 +396,25 @@ def compute_correlations(interviews, correlation_type):
 def predict_behaviors(interviews, behaviors):
     for behavior in behaviors:
         #Prepare Data
-        data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
-        data.columns = MORALITY_ORIGIN + behavior['Controls'] + [a + '_pred' for a in behavior['Actions']]
-        data = data.dropna()
+        data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
+        data.columns = MORALITY_ORIGIN + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
+        data = data.ffill()
         data[behavior['References']['Attribute Names']] = (data[behavior['References']['Attribute Names']] == behavior['References']['Attribute Values'])
         data = data.astype(float)
-        data[behavior['Controls']] = scale(data[behavior['Controls']])
- 
+        data[behavior['Controls'] + behavior['Actions']] = scale(data[behavior['Controls'] + behavior['Actions']])
+
         #Display Results
-        formulas = [a + '_pred' + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls']]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
+        formulas = [a + '_pred' + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
         results = []
-        for formula in formulas:
+        for formula, a in zip(formulas, behavior['Actions']):
             probit = smf.probit(formula=formula, data=data).fit(disp=False, cov_type='HC3')
-            results.append({param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)})
+            result = {param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
+            result['Previous Behavior'] = result['Q("' + a + '")']
+            result.pop('Q("' + a + '")')
+            results.append(result)
             
         results = pd.DataFrame(results, index=behavior['Actions']).T
-        results.index = MORALITY_ORIGIN + behavior['Controls']
+        results.index = MORALITY_ORIGIN + behavior['Controls'] + ['Previous Behavior']
         display(results)
 
 if __name__ == '__main__':
@@ -447,7 +451,7 @@ if __name__ == '__main__':
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'], 
                           'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
-                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Church Attendance'] + ['Pot', 'Drink', 'Volunteer', 'Help'] + ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
+                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Church Attendance'],
                           'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}},
                         ]
             predict_behaviors(interviews, behaviors)

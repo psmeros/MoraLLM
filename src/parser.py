@@ -221,7 +221,7 @@ def merge_matches(interviews, wave_list = CODED_WAVES, matches_file = 'data/inte
     for wave in wave_list:
         wave_interviews = interviews[interviews['Wave'] == int(wave.split()[-1])]
         wave_interviews = wave_interviews.add_prefix(wave + ':')
-        matches = matches.merge(wave_interviews, left_on = wave, right_on = wave + ':Interview Code', how = 'inner')
+        matches = matches.merge(wave_interviews, left_on = wave, right_on = wave + ':Interview Code', how = 'outer')
 
     matches = matches.drop(wave_list, axis=1)
 

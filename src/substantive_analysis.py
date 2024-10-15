@@ -119,6 +119,7 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     plt.show()
 
     #Prepare data
+    data[[wave + ':Race' for wave in CODED_WAVES]] = data[[wave + ':Race' for wave in CODED_WAVES]].map(lambda r: {'White': 'White', 'Black': 'Other', 'Other': 'Other'}.get(r, None))
     shifts = []
     legends = {}
     symbols = ['■ ', '▼ ']
@@ -304,12 +305,18 @@ def compute_linguistic_regressions(interviews, linguistic_attributes, to_latex):
 #Predict Behavioral Actions based on Morality Origin
 def compute_behavioral_regressions(interviews, behavior, to_latex):
     #Prepare Data
-    data = pd.concat([pd.DataFrame(interviews[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
+    data = interviews.copy()
+    data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
+    data = pd.concat([pd.DataFrame(data[[from_wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
     data.columns = MORALITY_ORIGIN + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
-    data = data.dropna()
-    data[behavior['References']['Attribute Names']] = (data[behavior['References']['Attribute Names']] == behavior['References']['Attribute Values'])
+    data = data.dropna(subset = MORALITY_ORIGIN + behavior['Controls'])
+    
+    for attribute_name, attribute_value in zip(behavior['References']['Attribute Names'], behavior['References']['Attribute Values']):
+        dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').drop(attribute_name + ' = ' + attribute_value, axis=1).astype(float)
+        data = pd.concat([data, dummies], axis=1)
+        data = data.drop(attribute_name, axis=1)
+        behavior['Controls'] = behavior['Controls'][:behavior['Controls'].index(attribute_name)] + list(dummies.columns) + behavior['Controls'][behavior['Controls'].index(attribute_name) + 1:]
     data = data.apply(pd.to_numeric)
-    data[behavior['Controls'] + behavior['Actions']] = scale(data[behavior['Controls'] + behavior['Actions']])
 
     #Display Results
     formulas = [a + '_pred' + ' ~ ' + ' + '.join(MORALITY_ORIGIN) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
@@ -327,7 +334,7 @@ def compute_behavioral_regressions(interviews, behavior, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5,6,7]
+    config = [7]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     extend_dataset = True
     to_latex = False
@@ -354,8 +361,8 @@ if __name__ == '__main__':
             compute_linguistic_regressions(interviews, linguistic_attributes, to_latex)
         elif c == 7:
             behavior = {'From_Wave': ['Wave 1', 'Wave 3'], 
-                        'To_Wave': ['Wave 2', 'Wave 4'], 
-                        'Actions': ['Pot', 'Drink', 'Volunteer', 'Help'],
+                        'To_Wave': ['Wave 2', 'Wave 4'],
+                        'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                         'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Church Attendance'],
                         'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}}
             compute_behavioral_regressions(interviews, behavior, to_latex)

@@ -236,7 +236,7 @@ CHURCH_ATTENDANCE_RANGE = {**dict.fromkeys(range(0, 5), 'Irregular'), **dict.fro
 ADOLESCENCE_RANGE = {**dict.fromkeys(range(13, 16), 'Early'), **dict.fromkeys(range(16, 20), 'Late')}
 
 #Race: White vs Other
-RACE_RANGE = {**dict.fromkeys(['White'], 'White'), **dict.fromkeys(['Asian', 'Black', 'Hispanic', 'Native American' 'Other'], 'Other')}
+RACE_RANGE = {**dict.fromkeys(['White'], 'White'), **dict.fromkeys(['Black'], 'Black'), **dict.fromkeys(['Asian', 'Hispanic', 'Native American' 'Other'], 'Other')}
 
 #Moral Schemas map
 MORAL_SCHEMAS = {1:'Expressive Individualist',

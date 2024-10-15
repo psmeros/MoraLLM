@@ -325,13 +325,14 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
         results = {}
         for formula, a in zip(formulas, behavior['Actions']):
             probit = smf.probit(formula=formula, data=data).fit(disp=False, method='bfgs', maxiter=1000, cov_type='HC3')
-            result = {param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
+            result = {param:(coef,pvalue) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
             result['Previous Behavior'] = result['Q("' + a + '")']
             result.pop('Q("' + a + '")')
             results[a + ' (N = ' + str(probit.nobs) + ')'] = result
             
         results = pd.DataFrame(results)
         results.index = [pr.split('_')[0] for pr in behavior['Predictors']] + behavior['Controls'] + ['Previous Behavior']
+        results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)        
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':

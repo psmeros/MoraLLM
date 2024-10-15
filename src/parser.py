@@ -7,7 +7,7 @@ from sklearn.preprocessing import minmax_scale
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -298,6 +298,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
                 survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
                 survey['Religion'] = survey['Religion'].map(lambda x: RELIGION['Wave 1'].get(x, None))
+                survey['Region'] = survey['Region'].map(lambda x: REGION.get(x, None))
             elif wave == 2:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 7 - x if x in range(1, 8) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 7 - x if x in range(1, 8) else None)
@@ -315,6 +316,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
                 survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
                 survey['Religion'] = survey['Religion'].map(lambda x: RELIGION['Wave 3'].get(x, None))
+                survey['Region'] = survey['Region'].map(lambda x: REGION.get(x, None))
             elif wave == 4:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 1 - x if x in range(0, 2) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 0 if x in range(7, 9) else 7 - x if x in range (1, 7) else None)
@@ -352,7 +354,7 @@ def prepare_data(interviews, extend_dataset):
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
     columns += [wave + ':' + mo + '_' + estimatior for wave in CODED_WAVES for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
 
-    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion']]
+    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
     columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
 

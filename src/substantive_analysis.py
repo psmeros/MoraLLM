@@ -334,7 +334,7 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
             
         results = pd.DataFrame(results)
         results.index = [pr.split('_')[0] for pr in behavior['Predictors']] + behavior['Controls'] + ['Previous Behavior']
-        results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)        
+        results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':
@@ -369,12 +369,12 @@ if __name__ == '__main__':
                           'To_Wave': ['Wave 2', 'Wave 4'],
                           'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'],
-                          'References': {'Attribute Names': ['Race', 'Gender', 'Religion'], 'Attribute Values': ['White', 'Male', 'Not Religious']}},
+                          'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
+                          'References': {'Attribute Names': ['Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['White', 'Male', 'Not Religious', 'Not South']}},
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'],
                           'Predictors': ['Moral Schemas'],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'],
-                          'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious']}}]
+                          'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
+                          'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious', 'Not South']}}]
             compute_behavioral_regressions(interviews, behaviors, to_latex)

@@ -201,7 +201,8 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'HOWDECID':'Moral Schemas',
                                'GRADES':'GPA',
                                'ATTEND':'Church Attendance',
-                               'RELTRAD':'Religion'},
+                               'RELTRAD':'Religion',
+                               'BNREGSO':'Region'},
                      'Wave 2':{'IDS':'Survey Id',
                                'POT':'Pot',
                                'DRINK':'Drink',
@@ -218,7 +219,8 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'HELPED':'Help',
                                'HOWDECID':'Moral Schemas',
                                'ATTEND':'Church Attendance',
-                               'TRADREL':'Religion'},
+                               'RELIGION':'Religion',
+                               'BNREGSO':'Region'},
                      'Wave 4':{'IDS':'Survey Id',
                                'POTNEVER_W4':'Pot',
                                'DRINK_W4':'Drink',
@@ -250,19 +252,22 @@ MORAL_SCHEMAS = {1:'Expressive Individualist',
 RELIGION = {'Wave 1':{1:'Evangelical Protestant',
                       2:'Mainline Protestant',
                       3:'Black Protestant',
-                      4:'Catholic',
-                      5:'Jewish',
-                      6:'Mormon',
+                      4:'Other',
+                      5:'Other',
+                      6:'Other',
                       7:'Not Religious',
-                      **dict.fromkeys(range(8, 10), 'Indeterminate')},
+                      **dict.fromkeys(range(8, 10), 'Other')},
             'Wave 3':{1:'Evangelical Protestant',
                       2:'Mainline Protestant',
                       **dict.fromkeys(range(3, 5), 'Black Protestant'),
-                      5:'Catholic',
-                      6:'Jewish',
-                      7:'Mormon',
+                      5:'Other',
+                      6:'Other',
+                      7:'Other',
                       8:'Not Religious',
-                      **dict.fromkeys(range(9, 13), 'Indeterminate')}}
+                      **dict.fromkeys(range(9, 13), 'Other')}}
+
+#Region map
+REGION = {0:'Not South', 1:'South'}
 
 DEMOGRAPHICS = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                 {'name' : 'Race', 'values' : ['White', 'Other']},
@@ -279,4 +284,4 @@ MORALITY_ORIGIN = ['Intuitive', 'Consequentialist', 'Social', 'Theistic'] if MER
 
 UNCERTAINT_TERMS = ['hypothetically speaking', 'possibly', 'potentially', 'must', 'equivocal', 'it looks like', 'is likely to', 'unclear', 'could be', 'it is conceivable', 'reportedly', 'could', 'allegedly', 'seemingly', 'tends to', 'conceivably', 'apparently', 'likely', 'probably', 'there is a chance', 'will', 'unsure', 'there is a possibility', 'supposedly', 'feasibly', 'suggests that', 'it is feasible', 'is unlikely to', 'may', 'arguably', 'might', 'is probable', 'perhaps', 'might be', 'vague', 'it is possible', 'maybe', 'presumably', 'uncertain', 'ambiguous', 'it appears', 'hypothetically', 'would', 'is improbable', 'doubtful', 'imaginably', 'it seems', 'can', 'ostensibly', 'should']
 
-format_pvalue = lambda x: ('{:.2f}'.format(x[0]).replace('0.', '.') if abs(x[0]) < 1 else '{:.2f}'.format(x[0])) + ('***' if float(x[1])<.001 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')
+format_pvalue = lambda x: ('{:.2f}'.format(x[0]).replace('0.', '.') if abs(x[0]) < 1 else '{:.2f}'.format(x[0])) + ('' if x[1] == None else '***' if float(x[1])<.001 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '')

@@ -10,7 +10,7 @@ from scipy.stats import fisher_exact, pearsonr
 from sklearn.preprocessing import minmax_scale, normalize, scale
 
 from __init__ import *
-from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, MORAL_SCHEMAS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, MORAL_SCHEMAS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, RELIGION, format_pvalue
 from src.parser import prepare_data
 
 #Compute overall morality distribution
@@ -307,7 +307,6 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
     for behavior in behaviors:
         #Prepare Data
         data = interviews.copy()
-        data = pd.concat([data, pd.get_dummies(data[[wave + ':Moral Schemas' for wave in CODED_WAVES]]).rename(columns = {wave + ':Moral Schemas_' + ms : wave + ':' + ms + '_Moral Schemas' for wave in CODED_WAVES for ms in MORAL_SCHEMAS.values()}).astype(float)], axis=1).drop([wave + ':Moral Schemas' for wave in CODED_WAVES], axis=1)
         data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
         data = pd.concat([pd.DataFrame(data[[from_wave + ':' + pr for pr in behavior['Predictors']] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
         data.columns = behavior['Predictors'] + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
@@ -317,7 +316,10 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
             dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').drop(attribute_name + ' = ' + attribute_value, axis=1).astype(float)
             data = pd.concat([data, dummies], axis=1)
             data = data.drop(attribute_name, axis=1)
-            behavior['Controls'] = behavior['Controls'][:behavior['Controls'].index(attribute_name)] + list(dummies.columns) + behavior['Controls'][behavior['Controls'].index(attribute_name) + 1:]
+            if attribute_name in behavior['Controls']:
+                behavior['Controls'] = behavior['Controls'][:behavior['Controls'].index(attribute_name)] + list(dummies.columns) + behavior['Controls'][behavior['Controls'].index(attribute_name) + 1:]
+            elif attribute_name in behavior['Predictors']:
+                behavior['Predictors'] = behavior['Predictors'][:behavior['Predictors'].index(attribute_name)] + list(dummies.columns) + behavior['Predictors'][behavior['Predictors'].index(attribute_name) + 1:]
         data = data.apply(pd.to_numeric)
 
         #Display Results
@@ -367,12 +369,12 @@ if __name__ == '__main__':
                           'To_Wave': ['Wave 2', 'Wave 4'],
                           'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Church Attendance'],
-                          'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}},
+                          'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'],
+                          'References': {'Attribute Names': ['Race', 'Gender', 'Religion'], 'Attribute Values': ['White', 'Male', 'Not Religious']}},
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'],
-                          'Predictors': [ms + '_' + 'Moral Schemas' for ms in MORAL_SCHEMAS.values()],
+                          'Predictors': ['Moral Schemas'],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Controls': ['Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Church Attendance'],
-                          'References': {'Attribute Names': ['Race', 'Gender'], 'Attribute Values': ['White', 'Male']}}]
+                          'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA'],
+                          'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious']}}]
             compute_behavioral_regressions(interviews, behaviors, to_latex)

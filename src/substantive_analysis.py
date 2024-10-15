@@ -324,7 +324,7 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
         formulas = [a + '_pred' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in behavior['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
         results = {}
         for formula, a in zip(formulas, behavior['Actions']):
-            probit = smf.probit(formula=formula, data=data).fit(disp=False, cov_type='HC3')
+            probit = smf.probit(formula=formula, data=data).fit(disp=False, method='bfgs', maxiter=1000, cov_type='HC3')
             result = {param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
             result['Previous Behavior'] = result['Q("' + a + '")']
             result.pop('Q("' + a + '")')

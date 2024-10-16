@@ -239,24 +239,21 @@ def plot_morality_distinction(interviews):
     plt.show()
 
 #Compute Morality and Behavioral Correlations
-def compute_morality_correlations(interviews, correlation_type, to_latex):
-    compute_pearsonr = lambda x, y: pearsonr(x, y)
-    compute_fisher = lambda x, y: (lambda x, y: fisher_exact([[np.sum(x & y), np.sum(~x & y)], [np.sum(x & ~y), np.sum(~x & ~y)]]))(x.round().astype(bool), y.round().astype(bool))
-    compute_rlm = lambda x, y: (lambda lm: (lm.params['x'],lm.pvalues['x']))(smf.rlm(formula='y ~ x', data=pd.concat([x, y], axis=1).rename(columns={0:'x', 1:'y'}), M=sm.robust.norms.AndrewWave()).fit())
-    compute_correlation = lambda x, y: format_pvalue(compute_pearsonr(x, y)) if correlation_type == 'pearsonr' else format_pvalue(compute_rlm(x, y)) if correlation_type == 'rlm' else format_pvalue(compute_fisher(x, y)) if correlation_type == 'fisher' else None
+def compute_morality_correlations(interviews, to_latex):
+    compute_fisher = lambda x, y: format_pvalue((lambda x: (x[0] - 1, x[1]))(fisher_exact(pd.crosstab(x, y))))
+    compute_rlm = lambda x, y, z: format_pvalue((lambda lm: (lm.params['x'],lm.pvalues['x']))(smf.rlm(formula='y ~ x + z', data=pd.concat([x, y, z], axis=1).rename(columns={0:'x', 1:'y', 2:'z'})).fit()))
 
     #Prepare Data
     data = interviews.copy()
-    data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS]].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}) for wave in CODED_WAVES])
+    data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS] + ['Survey Id']].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}) for wave in CODED_WAVES])
     data = data.dropna()
     data = data.apply(pd.to_numeric)
     
     #Compute Morality Correlations
-    correlations = pd.DataFrame(index=MORALITY_ORIGIN, columns=MORALITY_ORIGIN)
-    for i, mo1 in enumerate(MORALITY_ORIGIN):
-        for j, mo2 in enumerate(MORALITY_ORIGIN):
-            if i != j:
-                correlations.loc[mo1, mo2] = compute_correlation(data[mo1 + '_' + MORALITY_ESTIMATORS[i<j]], data[mo2 + '_' + MORALITY_ESTIMATORS[i<j]])
+    correlations = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j], columns=MORALITY_ESTIMATORS)
+    for estimator in MORALITY_ESTIMATORS:
+            for i in correlations.index:
+                correlations.loc[i, estimator] = compute_rlm(data[i.split(' - ')[0] + '_' + estimator], data[i.split(' - ')[1] + '_' + estimator], data['Survey Id'])
 
     correlations = correlations.astype(str).replace('nan', '')
     print(correlations.to_latex()) if to_latex else display(correlations)
@@ -267,6 +264,7 @@ def compute_morality_correlations(interviews, correlation_type, to_latex):
     data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS] + [wave + ':Moral Schemas']].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}).rename(columns = {wave + ':Moral Schemas' : 'Moral Schemas'}) for wave in CODED_WAVES])
     data = data.dropna()
     data = pd.concat([data, pd.get_dummies(data['Moral Schemas']).astype(float)], axis=1).drop('Moral Schemas', axis=1)
+    data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = (data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] > data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].mean()).astype(float)
     data = data.apply(pd.to_numeric)
 
     #Compute Behavioral Correlations
@@ -274,7 +272,7 @@ def compute_morality_correlations(interviews, correlation_type, to_latex):
     for estimator in MORALITY_ESTIMATORS:
         for i, ms in enumerate(MORAL_SCHEMAS.values()):
             for j, mo in enumerate(MORALITY_ORIGIN):
-                correlations.loc[ms, (estimator, mo)] = compute_correlation(data[mo + '_' + estimator], data[ms])
+                correlations.loc[ms, (estimator, mo)] = compute_fisher(data[ms], data[mo + '_' + estimator])
 
     correlations = correlations.astype(str).replace('nan', '')
     print(correlations.to_latex()) if to_latex else display(correlations)
@@ -339,7 +337,7 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [7]
+    config = [5]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     extend_dataset = True
     to_latex = False
@@ -359,8 +357,7 @@ if __name__ == '__main__':
         elif c == 4:
             plot_morality_distinction(interviews)
         elif c == 5:
-            correlation_type = 'pearsonr'
-            compute_morality_correlations(interviews, correlation_type, to_latex)
+            compute_morality_correlations(interviews, to_latex)
         elif c == 6:
             linguistic_attributes = ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']
             compute_linguistic_regressions(interviews, linguistic_attributes, to_latex)

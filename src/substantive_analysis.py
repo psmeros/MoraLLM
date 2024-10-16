@@ -323,7 +323,7 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
         data = data.apply(pd.to_numeric)
 
         #Display Results
-        formulas = [a + '_pred' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in behavior['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '') + ' - 1' for a in behavior['Actions']]
+        formulas = [a + '_pred' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in behavior['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '+ Q("' + a + '")') + ' - 1' for a in behavior['Actions']]
         results = {}
         for formula, a in zip(formulas, behavior['Actions']):
             probit = smf.probit(formula=formula, data=data).fit(disp=False, method='bfgs', maxiter=1000, cov_type='HC3')
@@ -365,7 +365,14 @@ if __name__ == '__main__':
             linguistic_attributes = ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']
             compute_linguistic_regressions(interviews, linguistic_attributes, to_latex)
         elif c == 7:
-            behaviors = [{'From_Wave': ['Wave 1', 'Wave 3'], 
+            behaviors = [
+                         {'From_Wave': ['Wave 1', 'Wave 3'], 
+                          'To_Wave': ['Wave 2', 'Wave 4'],
+                          'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
+                          'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
+                          'Controls': [],
+                          'References': {'Attribute Names': [], 'Attribute Values': []}},
+                         {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'],
                           'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],

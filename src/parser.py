@@ -277,7 +277,8 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
 #Merge interviews and surveys
 def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignment_file = 'data/interviews/alignments/interview-survey.csv'):
     surveys = pd.read_csv(alignment_file)
-    surveys = surveys[surveys['Wave'] == 1].drop('Wave', axis=1)
+    wave_1_surveys = surveys[surveys['Wave'] == 1].drop('Wave', axis=1)
+    wave_3_surveys = surveys[surveys['Wave'] == 3].drop('Wave', axis=1)
 
     for file in os.listdir(surveys_folder):
         file = os.path.join(surveys_folder, file)
@@ -325,13 +326,15 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 
             if wave in [1, 2]:
                 survey[['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']] = survey[['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']].map(lambda d: int(d > 0))
+                survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
+                wave_1_surveys = wave_1_surveys.merge(survey, on = 'Survey Id', how = 'left')
             elif wave in [3, 4]:
                 survey[['Pot', 'Drink', 'Volunteer', 'Help']] = survey[['Pot', 'Drink', 'Volunteer', 'Help']].map(lambda d: int(d > 0))
+                survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
+                wave_3_surveys = wave_3_surveys.merge(survey, on = 'Survey Id', how = 'left')
 
-            survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
-            surveys = surveys.merge(survey, on = 'Survey Id', how = 'left')
-
-    interviews = interviews.merge(surveys, left_on = 'Wave 1:Interview Code',  right_on = 'Interview Code', how = 'inner')
+    interviews = interviews.merge(wave_1_surveys, left_on = 'Wave 1:Interview Code',  right_on = 'Interview Code', how = 'left').drop(['Interview Code', 'Survey Id'], axis=1)
+    interviews = interviews.merge(wave_3_surveys, left_on = 'Wave 3:Interview Code',  right_on = 'Interview Code', how = 'left').drop(['Interview Code'], axis=1)
 
     return interviews
 
@@ -349,6 +352,7 @@ def prepare_data(interviews, extend_dataset):
     interviews = merge_codings(interviews)
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
+
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
 
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']

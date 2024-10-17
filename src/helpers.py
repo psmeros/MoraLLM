@@ -252,19 +252,19 @@ MORAL_SCHEMAS = {1:'Expressive Individualist',
 RELIGION = {'Wave 1':{1:'Evangelical Protestant',
                       2:'Mainline Protestant',
                       3:'Black Protestant',
-                      4:'Other',
-                      5:'Other',
-                      6:'Other',
+                      4:'Catholic',
+                      5:'Jewish',
+                      6:'Mormon',
                       7:'Not Religious',
-                      **dict.fromkeys(range(8, 10), 'Other')},
+                      **dict.fromkeys(range(8, 10), 'Indeterminate')},
             'Wave 3':{1:'Evangelical Protestant',
                       2:'Mainline Protestant',
                       **dict.fromkeys(range(3, 5), 'Black Protestant'),
-                      5:'Other',
-                      6:'Other',
-                      7:'Other',
+                      5:'Catholic',
+                      6:'Jewish',
+                      7:'Mormon',
                       8:'Not Religious',
-                      **dict.fromkeys(range(9, 13), 'Other')}}
+                      **dict.fromkeys(range(9, 13), 'Indeterminate')}}
 
 #Region map
 REGION = {0:'Not South', 1:'South'}

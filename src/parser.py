@@ -324,19 +324,17 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x if x in range(0, 2) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
 
+            survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
             if wave in [1, 2]:
-                survey[['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']] = survey[['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']].map(lambda d: int(d > 0))
-                survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
                 wave_1_surveys = wave_1_surveys.merge(survey, on = 'Survey Id', how = 'left')
             elif wave in [3, 4]:
-                survey[['Pot', 'Drink', 'Volunteer', 'Help']] = survey[['Pot', 'Drink', 'Volunteer', 'Help']].map(lambda d: int(d > 0))
-                survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
                 wave_3_surveys = wave_3_surveys.merge(survey, on = 'Survey Id', how = 'left')
 
     interviews = interviews.merge(wave_1_surveys, left_on = 'Wave 1:Interview Code',  right_on = 'Interview Code', how = 'left').drop(['Interview Code'], axis=1)
     interviews = interviews.merge(wave_3_surveys, left_on = 'Wave 3:Interview Code',  right_on = 'Interview Code', how = 'left').drop(['Interview Code'], axis=1)
     interviews['Survey Id'] = interviews['Survey Id_x'].fillna(interviews['Survey Id_y'])
     interviews = interviews.drop(['Survey Id_x', 'Survey Id_y'], axis=1).dropna(subset=['Survey Id']).drop_duplicates(subset=['Survey Id'], keep='first').reset_index(drop=True)
+    interviews['Survey Id'] = interviews['Survey Id'].astype(int)
 
     return interviews
 
@@ -345,6 +343,7 @@ def prepare_data(interviews, extend_dataset):
     interviews['Race'] = interviews['Race'].map(RACE_RANGE)
     interviews['Age'] = interviews['Age'].astype('Int64')
     interviews = interviews.rename(columns={'Morality_Origin': 'Morality Response (raw)'})
+    interviews['Morality Response (raw)'] = interviews['Morality Response (raw)'].str.replace('\n\n\n', ' ' * 10)
 
     interviews['Verbosity'] = minmax_scale(np.log(interviews['Morality_Origin_Word_Count'].astype(int)))
     interviews['Uncertainty'] = minmax_scale(interviews['Morality_Origin_Uncertain_Terms'].astype(int) / interviews['Morality_Origin_Word_Count'].astype(int))
@@ -389,3 +388,4 @@ if __name__ == '__main__':
             interviews = merge_surveys(interviews)
         elif c == 4:
             interviews = prepare_data(interviews, extend_dataset=True)
+            interviews.sort_values(by='Survey Id').to_clipboard(index=False)

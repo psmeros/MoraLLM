@@ -242,6 +242,8 @@ def plot_morality_distinction(interviews):
 def compute_morality_correlations(interviews, to_latex):
     compute_fisher = lambda x, y: format_pvalue((lambda x: (x[0] - 1, x[1]))(fisher_exact(pd.crosstab(x, y))))
     compute_rlm = lambda x, y, z: format_pvalue((lambda lm: (lm.params['x'],lm.pvalues['x']))(smf.rlm(formula='y ~ x + z', data=pd.concat([x, y, z], axis=1).rename(columns={0:'x', 1:'y', 2:'z'})).fit()))
+    compute_probit = lambda x, y, z: format_pvalue((lambda lm: (lm.params['x'],lm.pvalues['x']))(smf.probit(formula='y ~ x + z', data=pd.concat([x, y, z], axis=1).rename(columns={0:'x', 1:'y', 2:'z'})).fit()))
+    compute_pearson = lambda x, y, _: format_pvalue(pearsonr(x, y))
 
     #Prepare Data
     data = interviews.copy()
@@ -261,18 +263,18 @@ def compute_morality_correlations(interviews, to_latex):
 
     #Prepare Data
     data = interviews.copy()
-    data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS] + [wave + ':Moral Schemas']].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}).rename(columns = {wave + ':Moral Schemas' : 'Moral Schemas'}) for wave in CODED_WAVES])
+    data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS] + [wave + ':Moral Schemas'] + ['Survey Id']].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}).rename(columns = {wave + ':Moral Schemas' : 'Moral Schemas'}) for wave in CODED_WAVES])
     data = data.dropna()
     data = pd.concat([data, pd.get_dummies(data['Moral Schemas']).astype(float)], axis=1).drop('Moral Schemas', axis=1)
     data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = (data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] > data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].mean()).astype(float)
     data = data.apply(pd.to_numeric)
 
     #Compute Behavioral Correlations
-    correlations = pd.DataFrame(index=MORAL_SCHEMAS.values(), columns=pd.MultiIndex.from_tuples([(estimator, mo) for estimator in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]))
+    correlations = pd.DataFrame(index=pd.MultiIndex.from_tuples([(estimator, mo) for estimator in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]), columns=MORAL_SCHEMAS.values())
     for estimator in MORALITY_ESTIMATORS:
-        for i, ms in enumerate(MORAL_SCHEMAS.values()):
-            for j, mo in enumerate(MORALITY_ORIGIN):
-                correlations.loc[ms, (estimator, mo)] = compute_fisher(data[ms], data[mo + '_' + estimator])
+        for mo in MORALITY_ORIGIN:
+            for ms in MORAL_SCHEMAS.values():
+                correlations.loc[(estimator, mo), ms] = compute_probit(data[ms], data[mo + '_' + estimator], data['Survey Id'])
 
     correlations = correlations.astype(str).replace('nan', '')
     print(correlations.to_latex()) if to_latex else display(correlations)
@@ -308,6 +310,7 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
         data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
         data = pd.concat([pd.DataFrame(data[[from_wave + ':' + pr for pr in behavior['Predictors']] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
         data.columns = behavior['Predictors'] + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
+        data[behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]] = data[behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]].map(lambda a: int(a > 0) if not pd.isna(a) else pd.NA)
         data = data.dropna(subset = behavior['Predictors'] + behavior['Controls'])
         
         for attribute_name, attribute_value in zip(behavior['References']['Attribute Names'], behavior['References']['Attribute Values']):
@@ -369,16 +372,17 @@ if __name__ == '__main__':
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}},
-                         {'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 2', 'Wave 4'],
-                          'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
-                          'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
-                          'References': {'Attribute Names': ['Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['White', 'Male', 'Not Religious', 'Not South']}},
-                         {'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 2', 'Wave 4'],
-                          'Predictors': ['Moral Schemas'],
-                          'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
-                          'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious', 'Not South']}}]
+                        #  {'From_Wave': ['Wave 1', 'Wave 3'], 
+                        #   'To_Wave': ['Wave 2', 'Wave 4'],
+                        #   'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
+                        #   'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
+                        #   'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
+                        #   'References': {'Attribute Names': ['Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['White', 'Male', 'Not Religious', 'Not South']}},
+                        #  {'From_Wave': ['Wave 1', 'Wave 3'], 
+                        #   'To_Wave': ['Wave 2', 'Wave 4'],
+                        #   'Predictors': ['Moral Schemas'],
+                        #   'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
+                        #   'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
+                        #   'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious', 'Not South']}}
+                          ]
             compute_behavioral_regressions(interviews, behaviors, to_latex)

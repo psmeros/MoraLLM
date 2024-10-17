@@ -333,8 +333,10 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey.columns = [survey.columns[0]] + ['Wave ' + str(wave) + ':' + c for c in survey.columns[1:]]
                 wave_3_surveys = wave_3_surveys.merge(survey, on = 'Survey Id', how = 'left')
 
-    interviews = interviews.merge(wave_1_surveys, left_on = 'Wave 1:Interview Code',  right_on = 'Interview Code', how = 'left').drop(['Interview Code', 'Survey Id'], axis=1)
+    interviews = interviews.merge(wave_1_surveys, left_on = 'Wave 1:Interview Code',  right_on = 'Interview Code', how = 'left').drop(['Interview Code'], axis=1)
     interviews = interviews.merge(wave_3_surveys, left_on = 'Wave 3:Interview Code',  right_on = 'Interview Code', how = 'left').drop(['Interview Code'], axis=1)
+    interviews['Survey Id'] = interviews['Survey Id_x'].fillna(interviews['Survey Id_y'])
+    interviews = interviews.drop(['Survey Id_x', 'Survey Id_y'], axis=1).dropna(subset=['Survey Id']).drop_duplicates(subset=['Survey Id'], keep='first').reset_index(drop=True)
 
     return interviews
 

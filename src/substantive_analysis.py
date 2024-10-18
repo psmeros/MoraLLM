@@ -308,10 +308,9 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
         #Prepare Data
         data = interviews.copy()
         data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
-        data = pd.concat([pd.DataFrame(data[[from_wave + ':' + pr for pr in behavior['Predictors']] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
-        data.columns = behavior['Predictors'] + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
+        data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in behavior['Predictors']] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
+        data.columns = ['Survey Id'] + behavior['Predictors'] + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
         data[behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]] = data[behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]].map(lambda a: int(a > 0) if not pd.isna(a) else pd.NA)
-        data = data.dropna(subset = behavior['Predictors'] + behavior['Controls'])
         
         for attribute_name, attribute_value in zip(behavior['References']['Attribute Names'], behavior['References']['Attribute Values']):
             dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').drop(attribute_name + ' = ' + attribute_value, axis=1).astype(float)
@@ -324,23 +323,26 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
         data = data.apply(pd.to_numeric)
 
         #Display Results
-        formulas = [a + '_pred' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in behavior['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls'] + [a]]) if behavior['Controls'] else '+ Q("' + a + '")') + ' - 1' for a in behavior['Actions']]
+        formulas = [a + '_pred' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in behavior['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls']]) if behavior['Controls'] else '') + ('+ Q("' + a + '")' if behavior['Previous Behavior'] else '') + (' + Q("Survey Id")' if behavior['Dummy'] else '') + ' - 1' for a in behavior['Actions']]
         results = {}
         for formula, a in zip(formulas, behavior['Actions']):
             probit = smf.probit(formula=formula, data=data).fit(disp=False, method='bfgs', maxiter=1000, cov_type='HC3')
             result = {param:(coef,pvalue) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
-            result['Previous Behavior'] = result['Q("' + a + '")']
-            result.pop('Q("' + a + '")')
+            if behavior['Dummy']:
+                result.pop('Q("Survey Id")')
+            if behavior['Previous Behavior']:
+                result['Previous Behavior'] = result['Q("' + a + '")']
+                result.pop('Q("' + a + '")')
             results[a + ' (N = ' + str(probit.nobs) + ')'] = result
             
         results = pd.DataFrame(results)
-        results.index = [pr.split('_')[0] for pr in behavior['Predictors']] + behavior['Controls'] + ['Previous Behavior']
+        results.index = [pr.split('_')[0] for pr in behavior['Predictors']] + behavior['Controls'] + (['Previous Behavior'] if behavior['Previous Behavior'] else [])
         results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [7]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     extend_dataset = True
     to_latex = False
@@ -370,6 +372,8 @@ if __name__ == '__main__':
                           'To_Wave': ['Wave 2', 'Wave 4'],
                           'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
+                          'Dummy' : False,
+                          'Previous Behavior': False,
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}},
                         #  {'From_Wave': ['Wave 1', 'Wave 3'], 

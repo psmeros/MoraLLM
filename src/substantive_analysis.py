@@ -312,7 +312,11 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
         data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
         data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in behavior['Predictors']] + [from_wave + ':' + c for c in behavior['Controls']] + [from_wave + ':' + a for a in behavior['Actions']] + [to_wave + ':' + a for a in behavior['Actions']]].values) for from_wave, to_wave in zip(behavior['From_Wave'], behavior['To_Wave'])])
         data.columns = ['Survey Id'] + behavior['Predictors'] + behavior['Controls'] + behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]
-        if not behavior['Ordered']:
+        if behavior['Actions'] == ['Moral Schemas']:
+            data = data.drop('Moral Schemas', axis=1).dropna(subset='Moral Schemas_pred')
+            behavior['Actions'] = ['Expressive Individualist', 'Utilitarian Individualist',	'Relational', 'Theistic']
+            data = pd.concat([data, pd.get_dummies(data['Moral Schemas_pred']).astype(float)], axis=1).drop('Moral Schemas_pred', axis=1).rename(columns={c : c + '_pred' for c in behavior['Actions']})
+        elif not behavior['Ordered']:
             data[behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]] = data[behavior['Actions'] + [a + '_pred' for a in behavior['Actions']]].map(lambda a: int(a > 0) if not pd.isna(a) else pd.NA)
         
         for attribute_name, attribute_value in zip(behavior['References']['Attribute Names'], behavior['References']['Attribute Values']):
@@ -325,8 +329,11 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
                 behavior['Predictors'] = behavior['Predictors'][:behavior['Predictors'].index(attribute_name)] + list(dummies.columns) + behavior['Predictors'][behavior['Predictors'].index(attribute_name) + 1:]
         data = data.apply(pd.to_numeric)
 
+        print({a : {int(k[0]):v for k, v in data[[a + '_pred']].value_counts().to_dict().items()} for a in behavior['Actions']})
+        data[behavior['Predictors']] = (data[behavior['Predictors']] > data[behavior['Predictors']].mean()).astype(float)
+
         #Display Results
-        formulas = [a + '_pred' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in behavior['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls']]) if behavior['Controls'] else '') + ('+ Q("' + a + '")' if behavior['Previous Behavior'] else '') + (' + Q("Survey Id")' if behavior['Dummy'] else '') + ' - 1' for a in behavior['Actions']]
+        formulas = ['Q("' + a + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in behavior['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in behavior['Controls']]) if behavior['Controls'] else '') + ('+ Q("' + a + '")' if behavior['Previous Behavior'] else '') + (' + Q("Survey Id")' if behavior['Dummy'] else '') + ' - 1' for a in behavior['Actions']]
         results = {}
         results_index = [pr.split('_')[0] for pr in behavior['Predictors']] + behavior['Controls'] + (['Previous Behavior'] if behavior['Previous Behavior'] else [])
         for formula, a in zip(formulas, behavior['Actions']):
@@ -334,7 +341,7 @@ def compute_behavioral_regressions(interviews, behaviors, to_latex):
                 y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                 probit = OrderedModel(y, X, distr='probit').fit(maxiter=10000, cov_type='HC3')
             else:
-                probit = smf.probit(formula=formula, data=data).fit(maxiter=10000, cov_type='HC3')
+                probit = smf.probit(formula=formula, data=data).fit(maxiter=10000, cov_type='HC3', disp=False)
             result = {param:(coef,pvalue) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
             if behavior['Dummy']:
                 result.pop('Q("Survey Id")')
@@ -384,6 +391,15 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : False,
+                          'Previous Behavior': False,
+                          'Ordered': False,
+                          'Controls': [],
+                          'References': {'Attribute Names': [], 'Attribute Values': []}},
+                         {'From_Wave': ['Wave 1', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 3'],
+                          'Predictors': [mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN],
+                          'Actions': ['Moral Schemas'],
+                          'Dummy' : True,
                           'Previous Behavior': False,
                           'Ordered': False,
                           'Controls': [],

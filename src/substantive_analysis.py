@@ -314,14 +314,19 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + [from_wave + ':' + a for a in conf['Actions']] + [to_wave + ':' + a for a in conf['Actions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
         data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + conf['Actions'] + [a + '_pred' for a in conf['Actions']]
         data ['Wave'] = pd.concat([pd.Series([int(wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for wave in conf['From_Wave']])
+        
+        #One-Hot Representation for Moral Schemas
         if conf['Actions'] == ['Moral Schemas']:
             data = data.drop('Moral Schemas', axis=1).dropna(subset='Moral Schemas_pred')
             conf['Actions'] = ['Expressive Individualist', 'Utilitarian Individualist',	'Relational', 'Theistic']
             data = pd.concat([data, pd.get_dummies(data['Moral Schemas_pred']).astype(float)], axis=1).drop('Moral Schemas_pred', axis=1).rename(columns={c : c + '_pred' for c in conf['Actions']})
             data[conf['Predictors']] = (data[conf['Predictors']] > data[conf['Predictors']].mean()).astype(float)
+        
+        #Binary Representation for Probit Model
         elif conf['Model']  == 'Probit':
             data[conf['Actions'] + [a + '_pred' for a in conf['Actions']]] = data[conf['Actions'] + [a + '_pred' for a in conf['Actions']]].map(lambda a: int(a > 0) if not pd.isna(a) else pd.NA)
         
+        #Add Reference Controls
         for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):
             dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').drop(attribute_name + ' = ' + attribute_value, axis=1).astype(float)
             data = pd.concat([data, dummies], axis=1)
@@ -332,8 +337,6 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 conf['Predictors'] = conf['Predictors'][:conf['Predictors'].index(attribute_name)] + list(dummies.columns) + conf['Predictors'][conf['Predictors'].index(attribute_name) + 1:]
         data = data.apply(pd.to_numeric).reset_index(drop=True)
 
-        print({a : {int(k[0]):v for k, v in data[[a + '_pred']].value_counts().to_dict().items()} for a in conf['Actions']})
-
         #Display Results
         if conf['Model'] in ['Probit', 'Ordered']:
             formulas = ['Q("' + a + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + a + '")' if conf['Previous Behavior'] else '') + (' + Q("Survey Id") + Q("Wave")' if conf['Dummy'] else '') + ' - 1' for a in conf['Actions']]
@@ -341,10 +344,9 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             results_index = [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Previous Behavior'] if conf['Previous Behavior'] else [])
             for formula, a in zip(formulas, conf['Actions']):
                 y, X = patsy.dmatrices(formula, data, return_type='dataframe')
-                if conf['Model'] == 'Probit':
-                    model = Probit(y, X).fit(maxiter=10000, method='bfgs', cov_type='HC3', disp=False)
-                if conf['Model'] == 'Ordered':
-                    model = OrderedModel(y, X, distr='probit').fit(maxiter=10000, cov_type='HC3')
+                model = Probit if conf['Model'] == 'Probit' else OrderedModel if conf['Model'] == 'Ordered' else None
+                covariance = {'cov_type':'cluster', 'cov_kwds':{'groups': X['Q("Survey Id")']}} if conf['Dummy'] else {'cov_type':'HC3'}
+                model = model(y, X).fit(maxiter=10000, method='bfgs', **covariance, disp=False)
                 result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
                 if conf['Dummy']:
                     result.pop('Q("Survey Id")')
@@ -356,9 +358,10 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                     for _ in range(len(result) - len(results_index)):
                         result.popitem()
                 results[a + ' (N = ' + str(model.nobs) + ')'] = result
-
         results = pd.DataFrame(results)
         results.index = results_index
+        
+        #Scale Results
         results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)
         print(results.to_latex()) if to_latex else display(results)
 
@@ -447,5 +450,5 @@ if __name__ == '__main__':
                         #   'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
                         #   'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious', 'Not South']}}
                           ]
-            # confs = confs[4:5]
+            # confs = confs[:4]
             compute_behavioral_regressions(interviews, confs, to_latex)

@@ -354,6 +354,8 @@ def prepare_data(interviews, extend_dataset):
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
 
+    interviews['Wave 3:Age'] = interviews['Wave 3:Age'].fillna(interviews['Wave 1:Age'] + int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
+    interviews['Wave 1:Age'] = interviews['Wave 1:Age'].fillna(interviews['Wave 3:Age'] - int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
 
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']

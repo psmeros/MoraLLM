@@ -6,7 +6,7 @@ import patsy
 import seaborn as sns
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
-from statsmodels.discrete.discrete_model import Probit
+from statsmodels.discrete.discrete_model import Probit, MNLogit
 from statsmodels.miscmodels.ordinal_model import OrderedModel
 from IPython.display import display
 from scipy.stats import fisher_exact, pearsonr
@@ -315,17 +315,21 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + conf['Actions'] + [a + '_pred' for a in conf['Actions']]
         data ['Wave'] = pd.concat([pd.Series([int(wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for wave in conf['From_Wave']])
         
-        #One-Hot Representation for Moral Schemas
-        if conf['Actions'] == ['Moral Schemas']:
-            data = data.drop('Moral Schemas', axis=1).dropna(subset='Moral Schemas_pred')
-            conf['Actions'] = ['Expressive Individualist', 'Utilitarian Individualist',	'Relational', 'Theistic']
-            data = pd.concat([data, pd.get_dummies(data['Moral Schemas_pred']).astype(float)], axis=1).drop('Moral Schemas_pred', axis=1).rename(columns={c : c + '_pred' for c in conf['Actions']})
-            data[conf['Predictors']] = (data[conf['Predictors']] > data[conf['Predictors']].mean()).astype(float)
-        
         #Binary Representation for Probit Model
-        elif conf['Model']  == 'Probit':
-            data[conf['Actions'] + [a + '_pred' for a in conf['Actions']]] = data[conf['Actions'] + [a + '_pred' for a in conf['Actions']]].map(lambda a: int(a > 0) if not pd.isna(a) else pd.NA)
+        if conf['Model']  == 'Probit':
+            if conf['Actions'] == ['Moral Schemas']:
+                data = data.drop('Moral Schemas', axis=1).dropna(subset='Moral Schemas_pred')
+                conf['Actions'] = list(MORAL_SCHEMAS.values())
+                data = pd.concat([data, pd.get_dummies(data['Moral Schemas_pred']).astype(float)], axis=1).drop('Moral Schemas_pred', axis=1).rename(columns={c : c + '_pred' for c in conf['Actions']})
+                data[conf['Predictors']] = (data[conf['Predictors']] > data[conf['Predictors']].mean()).astype(float)
+            else:
+                data[conf['Actions'] + [a + '_pred' for a in conf['Actions']]] = data[conf['Actions'] + [a + '_pred' for a in conf['Actions']]].map(lambda a: int(a > 0) if not pd.isna(a) else pd.NA)
         
+        elif conf['Model'] == 'Multinomial':
+            if conf['Actions'] == ['Moral Schemas']:
+                data = data.drop('Moral Schemas', axis=1).dropna(subset='Moral Schemas_pred')
+                data['Moral Schemas_pred'] = data['Moral Schemas_pred'].map({v:len(MORAL_SCHEMAS)-k for k,v in MORAL_SCHEMAS.items()})
+
         #Add Reference Controls
         for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):
             dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').drop(attribute_name + ' = ' + attribute_value, axis=1).astype(float)
@@ -360,7 +364,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 results[a + ' (N = ' + str(model.nobs) + ')'] = result
         results = pd.DataFrame(results)
         results.index = results_index
-        
+
         #Scale Results
         results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)
         print(results.to_latex()) if to_latex else display(results)
@@ -450,5 +454,5 @@ if __name__ == '__main__':
                         #   'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
                         #   'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious', 'Not South']}}
                           ]
-            # confs = confs[:4]
+            confs = confs[4:5]
             compute_behavioral_regressions(interviews, confs, to_latex)

@@ -345,7 +345,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         if conf['Model'] in ['Probit', 'Ordered']:
             formulas = ['Q("' + a + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + a + '")' if conf['Previous Behavior'] else '') + (' + Q("Survey Id") + Q("Wave")' if conf['Dummy'] else '') + ' - 1' for a in conf['Actions']]
             results = {}
-            results_index = [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Previous Behavior'] if conf['Previous Behavior'] else [])
+            results_index = [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else [])
             for formula, a in zip(formulas, conf['Actions']):
                 y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                 model = Probit if conf['Model'] == 'Probit' else OrderedModel if conf['Model'] == 'Ordered' else None
@@ -354,7 +354,6 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
                 if conf['Dummy']:
                     result.pop('Q("Survey Id")')
-                    result.pop('Q("Wave")')
                 if conf['Previous Behavior']:
                     result['Previous Behavior'] = result['Q("' + a + '")']
                     result.pop('Q("' + a + '")')
@@ -413,8 +412,8 @@ if __name__ == '__main__':
                           'Dummy' : True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
-                          'Controls': ['Religion'],
-                          'References': {'Attribute Names': ['Religion'], 'Attribute Values': ['Not Religious']}},
+                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}},
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'],
                           'Predictors': [mo + '_Coders' for mo in MORALITY_ORIGIN],
@@ -431,8 +430,8 @@ if __name__ == '__main__':
                           'Dummy' : True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
-                          'Controls': ['Religion'],
-                          'References': {'Attribute Names': ['Religion'], 'Attribute Values': ['Not Religious']}},
+                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}},
                          {'From_Wave': ['Wave 1'], 
                           'To_Wave': ['Wave 1'],
                           'Predictors': [mo + '_Model' for mo in MORALITY_ORIGIN],
@@ -451,8 +450,6 @@ if __name__ == '__main__':
                           'Model': 'Probit',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}},
-                        #   'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
-                        #   'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious', 'Not South']}}
-                          ]
-            confs = confs[4:5]
+                    ]
+            confs = confs[:4]
             compute_behavioral_regressions(interviews, confs, to_latex)

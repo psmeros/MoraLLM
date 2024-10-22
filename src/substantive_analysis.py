@@ -6,6 +6,7 @@ import patsy
 import seaborn as sns
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
+from statsmodels.discrete.discrete_model import Probit
 from statsmodels.miscmodels.ordinal_model import OrderedModel
 from IPython.display import display
 from scipy.stats import fisher_exact, pearsonr
@@ -339,12 +340,12 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             results = {}
             results_index = [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Previous Behavior'] if conf['Previous Behavior'] else [])
             for formula, a in zip(formulas, conf['Actions']):
+                y, X = patsy.dmatrices(formula, data, return_type='dataframe')
+                if conf['Model'] == 'Probit':
+                    model = Probit(y, X).fit(maxiter=10000, method='bfgs', cov_type='HC3', disp=False)
                 if conf['Model'] == 'Ordered':
-                    y, X = patsy.dmatrices(formula, data, return_type='dataframe')
-                    probit = OrderedModel(y, X, distr='probit').fit(maxiter=10000, cov_type='HC3')
-                else:
-                    probit = smf.probit(formula=formula, data=data).fit(maxiter=10000, method='bfgs', cov_type='HC3', disp=False)
-                result = {param:(coef,pvalue) for param, coef, pvalue in zip(probit.params.index, probit.params, probit.pvalues)}
+                    model = OrderedModel(y, X, distr='probit').fit(maxiter=10000, cov_type='HC3')
+                result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
                 if conf['Dummy']:
                     result.pop('Q("Survey Id")')
                     result.pop('Q("Wave")')
@@ -354,7 +355,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 if conf['Model'] == 'Ordered':
                     for _ in range(len(result) - len(results_index)):
                         result.popitem()
-                results[a + ' (N = ' + str(probit.nobs) + ')'] = result
+                results[a + ' (N = ' + str(model.nobs) + ')'] = result
 
         results = pd.DataFrame(results)
         results.index = results_index
@@ -446,5 +447,5 @@ if __name__ == '__main__':
                         #   'Controls': ['Church Attendance', 'Religion', 'Race', 'Gender', 'Age', 'Household Income', 'Parent Education', 'GPA', 'Region'],
                         #   'References': {'Attribute Names': ['Moral Schemas', 'Race', 'Gender', 'Religion', 'Region'], 'Attribute Values': ['Theistic', 'White', 'Male', 'Not Religious', 'Not South']}}
                           ]
-            confs = confs[4:5]
+            # confs = confs[4:5]
             compute_behavioral_regressions(interviews, confs, to_latex)

@@ -343,17 +343,17 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
         #Display Results
         if conf['Model'] in ['Probit', 'Ordered']:
-            formulas = ['Q("' + a + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + a + '")' if conf['Previous Behavior'] else '') + (' + Q("Survey Id") + Q("Wave")' if conf['Dummy'] else '') + ' - 1' for a in conf['Actions']]
+            formulas = ['Q("' + a + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + a + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + ' - 1' for a in conf['Actions']]
             results = {}
             results_index = [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else [])
             for formula, a in zip(formulas, conf['Actions']):
                 y, X = patsy.dmatrices(formula, data, return_type='dataframe')
+                groups = X['Q("Survey Id")']
+                X = X.drop('Q("Survey Id")', axis=1)
                 model = Probit if conf['Model'] == 'Probit' else OrderedModel if conf['Model'] == 'Ordered' else None
-                covariance = {'cov_type':'cluster', 'cov_kwds':{'groups': X['Q("Survey Id")']}} if conf['Dummy'] else {'cov_type':'HC3'}
+                covariance = {'cov_type':'cluster', 'cov_kwds':{'groups': groups}} if conf['Dummy'] else {'cov_type':'HC3'}
                 model = model(y, X).fit(maxiter=10000, method='bfgs', **covariance, disp=False)
                 result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
-                if conf['Dummy']:
-                    result.pop('Q("Survey Id")')
                 if conf['Previous Behavior']:
                     result['Previous Behavior'] = result['Q("' + a + '")']
                     result.pop('Q("' + a + '")')
@@ -401,7 +401,7 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_Model' for mo in MORALITY_ORIGIN],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
-                          'Previous Behavior': False,
+                          'Previous Behavior': True,
                           'Model': 'Probit',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}},
@@ -419,7 +419,7 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_Coders' for mo in MORALITY_ORIGIN],
                           'Actions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
-                          'Previous Behavior': False,
+                          'Previous Behavior': True,
                           'Model': 'Probit',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}},

@@ -4,16 +4,16 @@ import numpy as np
 import pandas as pd
 import patsy
 import seaborn as sns
-import statsmodels.formula.api as smf
-from statsmodels.discrete.discrete_model import Probit, MNLogit
+from statsmodels.discrete.discrete_model import Probit
 from statsmodels.miscmodels.ordinal_model import OrderedModel
 from statsmodels.regression.linear_model import OLS
+from statsmodels.robust.robust_linear_model import RLM
 from IPython.display import display
-from scipy.stats import fisher_exact, pearsonr
+from scipy.stats import pearsonr
 from sklearn.preprocessing import minmax_scale, normalize, scale
 
 from __init__ import *
-from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, MORAL_SCHEMAS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, RELIGION, format_pvalue
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, MORAL_SCHEMAS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, format_pvalue
 from src.parser import prepare_data
 
 #Compute overall morality distribution
@@ -241,48 +241,6 @@ def plot_morality_distinction(interviews):
     plt.savefig('data/plots/fig-morality_distinction.png', bbox_inches='tight')
     plt.show()
 
-#Compute Morality and Behavioral Correlations
-def compute_morality_correlations(interviews, to_latex):
-    compute_fisher = lambda x, y: format_pvalue((lambda x: (x[0] - 1, x[1]))(fisher_exact(pd.crosstab(x, y))))
-    compute_rlm = lambda x, y, z: format_pvalue((lambda lm: (lm.params['x'],lm.pvalues['x']))(smf.rlm(formula='y ~ x + z', data=pd.concat([x, y, z], axis=1).rename(columns={0:'x', 1:'y', 2:'z'})).fit()))
-    compute_probit = lambda x, y, z: format_pvalue((lambda lm: (lm.params['x'],lm.pvalues['x']))(smf.probit(formula='y ~ x + z', data=pd.concat([x, y, z], axis=1).rename(columns={0:'x', 1:'y', 2:'z'})).fit()))
-    compute_pearson = lambda x, y, _: format_pvalue(pearsonr(x, y))
-
-    #Prepare Data
-    data = interviews.copy()
-    data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS] + ['Survey Id']].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}) for wave in CODED_WAVES])
-    data = data.dropna()
-    data = data.apply(pd.to_numeric)
-    
-    #Compute Morality Correlations
-    correlations = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j], columns=MORALITY_ESTIMATORS)
-    for estimator in MORALITY_ESTIMATORS:
-            for i in correlations.index:
-                correlations.loc[i, estimator] = compute_rlm(data[i.split(' - ')[0] + '_' + estimator], data[i.split(' - ')[1] + '_' + estimator], data['Survey Id'])
-
-    correlations = correlations.astype(str).replace('nan', '')
-    print(correlations.to_latex()) if to_latex else display(correlations)
-    print('N =', len(data))
-
-    #Prepare Data
-    data = interviews.copy()
-    data = pd.concat([data[[wave + ':' + mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS] + [wave + ':Moral Schemas'] + ['Survey Id']].rename(columns = {wave + ':' + mo + '_' + estimator : mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS}).rename(columns = {wave + ':Moral Schemas' : 'Moral Schemas'}) for wave in CODED_WAVES])
-    data = data.dropna()
-    data = pd.concat([data, pd.get_dummies(data['Moral Schemas']).astype(float)], axis=1).drop('Moral Schemas', axis=1)
-    data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = (data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] > data[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].mean()).astype(float)
-    data = data.apply(pd.to_numeric)
-
-    #Compute Behavioral Correlations
-    correlations = pd.DataFrame(index=pd.MultiIndex.from_tuples([(estimator, mo) for estimator in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]), columns=MORAL_SCHEMAS.values())
-    for estimator in MORALITY_ESTIMATORS:
-        for mo in MORALITY_ORIGIN:
-            for ms in MORAL_SCHEMAS.values():
-                correlations.loc[(estimator, mo), ms] = compute_probit(data[ms], data[mo + '_' + estimator], data['Survey Id'])
-
-    correlations = correlations.astype(str).replace('nan', '')
-    print(correlations.to_latex()) if to_latex else display(correlations)
-    print('N =', len(data))
-
 #Predict Survey and Oral Behavior based on Morality Origin
 def compute_behavioral_regressions(interviews, confs, to_latex):
     for conf in confs:
@@ -331,7 +289,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 groups = X['Q("Survey Id")']
                 X = X.drop('Q("Survey Id")', axis=1)
                 model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else OrderedModel if conf['Model'] == 'Ordered' else None
-                fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov.kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
+                fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
                 model = model(y, X).fit(maxiter=10000, **fit_params)
                 result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
                 if conf['Previous Behavior']:
@@ -341,16 +299,31 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                     for _ in range(len(result) - len(results_index)):
                         result.popitem()
                 results[p.split('_')[0] + ' (N = ' + str(int(model.nobs)) + ')'] = result
-        results = pd.DataFrame(results)
-        results.index = results_index
+            results = pd.DataFrame(results)
+            results.index = results_index
 
-        #Scale Results
-        results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)
+            #Scale Results
+            results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)
+        
+        elif conf['Model'] in ['Pairwise-Pearson', 'Pairwise-OLS', 'Pairwise-RLM']:
+            compute_pearson = lambda X, y, _: format_pvalue(pearsonr(X, y))
+            compute_ols = lambda X, y, groups: (lambda lm: format_pvalue((lm.params.iloc[0],lm.pvalues.iloc[0])))(OLS(y, pd.concat([X, pd.Series([1]*len(X))], axis=1)).fit(maxiter=10000, cov='cluster', cov_kwds={'groups': groups}))
+            compute_rlm = lambda X, y, _: (lambda lm: format_pvalue((lm.params.iloc[0],lm.pvalues.iloc[0])))(RLM(y, pd.concat([X, pd.Series([1]*len(X))], axis=1)).fit(maxiter=10000))
+            compute_pairwise = compute_pearson if conf['Model'] == 'Pairwise-Pearson' else compute_ols if conf['Model'] == 'Pairwise-OLS' else compute_rlm if conf['Model'] == 'Pairwise-RLM' else None
+            
+            data = data.dropna().reset_index(drop=True)
+            results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j], columns=MORALITY_ESTIMATORS)
+            for estimator in MORALITY_ESTIMATORS:
+                    for i in results.index:
+                        results.loc[i, estimator] = compute_pairwise(data[i.split(' - ')[0] + '_' + estimator], data[i.split(' - ')[1] + '_' + estimator], data['Survey Id'])
+            
+            print('N =', len(data))
+
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [6]
+    config = [5]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     extend_dataset = True
     to_latex = False
@@ -370,8 +343,6 @@ if __name__ == '__main__':
         elif c == 4:
             plot_morality_distinction(interviews)
         elif c == 5:
-            compute_morality_correlations(interviews, to_latex)
-        elif c == 6:
             confs = [
                          {'Descrition': 'Predicting Future Behavior: ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 3'],
@@ -427,6 +398,16 @@ if __name__ == '__main__':
                           'Model': 'OLS',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}}
-                    for estimator in MORALITY_ESTIMATORS]
-            confs = confs[:]
+                    for estimator in MORALITY_ESTIMATORS] + [
+                         {'Descrition': 'Computing Pairwise Correlations',
+                          'From_Wave': ['Wave 1', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 3'],
+                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS],
+                          'Predictions': [],
+                          'Dummy' : False,
+                          'Previous Behavior': False,
+                          'Model': 'Pairwise-Pearson',
+                          'Controls': [],
+                          'References': {'Attribute Names': [], 'Attribute Values': []}}]
+            confs = confs[10:]
             compute_behavioral_regressions(interviews, confs, to_latex)

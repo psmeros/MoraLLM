@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 import patsy
 import seaborn as sns
-import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from statsmodels.discrete.discrete_model import Probit, MNLogit
 from statsmodels.miscmodels.ordinal_model import OrderedModel
+from statsmodels.regression.linear_model import OLS
 from IPython.display import display
 from scipy.stats import fisher_exact, pearsonr
 from sklearn.preprocessing import minmax_scale, normalize, scale
@@ -283,29 +283,7 @@ def compute_morality_correlations(interviews, to_latex):
     print(correlations.to_latex()) if to_latex else display(correlations)
     print('N =', len(data))
 
-#Predict Morality Origin based on Linguistic Attributes
-def compute_linguistic_regressions(interviews, linguistic_attributes, to_latex):
-    #Prepare Data
-    data = interviews.copy()
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN] + [wave + ':' + la for la in linguistic_attributes]].values) for wave in CODED_WAVES])
-    data.columns = MORALITY_ORIGIN + linguistic_attributes
-    data = data.dropna().apply(pd.to_numeric)
-    data = pd.DataFrame(scale(data), columns=data.columns)
-
-    formulas = [mo + ' ~ ' + ' + '.join(linguistic_attributes) + ' - 1' for mo in MORALITY_ORIGIN]
-
-    #Display Results
-    results = {}
-    for formula, mo in zip(formulas, MORALITY_ORIGIN):
-        lm = smf.rlm(formula=formula, data=data, M=sm.robust.norms.AndrewWave()).fit()
-        result = {param:format_pvalue((coef,pvalue)) for param, coef, pvalue in zip(lm.params.index, lm.params, lm.pvalues)}
-        results[mo] = result
-        
-    results = pd.DataFrame(results)
-    print(results.to_latex()) if to_latex else display(results)
-    print('N =', len(data))
-
-#Predict Behavioral Actions based on Morality Origin
+#Predict Survey and Oral Behavior based on Morality Origin
 def compute_behavioral_regressions(interviews, confs, to_latex):
     for conf in confs:
         #Prepare Data
@@ -341,8 +319,8 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 conf['Predictors'] = conf['Predictors'][:conf['Predictors'].index(attribute_name)] + list(dummies.columns) + conf['Predictors'][conf['Predictors'].index(attribute_name) + 1:]
         data = data.apply(pd.to_numeric).reset_index(drop=True)
 
-        #Display Results
-        if conf['Model'] in ['Probit', 'Ordered']:
+        #Compute Results
+        if conf['Model'] in ['Probit', 'Ordered', 'OLS']:
             formulas = ['Q("' + a + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + a + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + ' - 1' for a in conf['Actions']]
             results = {}
             results_index = [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else [])
@@ -350,9 +328,9 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                 groups = X['Q("Survey Id")']
                 X = X.drop('Q("Survey Id")', axis=1)
-                model = Probit if conf['Model'] == 'Probit' else OrderedModel if conf['Model'] == 'Ordered' else None
-                covariance = {'cov_type':'cluster', 'cov_kwds':{'groups': groups}} if conf['Dummy'] else {'cov_type':'HC3'}
-                model = model(y, X).fit(maxiter=10000, method='bfgs', **covariance, disp=False)
+                model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else OrderedModel if conf['Model'] == 'Ordered' else None
+                fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov.kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
+                model = model(y, X).fit(maxiter=10000, **fit_params)
                 result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
                 if conf['Previous Behavior']:
                     result['Previous Behavior'] = result['Q("' + a + '")']
@@ -360,7 +338,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 if conf['Model'] == 'Ordered':
                     for _ in range(len(result) - len(results_index)):
                         result.popitem()
-                results[a + ' (N = ' + str(model.nobs) + ')'] = result
+                results[a + ' (N = ' + str(int(model.nobs)) + ')'] = result
         results = pd.DataFrame(results)
         results.index = results_index
 
@@ -370,7 +348,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [7]
+    config = [6]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     extend_dataset = True
     to_latex = False
@@ -392,9 +370,6 @@ if __name__ == '__main__':
         elif c == 5:
             compute_morality_correlations(interviews, to_latex)
         elif c == 6:
-            linguistic_attributes = ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']
-            compute_linguistic_regressions(interviews, linguistic_attributes, to_latex)
-        elif c == 7:
             confs = [
                          {'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 2', 'Wave 4'],
@@ -450,6 +425,15 @@ if __name__ == '__main__':
                           'Model': 'Probit',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}},
+                         {'From_Wave': ['Wave 1', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 3'],
+                          'Predictors': [mo + '_Model' for mo in MORALITY_ORIGIN],
+                          'Actions': ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
+                          'Dummy' : False,
+                          'Previous Behavior': False,
+                          'Model': 'OLS',
+                          'Controls': [],
+                          'References': {'Attribute Names': [], 'Attribute Values': []}},
                     ]
-            confs = confs[:4]
+            confs = confs[6:]
             compute_behavioral_regressions(interviews, confs, to_latex)

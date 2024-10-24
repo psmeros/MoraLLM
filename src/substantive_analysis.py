@@ -289,14 +289,14 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         #Prepare Data
         data = interviews.copy()
         data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
-        data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + [from_wave + ':' + a for a in conf['Actions']] + [to_wave + ':' + a for a in conf['Actions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
-        data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + conf['Actions'] + [a + '_pred' for a in conf['Actions']]
+        data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + a for a in conf['Actions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + a for a in conf['Actions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
+        data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Actions'] if conf['Previous Behavior'] else []) + [a + '_pred' for a in conf['Actions']]
         data ['Wave'] = pd.concat([pd.Series([int(wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for wave in conf['From_Wave']])
         
         #Binary Representation for Probit Model
         if conf['Model']  == 'Probit':
             if conf['Actions'] == ['Moral Schemas']:
-                data = data.drop('Moral Schemas', axis=1).dropna(subset='Moral Schemas_pred')
+                data = data.dropna(subset='Moral Schemas_pred')
                 conf['Actions'] = list(MORAL_SCHEMAS.values())
                 data = pd.concat([data, pd.get_dummies(data['Moral Schemas_pred']).astype(float)], axis=1).drop('Moral Schemas_pred', axis=1).rename(columns={c : c + '_pred' for c in conf['Actions']})
                 data[conf['Predictors']] = (data[conf['Predictors']] > data[conf['Predictors']].mean()).astype(float)
@@ -338,7 +338,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 if conf['Model'] == 'Ordered':
                     for _ in range(len(result) - len(results_index)):
                         result.popitem()
-                results[a + ' (N = ' + str(int(model.nobs)) + ')'] = result
+                results[a.split('_')[0] + ' (N = ' + str(int(model.nobs)) + ')'] = result
         results = pd.DataFrame(results)
         results.index = results_index
 
@@ -425,10 +425,19 @@ if __name__ == '__main__':
                           'Model': 'Probit',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}},
-                         {'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 1', 'Wave 3'],
+                         {'From_Wave': ['Wave 1'], 
+                          'To_Wave': ['Wave 3'],
                           'Predictors': [mo + '_Model' for mo in MORALITY_ORIGIN],
                           'Actions': ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
+                          'Dummy' : False,
+                          'Previous Behavior': False,
+                          'Model': 'OLS',
+                          'Controls': [],
+                          'References': {'Attribute Names': [], 'Attribute Values': []}},
+                         {'From_Wave': ['Wave 1'], 
+                          'To_Wave': ['Wave 3'],
+                          'Predictors': [mo + '_Model' for mo in MORALITY_ORIGIN],
+                          'Actions': [mo + '_Model' for mo in MORALITY_ORIGIN],
                           'Dummy' : False,
                           'Previous Behavior': False,
                           'Model': 'OLS',

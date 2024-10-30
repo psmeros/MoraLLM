@@ -281,9 +281,9 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
         #Compute Results
         if conf['Model'] in ['Probit', 'Ordered', 'OLS']:
-            formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + ' - 1' for p in conf['Predictions']]
+            formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
             results = {}
-            results_index = [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else [])
+            results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else [])
             for formula, p in zip(formulas, conf['Predictions']):
                 y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                 groups = X['Q("Survey Id")']
@@ -350,6 +350,7 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
+                          'Intercept': False,
                           'Previous Behavior': True,
                           'Model': 'Probit',
                           'Controls': [],
@@ -361,6 +362,7 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
+                          'Intercept': False,
                           'Previous Behavior': True,
                           'Model': 'Probit',
                           'Controls': ['Religion', 'Race', 'Gender', 'Region'],
@@ -372,6 +374,7 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
                           'Predictions': ['Moral Schemas'],
                           'Dummy' : False,
+                          'Intercept': False,
                           'Previous Behavior': False,
                           'Model': 'Probit',
                           'Controls': [],
@@ -383,6 +386,7 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
                           'Predictions': ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
                           'Dummy' : False,
+                          'Intercept': False,
                           'Previous Behavior': False,
                           'Model': 'OLS',
                           'Controls': [],
@@ -394,6 +398,7 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
                           'Predictions': [mo + '_Model' for mo in MORALITY_ORIGIN],
                           'Dummy' : False,
+                          'Intercept': False,
                           'Previous Behavior': False,
                           'Model': 'OLS',
                           'Controls': [],
@@ -409,5 +414,5 @@ if __name__ == '__main__':
                           'Model': 'Pairwise-Pearson',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}}]
-            confs = confs[10:]
+            confs = confs[:1]
             compute_behavioral_regressions(interviews, confs, to_latex)

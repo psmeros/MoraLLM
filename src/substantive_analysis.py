@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import patsy
 import seaborn as sns
-from statsmodels.discrete.discrete_model import Probit
+from statsmodels.discrete.discrete_model import Probit, Poisson, Logit, MNLogit
 from statsmodels.miscmodels.ordinal_model import OrderedModel
 from statsmodels.regression.linear_model import OLS
 from statsmodels.robust.robust_linear_model import RLM
@@ -255,21 +255,11 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         
         #Binary Representation for Probit Model
         if conf['Model']  == 'Probit':
-            if conf['Predictions'] == ['Moral Schemas']:
-                data = data.dropna(subset='Moral Schemas_pred')
-                conf['Predictions'] = list(MORAL_SCHEMAS.values())
-                data = pd.concat([data, pd.get_dummies(data['Moral Schemas_pred']).astype(float)], axis=1).drop('Moral Schemas_pred', axis=1).rename(columns={c : c + '_pred' for c in conf['Predictions']})
-                data[conf['Predictors']] = (data[conf['Predictors']] > data[conf['Predictors']].mean()).astype(float)
-            else:
-                data[conf['Predictions'] + [p + '_pred' for p in conf['Predictions']]] = data[conf['Predictions'] + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > 0) if not pd.isna(p) else pd.NA)
+            data[conf['Predictions'] + [p + '_pred' for p in conf['Predictions']]] = data[conf['Predictions'] + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > 0) if not pd.isna(p) else pd.NA)
         
-        elif conf['Model'] == 'Multinomial':
-            if conf['Predictions'] == ['Moral Schemas']:
-                data = data.drop('Moral Schemas', axis=1).dropna(subset='Moral Schemas_pred')
-                data['Moral Schemas_pred'] = data['Moral Schemas_pred'].map({v:len(MORAL_SCHEMAS)-k for k,v in MORAL_SCHEMAS.items()})
-
         #Add Reference Controls
         for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):
+            data = data.dropna(subset=attribute_name)
             dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').drop(attribute_name + ' = ' + attribute_value, axis=1).astype(float)
             data = pd.concat([data, dummies], axis=1)
             data = data.drop(attribute_name, axis=1)
@@ -280,7 +270,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         data = data.apply(pd.to_numeric).reset_index(drop=True)
 
         #Compute Results
-        if conf['Model'] in ['Probit', 'Ordered', 'OLS']:
+        if conf['Model'] in ['Probit', 'Ordered', 'OLS', 'RLM']:
             formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
             results = {}
             results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else [])
@@ -288,7 +278,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                 groups = X['Q("Survey Id")']
                 X = X.drop('Q("Survey Id")', axis=1)
-                model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else OrderedModel if conf['Model'] == 'Ordered' else None
+                model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else OrderedModel if conf['Model'] == 'Ordered' else RLM if conf['Model'] == 'RLM' else None
                 fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
                 model = model(y, X).fit(maxiter=10000, **fit_params)
                 result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}

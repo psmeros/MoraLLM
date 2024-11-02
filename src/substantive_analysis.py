@@ -4,8 +4,7 @@ import numpy as np
 import pandas as pd
 import patsy
 import seaborn as sns
-from statsmodels.discrete.discrete_model import Probit, Poisson, Logit, MNLogit
-from statsmodels.miscmodels.ordinal_model import OrderedModel
+from statsmodels.discrete.discrete_model import Probit
 from statsmodels.regression.linear_model import OLS
 from statsmodels.robust.robust_linear_model import RLM
 from IPython.display import display
@@ -255,7 +254,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         
         #Binary Representation for Probit Model
         if conf['Model']  == 'Probit':
-            data[conf['Predictions'] + [p + '_pred' for p in conf['Predictions']]] = data[conf['Predictions'] + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > 0) if not pd.isna(p) else pd.NA)
+            data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]] = data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > 0) if not pd.isna(p) else pd.NA)
         
         #Add Reference Controls
         for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):
@@ -267,10 +266,14 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 conf['Controls'] = conf['Controls'][:conf['Controls'].index(attribute_name)] + list(dummies.columns) + conf['Controls'][conf['Controls'].index(attribute_name) + 1:]
             elif attribute_name in conf['Predictors']:
                 conf['Predictors'] = conf['Predictors'][:conf['Predictors'].index(attribute_name)] + list(dummies.columns) + conf['Predictors'][conf['Predictors'].index(attribute_name) + 1:]
+
+        data = data.dropna(subset=conf['Predictors'])
         data = data.apply(pd.to_numeric).reset_index(drop=True)
 
         #Compute Results
-        if conf['Model'] in ['Probit', 'Ordered', 'OLS', 'RLM']:
+        if conf['Model'] in ['Probit', 'OLS', 'RLM']:
+            data[conf['Predictors']] = (data[conf['Predictors']] > .5).astype(float)
+
             formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
             results = {}
             results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else [])
@@ -278,16 +281,13 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                 groups = X['Q("Survey Id")']
                 X = X.drop('Q("Survey Id")', axis=1)
-                model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else OrderedModel if conf['Model'] == 'Ordered' else RLM if conf['Model'] == 'RLM' else None
+                model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else RLM if conf['Model'] == 'RLM' else None
                 fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
                 model = model(y, X).fit(maxiter=10000, **fit_params)
                 result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
                 if conf['Previous Behavior']:
                     result['Previous Behavior'] = result['Q("' + p + '")']
                     result.pop('Q("' + p + '")')
-                if conf['Model'] == 'Ordered':
-                    for _ in range(len(result) - len(results_index)):
-                        result.popitem()
                 results[p.split('_')[0] + ' (N = ' + str(int(model.nobs)) + ')'] = result
             results = pd.DataFrame(results)
             results.index = results_index
@@ -334,41 +334,41 @@ if __name__ == '__main__':
             plot_morality_distinction(interviews)
         elif c == 5:
             confs = [
+                         {'Descrition': 'Predicting Future Behavior: Moral Schemas',
+                          'From_Wave': ['Wave 1'],
+                          'To_Wave': ['Wave 2'],
+                          'Predictors': ['Moral Schemas'],
+                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
+                          'Dummy' : False,
+                          'Intercept': True,
+                          'Previous Behavior': True,
+                          'Model': 'Probit',
+                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
+                          'References': {'Attribute Names': ['Moral Schemas', 'Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Theistic', 'Not Religious', 'White', 'Male', 'Not South']}}
+                    ] + [
                          {'Descrition': 'Predicting Future Behavior: ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 3'],
                           'To_Wave': ['Wave 2', 'Wave 4'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Dummy' : True,
-                          'Intercept': False,
-                          'Previous Behavior': True,
-                          'Model': 'Probit',
-                          'Controls': [],
-                          'References': {'Attribute Names': [], 'Attribute Values': []}}
-                    for estimator in MORALITY_ESTIMATORS] + [
-                         {'Descrition': 'Predicting Future Behavior with Controls: ' + estimator,
-                          'From_Wave': ['Wave 1', 'Wave 3'],
-                          'To_Wave': ['Wave 2', 'Wave 4'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
-                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Dummy' : True,
-                          'Intercept': False,
+                          'Dummy' : False,
+                          'Intercept': True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
                           'Controls': ['Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS] + [
-                         {'Descrition': 'Predicting Moral Schemas: ' + estimator,
-                          'From_Wave': ['Wave 1'], 
-                          'To_Wave': ['Wave 1'],
+                         {'Descrition': 'Explaining Current Behavior: ' + estimator,
+                          'From_Wave': ['Wave 1', 'Wave 3'],
+                          'To_Wave': ['Wave 1', 'Wave 3'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
-                          'Predictions': ['Moral Schemas'],
+                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : False,
-                          'Intercept': False,
+                          'Intercept': True,
                           'Previous Behavior': False,
                           'Model': 'Probit',
-                          'Controls': [],
-                          'References': {'Attribute Names': [], 'Attribute Values': []}}
+                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS] + [
                          {'Descrition': 'Predicting Future Linguistics: ' + estimator,
                           'From_Wave': ['Wave 1'], 
@@ -376,33 +376,20 @@ if __name__ == '__main__':
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
                           'Predictions': ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
                           'Dummy' : False,
-                          'Intercept': False,
-                          'Previous Behavior': False,
+                          'Intercept': True,
+                          'Previous Behavior': True,
                           'Model': 'OLS',
-                          'Controls': [],
-                          'References': {'Attribute Names': [], 'Attribute Values': []}}
-                    for estimator in MORALITY_ESTIMATORS] + [
-                         {'Descrition': 'Predicting Future Morality: ' + estimator,
-                          'From_Wave': ['Wave 1'], 
-                          'To_Wave': ['Wave 3'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
-                          'Predictions': [mo + '_Model' for mo in MORALITY_ORIGIN],
-                          'Dummy' : False,
-                          'Intercept': False,
-                          'Previous Behavior': False,
-                          'Model': 'OLS',
-                          'Controls': [],
-                          'References': {'Attribute Names': [], 'Attribute Values': []}}
+                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS] + [
                          {'Descrition': 'Computing Pairwise Correlations',
                           'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 1', 'Wave 3'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS],
                           'Predictions': [],
-                          'Dummy' : False,
                           'Previous Behavior': False,
                           'Model': 'Pairwise-Pearson',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}}]
-            confs = confs[:1]
+            confs = confs[:]
             compute_behavioral_regressions(interviews, confs, to_latex)

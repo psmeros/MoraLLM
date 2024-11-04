@@ -242,72 +242,101 @@ def plot_morality_distinction(interviews):
 
 #Predict Survey and Oral Behavior based on Morality Origin
 def compute_behavioral_regressions(interviews, confs, to_latex):
-    for conf in confs:
-        print(conf['Descrition'])
+    for raw_conf in confs:
+        print(raw_conf['Descrition'])
 
-        #Prepare Data
-        data = interviews.copy()
-        data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
-        data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
-        data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
-        data ['Wave'] = pd.concat([pd.Series([int(wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for wave in conf['From_Wave']])
+        #Run regressions with and without controls
+        if raw_conf['Controls']:
+            conf = raw_conf.copy()
+            conf['Controls'] = []
+            conf['References'] = {'Attribute Names': [], 'Attribute Values': []}
+            extended_confs = [conf, raw_conf.copy()]
+        else:
+            extended_confs = [raw_conf]
         
-        #Binary Representation for Probit Model
-        if conf['Model']  == 'Probit':
-            data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]] = data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > 0) if not pd.isna(p) else pd.NA)
-        
-        #Add Reference Controls
-        for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):
-            data = data.dropna(subset=attribute_name)
-            dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').drop(attribute_name + ' = ' + attribute_value, axis=1).astype(float)
-            data = pd.concat([data, dummies], axis=1)
-            data = data.drop(attribute_name, axis=1)
-            if attribute_name in conf['Controls']:
-                conf['Controls'] = conf['Controls'][:conf['Controls'].index(attribute_name)] + list(dummies.columns) + conf['Controls'][conf['Controls'].index(attribute_name) + 1:]
-            elif attribute_name in conf['Predictors']:
-                conf['Predictors'] = conf['Predictors'][:conf['Predictors'].index(attribute_name)] + list(dummies.columns) + conf['Predictors'][conf['Predictors'].index(attribute_name) + 1:]
-
-        data = data.dropna(subset=conf['Predictors'])
-        data = data.apply(pd.to_numeric).reset_index(drop=True)
-
-        #Compute Results
-        if conf['Model'] in ['Probit', 'OLS', 'RLM']:
-            data[conf['Predictors']] = (data[conf['Predictors']] > .5).astype(float)
-
-            formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
-            results = {}
-            results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else [])
-            for formula, p in zip(formulas, conf['Predictions']):
-                y, X = patsy.dmatrices(formula, data, return_type='dataframe')
-                groups = X['Q("Survey Id")']
-                X = X.drop('Q("Survey Id")', axis=1)
-                model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else RLM if conf['Model'] == 'RLM' else None
-                fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
-                model = model(y, X).fit(maxiter=10000, **fit_params)
-                result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
-                if conf['Previous Behavior']:
-                    result['Previous Behavior'] = result['Q("' + p + '")']
-                    result.pop('Q("' + p + '")')
-                results[p.split('_')[0] + ' (N = ' + str(int(model.nobs)) + ')'] = result
-            results = pd.DataFrame(results)
-            results.index = results_index
-
-            #Scale Results
-            results = pd.DataFrame('(' + pd.DataFrame(scale(results.map(lambda c: c[0]))).map(str).values + ',' + results.map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results.index, columns=results.columns).map(eval).map(format_pvalue)
-        
-        elif conf['Model'] in ['Pairwise-Pearson', 'Pairwise-OLS', 'Pairwise-RLM']:
-            compute_pearson = lambda X, y, _: format_pvalue(pearsonr(X, y))
-            compute_ols = lambda X, y, groups: (lambda lm: format_pvalue((lm.params.iloc[0],lm.pvalues.iloc[0])))(OLS(y, pd.concat([X, pd.Series([1]*len(X))], axis=1)).fit(maxiter=10000, cov='cluster', cov_kwds={'groups': groups}))
-            compute_rlm = lambda X, y, _: (lambda lm: format_pvalue((lm.params.iloc[0],lm.pvalues.iloc[0])))(RLM(y, pd.concat([X, pd.Series([1]*len(X))], axis=1)).fit(maxiter=10000))
-            compute_pairwise = compute_pearson if conf['Model'] == 'Pairwise-Pearson' else compute_ols if conf['Model'] == 'Pairwise-OLS' else compute_rlm if conf['Model'] == 'Pairwise-RLM' else None
+        extended_results = []
+        for conf in extended_confs:
+            #Add Reference for Moral Schemas
+            if conf['Predictors'] == ['Moral Schemas']:
+                conf['References']['Attribute Names'].append('Moral Schemas')
+                conf['References']['Attribute Values'].append('Theistic')
             
-            data = data.dropna().reset_index(drop=True)
-            results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j], columns=MORALITY_ESTIMATORS)
-            for estimator in MORALITY_ESTIMATORS:
-                    for i in results.index:
-                        results.loc[i, estimator] = compute_pairwise(data[i.split(' - ')[0] + '_' + estimator], data[i.split(' - ')[1] + '_' + estimator], data['Survey Id'])
+            #Prepare Data
+            data = interviews.copy()
+            data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
+            data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
+            data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
+            data ['Wave'] = pd.concat([pd.Series([int(wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for wave in conf['From_Wave']])
             
-            print('N =', len(data))
+            #Binary Representation for Probit Model
+            if conf['Model']  == 'Probit':
+                data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]] = data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > 0) if not pd.isna(p) else pd.NA)
+            
+            #Add Reference Controls
+            for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):
+                data = data.dropna(subset=attribute_name)
+                dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').drop(attribute_name + ' = ' + attribute_value, axis=1).astype(float)
+                data = pd.concat([data, dummies], axis=1)
+                data = data.drop(attribute_name, axis=1)
+                if attribute_name in conf['Controls']:
+                    conf['Controls'] = conf['Controls'][:conf['Controls'].index(attribute_name)] + list(dummies.columns) + conf['Controls'][conf['Controls'].index(attribute_name) + 1:]
+                elif attribute_name in conf['Predictors']:
+                    conf['Predictors'] = conf['Predictors'][:conf['Predictors'].index(attribute_name)] + list(dummies.columns) + conf['Predictors'][conf['Predictors'].index(attribute_name) + 1:]
+
+            data = data.dropna(subset=conf['Predictors'])
+            data = data.apply(pd.to_numeric).reset_index(drop=True)
+
+            #Compute Results
+            if conf['Model'] in ['Probit', 'OLS', 'RLM']:
+                #Quantize Predictors
+                data[conf['Predictors']] = (data[conf['Predictors']] > .5).astype(float)
+
+                #Define Formulas
+                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
+                
+                #Run Regressions
+                results = {}
+                results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else []) + ['N']
+                for formula, p in zip(formulas, conf['Predictions']):
+                    y, X = patsy.dmatrices(formula, data, return_type='dataframe')
+                    groups = X['Q("Survey Id")']
+                    X = X.drop('Q("Survey Id")', axis=1)
+                    model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else RLM if conf['Model'] == 'RLM' else None
+                    fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
+                    model = model(y, X).fit(maxiter=10000, **fit_params)
+                    result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
+                    if conf['Previous Behavior']:
+                        result['Previous Behavior'] = result['Q("' + p + '")']
+                        result.pop('Q("' + p + '")')
+                    result['N'] = int(model.nobs)
+                    results[p.split('_')[0]] = result
+                results = pd.DataFrame(results)
+                results.index = results_index
+
+                #Scale Results
+                results = pd.concat([pd.DataFrame('(' + pd.DataFrame(scale(results[:-1].map(lambda c: c[0]))).map(str).values + ',' + results[:-1].map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results[:-1].index, columns=results[:-1].columns).map(eval).map(format_pvalue), pd.DataFrame(results.iloc[-1]).T])
+            
+            #Compute Results
+            elif conf['Model'] in ['Pairwise-Pearson', 'Pairwise-OLS', 'Pairwise-RLM']:
+                compute_pearson = lambda X, y, _: format_pvalue(pearsonr(X, y))
+                compute_ols = lambda X, y, groups: (lambda lm: format_pvalue((lm.params.iloc[0],lm.pvalues.iloc[0])))(OLS(y, pd.concat([X, pd.Series([1]*len(X))], axis=1)).fit(maxiter=10000, cov='cluster', cov_kwds={'groups': groups}))
+                compute_rlm = lambda X, y, _: (lambda lm: format_pvalue((lm.params.iloc[0],lm.pvalues.iloc[0])))(RLM(y, pd.concat([X, pd.Series([1]*len(X))], axis=1)).fit(maxiter=10000))
+                compute_pairwise = compute_pearson if conf['Model'] == 'Pairwise-Pearson' else compute_ols if conf['Model'] == 'Pairwise-OLS' else compute_rlm if conf['Model'] == 'Pairwise-RLM' else None
+                
+                #Compute Correlations
+                data = data.dropna().reset_index(drop=True)
+                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j], columns=MORALITY_ESTIMATORS)
+                for estimator in MORALITY_ESTIMATORS:
+                        for i in results.index:
+                            results.loc[i, estimator] = compute_pairwise(data[i.split(' - ')[0] + '_' + estimator], data[i.split(' - ')[1] + '_' + estimator], data['Survey Id'])
+                results.loc['N'] = len(data)
+
+            extended_results.append(results)
+        
+        #Concatenate Results with and without controls
+        results = pd.concat(extended_results, axis=1).fillna('-')
+        results = results[conf['Predictions'] if conf['Predictions'] else results.columns]
+        results = pd.concat([results.drop(index='N'), results.loc[['N']]])
 
         print(results.to_latex()) if to_latex else display(results)
 
@@ -334,22 +363,11 @@ if __name__ == '__main__':
             plot_morality_distinction(interviews)
         elif c == 5:
             confs = [
-                         {'Descrition': 'Predicting Future Behavior: Moral Schemas',
-                          'From_Wave': ['Wave 1'],
-                          'To_Wave': ['Wave 2'],
-                          'Predictors': ['Moral Schemas'],
-                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Dummy' : False,
-                          'Intercept': True,
-                          'Previous Behavior': True,
-                          'Model': 'Probit',
-                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
-                          'References': {'Attribute Names': ['Moral Schemas', 'Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Theistic', 'Not Religious', 'White', 'Male', 'Not South']}}
-                    ] + [
+                        #Predicting Future Behavior: Moral Schemas + Model + Coders [0:3]
                          {'Descrition': 'Predicting Future Behavior: ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 3'],
                           'To_Wave': ['Wave 2', 'Wave 4'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
+                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator in MORALITY_ESTIMATORS else ['Moral Schemas'],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : False,
                           'Intercept': True,
@@ -357,19 +375,21 @@ if __name__ == '__main__':
                           'Model': 'Probit',
                           'Controls': ['Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
-                    for estimator in MORALITY_ESTIMATORS] + [
-                         {'Descrition': 'Explaining Current Behavior: ' + estimator,
+                    for estimator in ['Moral Schemas'] + MORALITY_ESTIMATORS] + [
+                        #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
+                         {'Descrition': 'Explaining Current Behavior (With Controls): ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 3'],
                           'To_Wave': ['Wave 1', 'Wave 3'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
+                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator in MORALITY_ESTIMATORS else ['Moral Schemas'],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : False,
                           'Intercept': True,
                           'Previous Behavior': False,
                           'Model': 'Probit',
-                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
+                          'Controls': (['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'] if estimator == 'Model' else []) + ['Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
-                    for estimator in MORALITY_ESTIMATORS] + [
+                    for estimator in ['Moral Schemas'] + MORALITY_ESTIMATORS] + [
+                        #Predicting Future Linguistics: Model + Coders [6:8]
                          {'Descrition': 'Predicting Future Linguistics: ' + estimator,
                           'From_Wave': ['Wave 1'], 
                           'To_Wave': ['Wave 3'],
@@ -382,6 +402,7 @@ if __name__ == '__main__':
                           'Controls': ['Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS] + [
+                        #Computing Pairwise Correlations [8]
                          {'Descrition': 'Computing Pairwise Correlations',
                           'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 1', 'Wave 3'],

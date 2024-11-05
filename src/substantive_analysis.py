@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import patsy
 import seaborn as sns
+from sklearn.metrics import roc_auc_score
 from statsmodels.discrete.discrete_model import Probit
 from statsmodels.regression.linear_model import OLS
 from statsmodels.robust.robust_linear_model import RLM
@@ -255,6 +256,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             extended_confs = [raw_conf]
         
         extended_results = []
+        auc_roc = []
         for conf in extended_confs:
             #Add Reference for Moral Schemas
             if conf['Predictors'] == ['Moral Schemas']:
@@ -305,6 +307,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                     fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
                     model = model(y, X).fit(maxiter=10000, **fit_params)
                     result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
+                    auc_roc.append(roc_auc_score(y, model.predict(X), average='weighted'))
                     if conf['Previous Behavior']:
                         result['Previous Behavior'] = result['Q("' + p + '")']
                         result.pop('Q("' + p + '")')
@@ -337,7 +340,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         results = pd.concat(extended_results, axis=1).fillna('-')
         results = results[conf['Predictions'] if conf['Predictions'] else results.columns]
         results = pd.concat([results.drop(index='N'), results.loc[['N']]])
-
+        print('AUC-ROC: ' + str(round(np.array(auc_roc)[2*np.array(range(len(conf['Predictions'])))+1].mean()*100, 1)) + '%' if auc_roc else '') 
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':
@@ -412,5 +415,5 @@ if __name__ == '__main__':
                           'Model': 'Pairwise-Pearson',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}}]
-            confs = confs[:]
+            confs = confs[3:6]
             compute_behavioral_regressions(interviews, confs, to_latex)

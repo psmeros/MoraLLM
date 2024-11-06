@@ -291,7 +291,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Results
             if conf['Model'] in ['Probit', 'OLS', 'RLM']:
                 #Quantize Predictors
-                data[conf['Predictors']] = (data[conf['Predictors']] > .5).astype(float)
+                # data[conf['Predictors']] = (data[conf['Predictors']] > .5).astype(float)
 
                 #Define Formulas
                 formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
@@ -307,7 +307,8 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                     fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
                     model = model(y, X).fit(maxiter=10000, **fit_params)
                     result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
-                    auc_roc.append(roc_auc_score(y, model.predict(X), average='weighted'))
+                    if conf['Model'] == 'Probit':
+                        auc_roc.append(roc_auc_score(y, model.predict(X), average='weighted'))
                     if conf['Previous Behavior']:
                         result['Previous Behavior'] = result['Q("' + p + '")']
                         result.pop('Q("' + p + '")')
@@ -366,7 +367,7 @@ if __name__ == '__main__':
             plot_morality_distinction(interviews)
         elif c == 5:
             confs = [
-                        #Predicting Future Behavior: Moral Schemas + Model + Coders [0:3]
+                        #Predicting Future Behavior: Moral Schemas + Model + Coders [0:4]
                          {'Descrition': 'Predicting Future Behavior: ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 3'],
                           'To_Wave': ['Wave 2', 'Wave 4'],
@@ -379,8 +380,8 @@ if __name__ == '__main__':
                           'Controls': ['Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in ['Moral Schemas'] + MORALITY_ESTIMATORS] + [
-                        #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
-                         {'Descrition': 'Explaining Current Behavior (With Controls): ' + estimator,
+                        #Explaining Current Behavior: Moral Schemas + Model + Coders [4:8]
+                         {'Descrition': 'Explaining Current Behavior: ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 3'],
                           'To_Wave': ['Wave 1', 'Wave 3'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator in MORALITY_ESTIMATORS else ['Moral Schemas'],
@@ -389,10 +390,10 @@ if __name__ == '__main__':
                           'Intercept': True,
                           'Previous Behavior': False,
                           'Model': 'Probit',
-                          'Controls': (['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'] if estimator == 'Model' else []) + ['Religion', 'Race', 'Gender', 'Region'],
+                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in ['Moral Schemas'] + MORALITY_ESTIMATORS] + [
-                        #Predicting Future Linguistics: Model + Coders [6:8]
+                        #Predicting Future Linguistics: Model + Coders [8:10]
                          {'Descrition': 'Predicting Future Linguistics: ' + estimator,
                           'From_Wave': ['Wave 1'], 
                           'To_Wave': ['Wave 3'],
@@ -405,7 +406,7 @@ if __name__ == '__main__':
                           'Controls': ['Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS] + [
-                        #Computing Pairwise Correlations [8]
+                        #Computing Pairwise Correlations [11]
                          {'Descrition': 'Computing Pairwise Correlations',
                           'From_Wave': ['Wave 1', 'Wave 3'], 
                           'To_Wave': ['Wave 1', 'Wave 3'],
@@ -414,6 +415,7 @@ if __name__ == '__main__':
                           'Previous Behavior': False,
                           'Model': 'Pairwise-Pearson',
                           'Controls': [],
-                          'References': {'Attribute Names': [], 'Attribute Values': []}}]
-            confs = confs[3:6]
+                          'References': {'Attribute Names': [], 'Attribute Values': []}}
+                    ]
+            confs = confs[:]
             compute_behavioral_regressions(interviews, confs, to_latex)

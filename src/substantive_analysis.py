@@ -339,7 +339,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         
         #Concatenate Results with and without controls
         results = pd.concat(extended_results, axis=1).fillna('-')
-        results = results[conf['Predictions'] if conf['Predictions'] else results.columns]
+        results = results[[pr.split('_')[0] for pr in conf['Predictions']] if conf['Predictions'] else results.columns]
         results = pd.concat([results.drop(index='N'), results.loc[['N']]])
         print('AUC-ROC: ' + str(round(np.array(auc_roc)[2*np.array(range(len(conf['Predictions'])))+1].mean()*100, 1)) + '%' if auc_roc else '') 
         print(results.to_latex()) if to_latex else display(results)
@@ -416,6 +416,19 @@ if __name__ == '__main__':
                           'Model': 'Pairwise-Pearson',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}}
-                    ]
+                    ] + [
+                        #Computing Pairwise Correlations [12:15]
+                         {'Descrition': 'Estimating Morality Sources from Social Categories (OLS): ' + estimator,
+                          'From_Wave': ['Wave 1', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 3'],
+                          'Predictors': ['Age', 'Household Income', 'Church Attendance', 'Parent Education'],
+                          'Predictions': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
+                          'Dummy' : True,
+                          'Intercept': True,
+                          'Previous Behavior': False,
+                          'Model': 'OLS',
+                          'Controls': [],
+                          'References': {'Attribute Names': [], 'Attribute Values': []}}
+                    for estimator in MORALITY_ESTIMATORS]
             confs = confs[:]
             compute_behavioral_regressions(interviews, confs, to_latex)

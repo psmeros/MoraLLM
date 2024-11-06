@@ -269,8 +269,20 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
 
     interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
     codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    
+    hybrid_codings = codings * interviews[MORALITY_ORIGIN].values
+
+    # factor = 2
+    # mutual_disagreement = interviews.apply(lambda c: pd.Series([int(not (c[mo + '_' + CODERS[0]]) & (not c[mo + '_' + CODERS[1]])) for mo in MORALITY_ORIGIN]), axis=1)
+    # mutual_agreement = interviews.apply(lambda c: pd.Series([int((c[mo + '_' + CODERS[0]]) & (c[mo + '_' + CODERS[1]])) for mo in MORALITY_ORIGIN]), axis=1)
+    # hybrid_codings = (interviews[MORALITY_ORIGIN].values - (mutual_disagreement * interviews[MORALITY_ORIGIN].values * factor) + (mutual_agreement * interviews[MORALITY_ORIGIN].values * factor)).clip(0, 1)
+
+    # hybrid_codings = interviews.apply(lambda c: pd.Series([int(not (c[mo + '_' + CODERS[0]]) | (not c[mo + '_' + CODERS[1]])) for mo in MORALITY_ORIGIN]), axis=1)
+    # hybrid_codings = codings + (hybrid_codings * interviews[MORALITY_ORIGIN].values)
+
     interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
     interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
+    interviews[[mo + '_' + MORALITY_ESTIMATORS[2] for mo in MORALITY_ORIGIN]] = hybrid_codings
 
     return interviews
 

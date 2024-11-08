@@ -12,7 +12,7 @@ from src.parser import merge_codings
 #Plot mean-squared error for all models
 def plot_model_evaluation(interviews, models):
     #Prepare data
-    codings = merge_codings(interviews)
+    codings = merge_codings(None, return_codings=True)
 
     #Compute golden labels
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
@@ -36,8 +36,11 @@ def plot_model_evaluation(interviews, models):
             interviews['Theistic'] = interviews['Holy Scripture']
             interviews = interviews.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
 
-        interviews = merge_codings(interviews)[MORALITY_ORIGIN]
-        loss = pd.DataFrame([{mo:mean_squared_error(golden_labels[mo], interviews[mo]) for mo in MORALITY_ORIGIN}]) * weights
+        interviews = merge_codings(interviews)
+        interviews = interviews.dropna(subset=[mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS])
+        model_output = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+        coders_output = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+        loss = pd.DataFrame([{mo:mean_squared_error(coders_output[mo], model_output[mo]) for mo in MORALITY_ORIGIN}]) * weights
         loss['Model'] = model
         losses.append(loss)
 
@@ -62,9 +65,9 @@ def plot_model_evaluation(interviews, models):
     plt.show()
 
 #Plot coders agreement using Cohen's Kappa
-def plot_coders_agreement(interviews):
+def plot_coders_agreement():
     #Prepare data
-    codings = merge_codings(interviews)
+    codings = merge_codings(None, return_codings=True)
 
     #Prepare heatmap
     coder_A = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].astype(int).values.T
@@ -125,6 +128,6 @@ if __name__ == '__main__':
             models = ['lg', 'bert', 'bart', 'chatgpt', 'top']
             plot_model_evaluation(interviews, models)
         elif c == 2:
-            plot_coders_agreement(interviews)
+            plot_coders_agreement()
         elif c == 3:
             plot_ecdf(interviews)

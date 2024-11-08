@@ -285,7 +285,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 elif attribute_name in conf['Predictors']:
                     conf['Predictors'] = conf['Predictors'][:conf['Predictors'].index(attribute_name)] + list(dummies.columns) + conf['Predictors'][conf['Predictors'].index(attribute_name) + 1:]
 
-            data = data.dropna(subset=conf['Predictors'])
+            # data = data.dropna(subset=conf['Predictors'])
             data = data.apply(pd.to_numeric).reset_index(drop=True)
 
             #Compute Results
@@ -328,12 +328,12 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 compute_pairwise = compute_pearson if conf['Model'] == 'Pairwise-Pearson' else compute_ols if conf['Model'] == 'Pairwise-OLS' else compute_rlm if conf['Model'] == 'Pairwise-RLM' else None
                 
                 #Compute Correlations
-                data = data.dropna().reset_index(drop=True)
-                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j], columns=MORALITY_ESTIMATORS)
+                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=MORALITY_ESTIMATORS)
                 for estimator in MORALITY_ESTIMATORS:
-                        for i in results.index:
-                            results.loc[i, estimator] = compute_pairwise(data[i.split(' - ')[0] + '_' + estimator], data[i.split(' - ')[1] + '_' + estimator], data['Survey Id'])
-                results.loc['N'] = len(data)
+                    slice = data[[mo + '_' + estimator for mo in MORALITY_ORIGIN] + ['Survey Id']].dropna().reset_index(drop=True)
+                    for i in results.index[:-1]:
+                        results.loc[i, estimator] = compute_pairwise(slice[i.split(' - ')[0] + '_' + estimator], slice[i.split(' - ')[1] + '_' + estimator], slice['Survey Id'])
+                    results.loc['N', estimator] = len(slice)
 
             extended_results.append(results)
         
@@ -346,7 +346,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [1,2,3,4,5]
     interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     extend_dataset = True
     to_latex = False

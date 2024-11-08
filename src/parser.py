@@ -216,19 +216,19 @@ def wave_parser(waves_folder='data/interviews/waves', morality_breakdown=False):
 
 #Merge matched interviews from different waves
 def merge_matches(interviews, extend_dataset, wave_list = CODED_WAVES, matches_file = 'data/interviews/alignments/crosswave.csv'):
-    matches = pd.read_csv(matches_file)[wave_list].dropna()
+    matches = pd.read_csv(matches_file)[wave_list]
 
     for wave in wave_list:
         wave_interviews = interviews[interviews['Wave'] == int(wave.split()[-1])]
         wave_interviews = wave_interviews.add_prefix(wave + ':')
-        matches = matches.merge(wave_interviews, left_on = wave, right_on = wave + ':Interview Code', how = ('outer' if extend_dataset else 'inner'))
+        matches = matches.merge(wave_interviews, left_on = wave, right_on = wave + ':Interview Code', how = ('left' if extend_dataset else 'inner'))
 
     matches = matches.drop(wave_list, axis=1)
 
     return matches
 
 #Merge codings from two coders for wave 1 and wave 3 of interviews
-def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
+def merge_codings(interviews, return_codings = False, codings_folder = 'data/interviews/codings'):
     #Parse codings
     codings_wave_1 = []
     codings_wave_3 = []
@@ -267,23 +267,15 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings'):
     codings = codings[~(~codings).all(axis=1)]
     codings = codings.reset_index()
 
-    interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'inner', validate = '1:1')
-    codings = interviews.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN]), axis=1)
+    if return_codings:
+        interviews = codings
+    else:
+        codings = pd.concat([codings[['Wave', 'Interview Code']], codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN), axis=1)], axis=1)
+        interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], suffixes=('_' + MORALITY_ESTIMATORS[0], '_' + MORALITY_ESTIMATORS[1]), how = 'left', validate = '1:1')
+        #Hybrid morality estimation
+        if len(MORALITY_ESTIMATORS) == 3:
+            interviews[[mo + '_' + MORALITY_ESTIMATORS[2] for mo in MORALITY_ORIGIN]] = interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values * interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values
     
-    hybrid_codings = codings * interviews[MORALITY_ORIGIN].values
-
-    # factor = 2
-    # mutual_disagreement = interviews.apply(lambda c: pd.Series([int(not (c[mo + '_' + CODERS[0]]) & (not c[mo + '_' + CODERS[1]])) for mo in MORALITY_ORIGIN]), axis=1)
-    # mutual_agreement = interviews.apply(lambda c: pd.Series([int((c[mo + '_' + CODERS[0]]) & (c[mo + '_' + CODERS[1]])) for mo in MORALITY_ORIGIN]), axis=1)
-    # hybrid_codings = (interviews[MORALITY_ORIGIN].values - (mutual_disagreement * interviews[MORALITY_ORIGIN].values * factor) + (mutual_agreement * interviews[MORALITY_ORIGIN].values * factor)).clip(0, 1)
-
-    # hybrid_codings = interviews.apply(lambda c: pd.Series([int(not (c[mo + '_' + CODERS[0]]) | (not c[mo + '_' + CODERS[1]])) for mo in MORALITY_ORIGIN]), axis=1)
-    # hybrid_codings = codings + (hybrid_codings * interviews[MORALITY_ORIGIN].values)
-
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]] = codings
-    interviews[[mo + '_' + MORALITY_ESTIMATORS[2] for mo in MORALITY_ORIGIN]] = hybrid_codings
-
     return interviews
 
 #Merge interviews and surveys

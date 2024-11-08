@@ -123,16 +123,19 @@ def locate_morality_section(interviews, section):
 
 #Overfit model to codings
 def inform_morality_origin_model(interviews):
+    #Normalize scores
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0).fillna(0.0)
+
     #Compute golden labels
-    codings = merge_codings(interviews)
-    golden_labels = codings[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]]
-    golden_labels.columns = MORALITY_ORIGIN
+    codings = merge_codings(interviews)[[mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS]].dropna()
+    model_labels = pd.DataFrame(codings[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    golden_labels = pd.DataFrame(codings[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
 
     #Compute coefficients for more accurate morality origin estimation
     coefs = {}
     for mo in MORALITY_ORIGIN:
         regr = LinearRegression(fit_intercept=False)
-        regr.fit(codings[mo].values.reshape(-1, 1), golden_labels[mo].values.reshape(-1, 1))
+        regr.fit(model_labels[mo].values.reshape(-1, 1), golden_labels[mo].values.reshape(-1, 1))
         coefs[mo] = regr.coef_[0][0]
     coefs = pd.Series(coefs)
 
@@ -149,7 +152,7 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
     if model in ['entail', 'entail_ml', 'entail_explained', 'entail_ml_explained']:
         #Premise and hypothesis templates
         hypothesis_template = 'This example is {}.'
-        morality_pipeline =  pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
+        morality_pipeline = pipeline('zero-shot-classification', model='facebook/bart-large-mnli')
 
         #Model variants
         multi_label = True if model in ['entail_ml', 'entail_ml_explained'] else False
@@ -164,9 +167,6 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
         morality_origin = interviews[section].apply(full_pipeline)
         interviews = interviews.join(morality_origin)
 
-        #Normalize scores
-        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0).fillna(0.0)
-
     #ChatGPT model
     elif model == 'chatgpt':
         #Call OpenAI API
@@ -179,9 +179,6 @@ def compute_morality_origin_model(interviews, model, section, dictionary_file='d
         #Classify morality origin and join results
         morality_origin = interviews[section].apply(full_pipeline)
         interviews = interviews.join(morality_origin)
-
-        #Normalize scores
-        interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0).fillna(0.0)
 
     #Embeddings models
     else:

@@ -340,7 +340,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         results = pd.concat(extended_results, axis=1).fillna('-')
         results = results[[pr.split('_')[0] for pr in conf['Predictions']] if conf['Predictions'] else results.columns]
         results = pd.concat([results.drop(index='N'), results.loc[['N']]])
-        print('AUC-ROC: ' + str(round(np.array(auc_roc)[2*np.array(range(len(conf['Predictions'])))+1].mean()*100, 1)) + '%' if auc_roc else '') 
+        print('Average AUC-ROC: ' + str(round(np.array(auc_roc).mean()*100, 1)) + '%' if auc_roc else '') 
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':

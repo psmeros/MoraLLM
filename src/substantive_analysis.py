@@ -271,7 +271,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             
             #Binary Representation for Probit Model
             if conf['Model']  == 'Probit':
-                data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]] = data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > 0) if not pd.isna(p) else pd.NA)
+                data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]] = data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > .5) if not pd.isna(p) else pd.NA)
             
             #Add Reference Controls
             for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):
@@ -416,8 +416,8 @@ if __name__ == '__main__':
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}}
                     ] + [
-                        #Estimating Morality Sources from Social Categories (OLS) [9:10]
-                         {'Descrition': 'Estimating Morality Sources from Social Categories (OLS): ' + estimator,
+                        #Estimating Morality Sources from Social Categories (Probit) [9:10]
+                         {'Descrition': 'Estimating Morality Sources from Social Categories (Probit): ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'], 
                           'To_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
                           'Predictors': ['Household Income', 'Church Attendance', 'Parent Education'],
@@ -425,7 +425,7 @@ if __name__ == '__main__':
                           'Dummy' : True,
                           'Intercept': True,
                           'Previous Behavior': False,
-                          'Model': 'OLS',
+                          'Model': 'Probit',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}}
                     for estimator in MORALITY_ESTIMATORS]

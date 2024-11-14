@@ -265,10 +265,9 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             
             #Prepare Data
             data = interviews.copy()
-            data[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
             data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
-            data ['Wave'] = pd.concat([pd.Series([int(wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for wave in conf['From_Wave']])
+            data['Wave'] = pd.concat([pd.Series([float(from_wave.split()[1]) ** float(to_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             
             #Binary Representation for Probit Model
             if conf['Model']  == 'Probit':
@@ -294,7 +293,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 # data[conf['Predictors']] = (data[conf['Predictors']] > .5).astype(float)
 
                 #Define Formulas
-                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
+                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] and (p not in ['Cheat', 'Cutclass', 'Secret']) else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
                 
                 #Run Regressions
                 results = {}
@@ -318,7 +317,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 results.index = results_index
 
                 #Scale Results
-                results = pd.concat([pd.DataFrame('(' + pd.DataFrame(scale(results[:-1].map(lambda c: c[0]))).map(str).values + ',' + results[:-1].map(lambda c: c[1]).map(str).replace('nan', 'None').values + ')', index=results[:-1].index, columns=results[:-1].columns).map(eval).map(format_pvalue), pd.DataFrame(results.iloc[-1]).T])
+                results = pd.concat([pd.DataFrame(('(' + pd.DataFrame(scale(results[:-1].map(lambda c: c[0] if not pd.isna(c) else None))).map(str) + ',' + pd.DataFrame(results[:-1].map(lambda c: c[1] if not pd.isna(c) else None)).map(str).values + ')').values, index=results[:-1].index, columns=results[:-1].columns).map(str).replace('(nan,nan)', 'None').map(eval).map(format_pvalue), pd.DataFrame(results.iloc[-1]).T])
             
             #Compute Results
             elif conf['Model'] in ['Pairwise-Pearson', 'Pairwise-OLS', 'Pairwise-RLM']:

@@ -215,7 +215,7 @@ def wave_parser(waves_folder='data/interviews/waves', morality_breakdown=False):
     return waves
 
 #Merge matched interviews from different waves
-def merge_matches(interviews, extend_dataset, wave_list = CODED_WAVES, matches_file = 'data/interviews/alignments/crosswave.csv'):
+def merge_matches(interviews, extend_dataset, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/interviews/alignments/crosswave.csv'):
     matches = pd.read_csv(matches_file)[wave_list]
 
     for wave in wave_list:
@@ -312,6 +312,10 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Secret'] = survey['Secret'].apply(lambda x: 6 - x if x in range(1, 7) else None)
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x - 1 if x in range(1, 5) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
+                survey['Moral Schemas'] = survey['Moral Schemas'].map(lambda x: MORAL_SCHEMAS.get(x, None))
+                survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x-1 if x-1 in CHURCH_ATTENDANCE_RANGE.keys() else None)
+                survey['Religion'] = survey['Religion'].map(lambda x: RELIGION['Wave 2'].get(x, None))
+                survey['Region'] = survey['Region'].map(lambda x: REGION.get(x, None))
             elif wave == 3:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 7 - x if x in range(1, 8) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 7 - x if x in range(1, 8) else None)
@@ -360,20 +364,21 @@ def prepare_data(interviews, extend_dataset):
 
     interviews['Wave 3:Age'] = interviews['Wave 3:Age'].fillna(interviews['Wave 1:Age'] + int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
     interviews['Wave 1:Age'] = interviews['Wave 1:Age'].fillna(interviews['Wave 3:Age'] - int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
+    interviews[['Wave 2:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]]
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
+    interviews[['Wave 2:' + mo + '_Coders' for mo in MORALITY_ORIGIN]] = pd.NA
+    interviews[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
 
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
-    columns += [wave + ':' + mo + '_' + estimatior for wave in CODED_WAVES for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
 
-    columns += [wave + ':' + demographic for wave in CODED_WAVES for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
+    columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
-    columns += [wave + ':' + covariate for wave in CODED_WAVES for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
+    columns += [wave + ':' + covariate for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
 
-    columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2'] for action in ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']]
+    columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2', 'Wave 3', 'Wave 4'] for action in ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']]
 
-    columns += [wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Pot', 'Drink', 'Volunteer', 'Help']]
-
-    columns += [wave + ':' + 'Morality Response (raw)' for wave in CODED_WAVES]
+    columns += [wave + ':' + 'Morality Response (raw)' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
     interviews = interviews[columns]
     return interviews
@@ -381,12 +386,12 @@ def prepare_data(interviews, extend_dataset):
 if __name__ == '__main__':
     #Hyperparameters
     config = [4]
-    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
+    interviews = pd.read_pickle('data/cache/morality_model-unbiased-mean.pkl')
 
     for c in config:
         if c == 0:
             interviews = wave_parser()
-        if c == 1:            
+        if c == 1:
             interviews = merge_codings(interviews)
         elif c == 2:
             interviews = merge_matches(interviews)

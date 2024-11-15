@@ -1,3 +1,5 @@
+import os
+from itertools import combinations
 
 import matplotlib.ticker as mtick
 import numpy as np
@@ -5,18 +7,179 @@ import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
 import spacy
+import torch
 from matplotlib import pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from pandarallel import pandarallel
 from scipy.spatial import ConvexHull, distance
+from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import minmax_scale
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, BartModel, BartTokenizer, BertModel, BertTokenizer
+from transformers_interpret import ZeroShotClassificationExplainer
 from wordcloud import WordCloud
 
 from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, REFINED_SECTIONS
 from src.parser import merge_codings, merge_matches, merge_surveys, wave_parser
+
+
+# Find k embeddings with maximum distance
+def k_most_distant_embeddings(embeddings, k):
+
+    # Calculate pairwise distances between embeddings
+    distances = pdist(embeddings.tolist(), metric='cosine')
+    pairwise_distances = squareform(distances)
+
+    # Iterate through all combinations and find the one with maximum sum of distances
+    combinations_k = combinations(range(len(embeddings)), k)
+
+    max_sum_distances = -np.inf
+    optimal_combination = None
+
+    for combination in combinations_k:
+        sum_distances = np.sum(pairwise_distances[np.ix_(combination, combination)])
+        if sum_distances > max_sum_distances:
+            max_sum_distances = sum_distances
+            optimal_combination = combination
+
+    return list(optimal_combination)
+
+#Explain word-level attention for zero-shot models
+def explain_entailment(interviews):
+    pairs = [(interviews.iloc[interviews[mo + '_x'].idxmax()]['Morality_Origin'], [mo]) for mo in MORALITY_ORIGIN]
+
+    model_name = 'cross-encoder/nli-deberta-base'
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+    zero_shot_explainer = ZeroShotClassificationExplainer(model, tokenizer)
+
+    for text, labels in pairs:
+        zero_shot_explainer(text=text, hypothesis_template='The morality origin is {}.',labels=labels)
+        zero_shot_explainer.visualize('data/misc/zero_shot.html')
+
+#Overfit model to codings
+def inform_morality_origin_model(interviews):
+    #Normalize scores
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].div(interviews[MORALITY_ORIGIN].sum(axis=1), axis=0).fillna(0.0)
+
+    #Compute golden labels
+    codings = merge_codings(interviews)[[mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS]].dropna()
+    model_labels = pd.DataFrame(codings[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    golden_labels = pd.DataFrame(codings[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+
+    #Compute coefficients for more accurate morality origin estimation
+    coefs = {}
+    for mo in MORALITY_ORIGIN:
+        regr = LinearRegression(fit_intercept=False)
+        regr.fit(model_labels[mo].values.reshape(-1, 1), golden_labels[mo].values.reshape(-1, 1))
+        coefs[mo] = regr.coef_[0][0]
+    coefs = pd.Series(coefs)
+
+    #Multiply with coefficients and add random gaussian noise
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN] * coefs
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN].clip(lower=0.0, upper=1.0)
+    interviews[MORALITY_ORIGIN] = interviews[MORALITY_ORIGIN] - pd.DataFrame(abs(np.random.default_rng(42).normal(0, 1e-1, interviews[MORALITY_ORIGIN].shape)), columns=MORALITY_ORIGIN) * (interviews[MORALITY_ORIGIN] > .99).astype(int)
+
+    return interviews
+
+#Return a SpaCy, BERT, or BART vectorizer
+def get_vectorizer(model='lg', filter_POS=True):
+    if model in ['bert', 'bart']:
+        #Load the tokenizer and model
+        if model == 'bert':
+            model_name = 'bert-base-uncased'
+            tokenizer = BertTokenizer.from_pretrained(model_name)
+            model = BertModel.from_pretrained(model_name)
+        elif model == 'bart':
+            model_name = 'facebook/bart-large-mnli'
+            tokenizer = BartTokenizer.from_pretrained(model_name)
+            model = BartModel.from_pretrained(model_name)
+
+        def extract_embeddings(text):
+            #Tokenize the input text
+            input = tokenizer(text, return_tensors='pt')
+
+            #Split the input text into chunks of max_chunk_length
+            num_chunks = (input['input_ids'].size(1) - 1) // tokenizer.model_max_length + 1
+            chunked_input_ids = torch.chunk(input['input_ids'], num_chunks, dim=1)
+            chunked_attention_mask = torch.chunk(input['attention_mask'], num_chunks, dim=1)
+
+            #Initialize an empty tensor to store the embeddings
+            all_embeddings = []
+
+            #Forward pass through the model to get the embeddings for each chunk
+            with torch.no_grad():
+                for (input_ids, attention_mask) in zip(chunked_input_ids, chunked_attention_mask):
+
+                    #Input and Output of the transformer model
+                    inputs = {'input_ids': input_ids, 'attention_mask': attention_mask}
+                    outputs = model(**inputs, output_attentions=True)
+
+                    #Extract the embeddings from the model's output (max-pooling)
+                    embeddings = torch.max(outputs.last_hidden_state[0], dim=0, keepdim=True).values
+                    all_embeddings.append(embeddings)
+
+            #Concatenate and aggegate the embeddings from all chunks (max-pooling)
+            embeddings = torch.max(torch.cat(all_embeddings, dim=0), dim=0).values.numpy()
+
+            return embeddings
+    
+        vectorizer = lambda x: x.apply(extract_embeddings)
+
+    elif model in ['lg', 'md']:
+        nlp = spacy.load('en_core_web_'+model)
+        validate_POS = lambda w: w.pos_ in ['NOUN', 'ADJ', 'VERB'] if filter_POS else True
+        mean_word_vectors = lambda s: np.mean([w.vector for w in nlp(s) if validate_POS(w)], axis=0)
+        vectorizer = lambda x: x.apply(mean_word_vectors)
+ 
+    return vectorizer
+
+#Compute eMFD embeddings and transformation matrix
+def embed_eMFD(dictionary_file, model):
+    #Load data
+    dictionary = pd.DataFrame(pd.read_pickle(dictionary_file)).T
+    dictionary = dictionary.reset_index(names=['word'])
+
+    #Compute global embeddings
+    vectorizer = get_vectorizer(model='lg', parallel=False, filter_POS=False)
+    dictionary['Embeddings'] = vectorizer(dictionary['word'].str.lower())
+    dictionary = dictionary.dropna(subset=['Embeddings'])
+
+    moral_foundations = pd.DataFrame()
+
+    for column in dictionary.columns:
+        if column not in ['word', 'Embeddings']:
+            moral_foundations[column] = sum(dictionary['Embeddings']*dictionary[column])/sum(dictionary[column])
+
+    moral_foundations = moral_foundations.T
+    moral_foundations['Global Embeddings'] = moral_foundations.apply(lambda x: np.array(x), axis=1)
+    moral_foundations = moral_foundations[['Global Embeddings']]
+    moral_foundations = moral_foundations.reset_index(names=['Name'])
+
+    #Average Vice and Virtue embeddings
+    moral_foundations['Name'] = moral_foundations['Name'].apply(lambda x: x.split('.')[0].capitalize())
+    moral_foundations = moral_foundations.groupby('Name').mean().reset_index()
+
+    #Compute local embeddings
+    vectorizer = get_vectorizer(model=model, parallel=False, filter_POS=False)
+    moral_foundations['Local Embeddings'] = vectorizer(moral_foundations['Name'].str.lower())
+
+    #Drop empty embeddings
+    moral_foundations = moral_foundations[moral_foundations.apply(lambda x: (sum(x['Local Embeddings']) != 0) & (sum(x['Global Embeddings']) != 0), axis=1)]
+
+    #Find transformation matrix
+    regressor = Ridge(random_state=42)
+    regressor.fit(moral_foundations['Local Embeddings'].apply(pd.Series), moral_foundations['Global Embeddings'].apply(pd.Series))
+    transformation_matrix = pd.DataFrame(regressor.coef_)
+
+    return transformation_matrix
+
+display_notification = lambda notification: os.system("osascript -e 'display notification \"\" with title \""+notification+"\"'")
+
 
 #Plot wordcloud for each morality origin
 def plot_morality_wordcloud(interviews):

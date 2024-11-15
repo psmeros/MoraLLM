@@ -346,7 +346,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 if __name__ == '__main__':
     #Hyperparameters
     config = [5]
-    interviews = pd.read_pickle('data/cache/morality_model-unbiased-mean.pkl')
+    interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
     extend_dataset = True
     to_latex = False
     interviews = prepare_data(interviews, extend_dataset)
@@ -397,7 +397,7 @@ if __name__ == '__main__':
                           'From_Wave': ['Wave 1'], 
                           'To_Wave': ['Wave 3'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
-                          'Predictions': ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment'],
+                          'Predictions': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment'],
                           'Dummy' : False,
                           'Intercept': True,
                           'Previous Behavior': True,
@@ -407,8 +407,8 @@ if __name__ == '__main__':
                     for estimator in MORALITY_ESTIMATORS] + [
                         #Computing Pairwise Correlations [8]
                          {'Descrition': 'Computing Pairwise Correlations',
-                          'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 1', 'Wave 3'],
+                          'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS],
                           'Predictions': [],
                           'Previous Behavior': False,

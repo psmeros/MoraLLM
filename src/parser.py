@@ -365,11 +365,11 @@ def prepare_data(interviews, extend_dataset):
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
-    columns += [wave + ':' + covariate for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for covariate in ['Verbosity', 'Uncertainty', 'Readability', 'Sentiment']]
+    columns += [wave + ':' + covariate for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for covariate in ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment']]
 
     columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2', 'Wave 3', 'Wave 4'] for action in ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']]
 
-    columns += [wave + ':' + 'Morality Response (raw)' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
+    columns += [wave + ':' + 'Morality Text' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
     interviews = interviews[columns]
     return interviews

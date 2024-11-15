@@ -1,13 +1,11 @@
 import os
 import re
 
-import numpy as np
 import pandas as pd
-from sklearn.preprocessing import minmax_scale
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -208,9 +206,11 @@ def wave_parser(waves_folder='data/interviews/waves', morality_breakdown=False):
 
     waves = pd.concat(waves, ignore_index=True)
     
-    #Clean Gender/Race Metadata
+    #Clean Metadata
     waves['Gender'] = waves['Gender'].map(METADATA_GENDER_MAP)
     waves['Race'] = waves['Race'].map(METADATA_RACE_MAP)
+    waves['Race'] = waves['Race'].map(RACE_RANGE)
+    waves['Age'] = waves['Age'].astype('Int64')
     
     return waves
 
@@ -344,30 +344,21 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     interviews = interviews.drop(['Survey Id_x', 'Survey Id_y'], axis=1).dropna(subset=['Survey Id']).drop_duplicates(subset=['Survey Id'], keep='first').reset_index(drop=True)
     interviews['Survey Id'] = interviews['Survey Id'].astype(int)
 
-    return interviews
-
-#Merge all different types of data
-def prepare_data(interviews, extend_dataset):
-    interviews['Race'] = interviews['Race'].map(RACE_RANGE)
-    interviews['Age'] = interviews['Age'].astype('Int64')
-    interviews = interviews.rename(columns={'Morality_Origin': 'Morality Response (raw)'})
-    interviews['Morality Response (raw)'] = interviews['Morality Response (raw)'].str.replace('\n\n\n', ' ' * 10)
-
-    interviews['Verbosity'] = minmax_scale(np.log(interviews['Morality_Origin_Word_Count'].astype(int)))
-    interviews['Uncertainty'] = minmax_scale(interviews['Morality_Origin_Uncertain_Terms'].astype(int) / interviews['Morality_Origin_Word_Count'].astype(int))
-    interviews['Readability'] = minmax_scale((interviews['Morality_Origin_Readability']).astype(float))
-    interviews['Sentiment'] = minmax_scale(interviews['Morality_Origin_Sentiment'].astype(float))
-
-    interviews = merge_codings(interviews)
-    interviews = merge_matches(interviews, extend_dataset)
-    interviews = merge_surveys(interviews)
-
+    #Missing data
     interviews['Wave 3:Age'] = interviews['Wave 3:Age'].fillna(interviews['Wave 1:Age'] + int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
     interviews['Wave 1:Age'] = interviews['Wave 1:Age'].fillna(interviews['Wave 3:Age'] - int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
     interviews[['Wave 2:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]]
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
     interviews[['Wave 2:' + mo + '_Coders' for mo in MORALITY_ORIGIN]] = pd.NA
     interviews[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
+
+    return interviews
+
+#Merge all different types of data
+def prepare_data(interviews, extend_dataset):
+    interviews = merge_codings(interviews)
+    interviews = merge_matches(interviews, extend_dataset)
+    interviews = merge_surveys(interviews)
 
     columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
     columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]

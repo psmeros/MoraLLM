@@ -1,19 +1,14 @@
 matplotlib==3.8.0
 numpy==1.26.0
-pandarallel==1.6.5
 pandas==2.2.0
-pyarrow==15.0.0
 scikit_learn==1.4.0
 scipy==1.12.0
 statsmodels==0.14.0 
 seaborn==0.13.2
-transformers==4.39.0
+transformers==4.41.0
 spacy==3.7.4
 en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl
 striprtf==0.0.25
-wordcloud==1.9.3
-transformers-interpret==0.10.0
 openai==0.28.1
-plotly==5.17.0
-kaleido==0.2.1
 textstat==0.7.3
+sentence-transformers==3.3.0

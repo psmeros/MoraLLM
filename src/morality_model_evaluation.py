@@ -10,7 +10,7 @@ from src.parser import merge_codings
 
 
 #Plot mean-squared error for all models
-def plot_model_evaluation(interviews, models):
+def plot_model_evaluation(models):
     #Prepare data
     codings = merge_codings(None, return_codings=True)
 
@@ -29,7 +29,7 @@ def plot_model_evaluation(interviews, models):
     losses = []
     for model in models:
         interviews = pd.read_pickle('data/cache/morality_model-'+model+'.pkl')
-        if model != 'top' and MERGE_MORALITY_ORIGINS:
+        if model == 'chatgpt' and MERGE_MORALITY_ORIGINS:
             interviews['Intuitive'] = interviews['Experience']
             interviews['Consequentialist'] = interviews['Consequences']
             interviews['Social'] = interviews[['Family', 'Community', 'Friends']].max(axis=1)
@@ -45,7 +45,7 @@ def plot_model_evaluation(interviews, models):
         losses.append(loss)
 
     losses = pd.concat(losses, ignore_index=True).iloc[::-1]
-    losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'bert':'BERT', 'bart':'BART', 'entail':'Entailment', 'entail_explained':'Entailment (Labels+Notes)', 'top':'MoraLLM', 'chatgpt':'GPT-3.5'})
+    losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'sbert':'SBERT', 'entail_ml':'MoraLLM', 'chatgpt':'GPT-3.5'})
 
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
@@ -93,8 +93,9 @@ def plot_coders_agreement():
     plt.show()
 
 #Show benefits of quantification by plotting ecdf
-def plot_ecdf(interviews):
+def plot_ecdf(model):
     #Prepare Data
+    interviews = pd.read_pickle('data/cache/morality_model-' + model + '.pkl')
     interviews = merge_codings(interviews)
     model = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
     model['Estimator'] = 'MoraLLM'
@@ -121,13 +122,13 @@ def plot_ecdf(interviews):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2,3]
-    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
     
     for c in config:
         if c == 1:
-            models = ['lg', 'bert', 'bart', 'chatgpt', 'top']
-            plot_model_evaluation(interviews, models)
+            models = ['lg', 'sbert', 'chatgpt', 'entail_ml']
+            plot_model_evaluation(models)
         elif c == 2:
             plot_coders_agreement()
         elif c == 3:
-            plot_ecdf(interviews)
+            model = 'entail_ml'
+            plot_ecdf(model)

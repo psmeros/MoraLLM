@@ -143,7 +143,7 @@ def interview_parser(filename):
 
 #Get raw text for each section and participant
 def get_raw_text(interview):
-    raw_text = {section : '' for section in REFINED_SECTIONS}
+    raw_text = {section : '' for section in REFINED_SECTIONS + ['Morality_Full_Text']}
 
     for section in INTERVIEW_SECTIONS:
   
@@ -171,6 +171,7 @@ def get_raw_text(interview):
                 if section == 'Morality':
                     for question in morality_questions:
                         raw_text[participant + section + ':' + question] += line.strip() + ' '
+                    raw_text['Morality_Full_Text'] += participant + ':'.join(morality_questions) + ':' + line.strip() + '\n'
                 else:
                     raw_text[participant + section] += line.strip() + ' '
 

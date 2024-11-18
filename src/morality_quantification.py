@@ -87,10 +87,6 @@ def compute_morality_source(models):
             morality_origin = pd.Series({mo:nlp_model(mo).vector for mo in MORALITY_ORIGIN})    
             data[MORALITY_ORIGIN] = pd.DataFrame([vectors.apply(lambda e: cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN).T
 
-        #Save full morality dialogue
-        data.loc[data['Wave'] == 1, morality_text] = data.loc[data['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
-        data.loc[data['Wave'] == 2, morality_text] = data.loc[data['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
-        data.loc[data['Wave'] == 3, morality_text] = data.loc[data['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
         data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
 def compute_linguistics(model):
@@ -123,6 +119,11 @@ def compute_linguistics(model):
     data['Verbosity'] = minmax_scale(np.log(data['Verbosity'].astype(int)))
     data['Complexity'] = minmax_scale((data['Complexity']).astype(float))
     data['Sentiment'] = minmax_scale(data['Sentiment'].astype(float))
+
+    #Save full morality dialogue
+    data.loc[data['Wave'] == 1, morality_text] = data.loc[data['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
+    data.loc[data['Wave'] == 2, morality_text] = data.loc[data['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
+    data.loc[data['Wave'] == 3, morality_text] = data.loc[data['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
 
     data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 

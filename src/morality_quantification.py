@@ -19,7 +19,7 @@ from src.parser import wave_parser
 
 #Compute morality source of interviews
 def compute_morality_source(models):
-    interviews = wave_parser(morality_breakdown=True)
+    interviews = wave_parser()
 
     #Locate morality text in interviews
     morality_text = 'Morality Text'

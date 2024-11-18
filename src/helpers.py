@@ -89,8 +89,7 @@ INTERVIEW_MARKERS_MAPPING = { #all waves
 
 MORALITY_QUESTIONS = ['M' + str(i) + ':' for i in list(range(17))+['X']]
 
-REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN = [participant + section for participant in INTERVIEW_PARTICIPANTS for section in [s for s in INTERVIEW_SECTIONS if s not in ['Morality']] + ['Morality:'+q[:-1] for q in MORALITY_QUESTIONS]]
-REFINED_SECTIONS = [participant + section for participant in INTERVIEW_PARTICIPANTS for section in INTERVIEW_SECTIONS]
+REFINED_SECTIONS = [participant + section for participant in INTERVIEW_PARTICIPANTS for section in [s for s in INTERVIEW_SECTIONS if s not in ['Morality']] + ['Morality:'+q[:-1] for q in MORALITY_QUESTIONS]]
 
 METADATA_GENDER_MAP = {'Female':'Female',
                        'Girls':'Female',

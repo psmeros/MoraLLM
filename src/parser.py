@@ -5,7 +5,7 @@ import pandas as pd
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -142,11 +142,8 @@ def interview_parser(filename):
         return interview
 
 #Get raw text for each section and participant
-def get_raw_text(interview, morality_breakdown):
-    if morality_breakdown:
-        raw_text = {section : '' for section in REFINED_SECTIONS_WITH_MORALITY_BREAKDOWN}
-    else:
-        raw_text = {section : '' for section in REFINED_SECTIONS}
+def get_raw_text(interview):
+    raw_text = {section : '' for section in REFINED_SECTIONS}
 
     for section in INTERVIEW_SECTIONS:
   
@@ -171,7 +168,7 @@ def get_raw_text(interview, morality_breakdown):
                 error_handling(interview['Filename'], line, 'Participant Not Found!')
                 continue
             else:
-                if section == 'Morality' and morality_breakdown:
+                if section == 'Morality':
                     for question in morality_questions:
                         raw_text[participant + section + ':' + question] += line.strip() + ' '
                 else:
@@ -181,7 +178,7 @@ def get_raw_text(interview, morality_breakdown):
     return raw_text
 
 #parse folder of transcripts
-def wave_parser(waves_folder='data/interviews/waves', morality_breakdown=False):
+def wave_parser(waves_folder='data/interviews/waves'):
     
     waves = []
     for foldername in os.listdir(waves_folder):
@@ -197,7 +194,7 @@ def wave_parser(waves_folder='data/interviews/waves', morality_breakdown=False):
             interviews = pd.DataFrame(interviews)
 
             #clean interviews
-            interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS+['Filename']].apply(lambda i: get_raw_text(i, morality_breakdown), axis = 1))
+            interviews = interviews[INTERVIEW_METADATA].join(interviews[INTERVIEW_SECTIONS+['Filename']].apply(lambda i: get_raw_text(i), axis = 1))
             interviews = interviews.replace('', pd.NA)
             
             #add wave

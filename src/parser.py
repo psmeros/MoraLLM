@@ -375,7 +375,7 @@ def prepare_data(interviews, extend_dataset):
 if __name__ == '__main__':
     #Hyperparameters
     config = [4]
-    interviews = pd.read_pickle('data/cache/morality_model-unbiased-mean.pkl')
+    interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
 
     for c in config:
         if c == 0:

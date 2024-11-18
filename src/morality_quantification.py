@@ -24,9 +24,9 @@ def compute_morality_source(models):
     #Locate morality text in interviews
     morality_text = 'Morality Text'
     interviews[morality_text] = ''
-    interviews[morality_text] = interviews.apply(lambda i: i['R:Morality:M4'] if i['Wave'] == 1 else i[morality_text], axis=1)
-    interviews[morality_text] = interviews.apply(lambda i: NEWLINE.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]) if i['Wave'] == 2 else i[morality_text], axis=1)
-    interviews[morality_text] = interviews.apply(lambda i: NEWLINE.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]) if i['Wave'] == 3 else i[morality_text], axis=1)
+    interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
+    interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: NEWLINE.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
+    interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: NEWLINE.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
     interviews[morality_text] = interviews[morality_text].replace('', np.nan)
     interviews = interviews.dropna(subset=[morality_text]).reset_index(drop=True)
 
@@ -88,9 +88,9 @@ def compute_morality_source(models):
             data[MORALITY_ORIGIN] = pd.DataFrame([vectors.apply(lambda e: cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN).T
 
         #Save full morality dialogue
-        data[morality_text] = data.apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i['Morality_Full_Text'].split('\n')]) if i['Wave'] == 1 else i[morality_text], axis=1)
-        data[morality_text] = data.apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i['Morality_Full_Text'].split('\n')]) if i['Wave'] == 2 else i[morality_text], axis=1)
-        data[morality_text] = data.apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i['Morality_Full_Text'].split('\n')]) if i['Wave'] == 3 else i[morality_text], axis=1)
+        data.loc[data['Wave'] == 1, morality_text] = data.loc[data['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
+        data.loc[data['Wave'] == 2, morality_text] = data.loc[data['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
+        data.loc[data['Wave'] == 3, morality_text] = data.loc[data['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
         data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
 def compute_linguistics(model):

@@ -358,7 +358,8 @@ def prepare_data(interviews, extend_dataset):
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
 
-    columns = ['Survey Id', 'Wave 1:Interview Code', 'Wave 3:Interview Code']
+    columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
+
     columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]

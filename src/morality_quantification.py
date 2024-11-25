@@ -11,6 +11,8 @@ from textstat.textstat import textstat
 from torch.nn.functional import cosine_similarity
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
 from src.helpers import CHATGPT_PROMPT, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE, UNCERTAINT_TERMS
@@ -87,6 +89,20 @@ def compute_morality_source(models):
             morality_origin = pd.Series({mo:nlp_model(mo).vector for mo in MORALITY_ORIGIN})    
             data[MORALITY_ORIGIN] = pd.DataFrame([vectors.apply(lambda e: cosine_similarity(torch.from_numpy(e).view(1, -1), torch.from_numpy(morality_origin[mo]).view(1, -1)).numpy()[0]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN).T
 
+        #Seeded LDA model
+        elif model == 'lda':
+            vectorizer = CountVectorizer(stop_words='english')
+            X = vectorizer.fit_transform(data[morality_text]).toarray()
+            vocab = vectorizer.get_feature_names_out()
+
+            for mo in MORALITY_ORIGIN:
+                    if mo in vocab:
+                        X[:, vocab.tolist().index(mo)] += 10
+
+            # Train LDA
+            lda = LatentDirichletAllocation(n_components=4, max_iter=100, random_state=42)
+            data[MORALITY_ORIGIN] = lda.fit_transform(X)
+
         data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
 def compute_linguistics(model):
@@ -134,7 +150,7 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
-            models = ['lg', 'sbert', 'chatgpt', 'entail_ml']
+            models = ['lda', 'lg', 'sbert', 'chatgpt', 'entail_ml']
             compute_morality_source(models)
         elif c == 2:
             model = 'entail_ml'

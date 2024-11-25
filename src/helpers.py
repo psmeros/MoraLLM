@@ -184,7 +184,7 @@ NEWLINE = '\n\n\n'
 
 CODERS = ['Leke', 'Tomas']
 
-CHATGPT_PROMPT = 'Estimate the probability of the following text belonging to the categories: Experience, Consequences, Family, Community, Friends, Media, Laws, Holy Scripture. Response in the form \"Category:Probability\".'
+CHATGPT_PROMPT = 'Estimate the independent probability (from 0.0 to 1.0) of the following text belonging individually to the categories: Intuitive, Consequentialist, Social, Theistic. Response in the form \"Category:Probability\".'
 
 SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'PINCOME':'Household Income',

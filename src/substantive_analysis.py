@@ -384,8 +384,8 @@ if __name__ == '__main__':
                     for estimator in ['Moral Schemas'] + MORALITY_ESTIMATORS] + [
                         #Computing Pairwise Correlations [6:7]
                          {'Descrition': 'Computing Pairwise Correlations',
-                          'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'], 
-                          'To_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
+                          'From_Wave': ['Wave 1', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 3'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS],
                           'Predictions': [],
                           'Previous Behavior': False,

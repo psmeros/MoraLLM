@@ -267,7 +267,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             data = interviews.copy()
             data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
-            data['Wave'] = pd.concat([pd.Series([float(from_wave.split()[1]) ** float(to_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
+            data['Wave'] = pd.concat([pd.Series([float(from_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave in conf['From_Wave']])
             
             #Binary Representation for Probit Model
             if conf['Model']  == 'Probit':
@@ -368,8 +368,8 @@ if __name__ == '__main__':
             confs = [
                         #Predicting Future Behavior: Moral Schemas + Model + Coders [0:3]
                          {'Descrition': 'Predicting Future Behavior: ' + estimator,
-                          'From_Wave': ['Wave 1', 'Wave 1', 'Wave 1', 'Wave 2', 'Wave 2', 'Wave 3'],
-                          'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4', 'Wave 3', 'Wave 4', 'Wave 4'],
+                          'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
+                          'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator in MORALITY_ESTIMATORS else ['Moral Schemas'],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,

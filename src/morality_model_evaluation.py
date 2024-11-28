@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from __init__ import *
-from sklearn.metrics import cohen_kappa_score, mean_squared_error
+from sklearn.metrics import cohen_kappa_score, log_loss
 
-from src.helpers import CODERS, MERGE_MORALITY_ORIGINS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
+from src.helpers import CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
 from src.parser import merge_codings
 
 
@@ -23,29 +23,22 @@ def plot_model_evaluation(models):
     weights = 1 - golden_labels.sum()/golden_labels.sum().sum()
 
     #Compute coders agreement
-    coders_agreement = (pd.Series({mo:mean_squared_error(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}) * weights).sum()
+    coders_agreement = (pd.Series({mo:log_loss(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}) * weights).sum()
 
     #Compute mean squared error for all models
     losses = []
     for model in models:
         interviews = pd.read_pickle('data/cache/morality_model-'+model+'.pkl')
-        if model == 'chatgpt' and MERGE_MORALITY_ORIGINS:
-            interviews['Intuitive'] = interviews['Experience']
-            interviews['Consequentialist'] = interviews['Consequences']
-            interviews['Social'] = interviews[['Family', 'Community', 'Friends']].max(axis=1)
-            interviews['Theistic'] = interviews['Holy Scripture']
-            interviews = interviews.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
-
         interviews = merge_codings(interviews)
         interviews = interviews.dropna(subset=[mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS])
         model_output = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
         coders_output = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-        loss = pd.DataFrame([{mo:mean_squared_error(coders_output[mo], model_output[mo]) for mo in MORALITY_ORIGIN}]) * weights
+        loss = pd.DataFrame([{mo:log_loss(coders_output[mo], model_output[mo]) for mo in MORALITY_ORIGIN}]) * weights
         loss['Model'] = model
         losses.append(loss)
 
     losses = pd.concat(losses, ignore_index=True).iloc[::-1]
-    losses['Model'] = losses['Model'].replace({'lg':'SpaCy', 'sbert':'SBERT', 'entail_ml':'MoraLLM', 'chatgpt':'GPT-3.5'})
+    losses['Model'] = losses['Model'].replace({'lda':'SeededLDA', 'sbert':'SBERT', 'entail_ml':'MoraLLM', 'chatgpt':'GPT-4.0'})
 
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
@@ -55,10 +48,10 @@ def plot_model_evaluation(models):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     min_loss = losses[MORALITY_ORIGIN].sum(axis=1).min()
-    plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
-    plt.xlabel('Normalized Mean Squared Error')
+    # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
+    plt.xlabel('Cross-Entropy Loss')
     plt.ylabel('')
-    plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(min_loss, 1)).replace('0.', '.')])
+    # plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(min_loss, 1)).replace('0.', '.')])
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')
@@ -125,7 +118,7 @@ if __name__ == '__main__':
     
     for c in config:
         if c == 1:
-            models = ['lg', 'sbert', 'chatgpt', 'entail_ml']
+            models = ['lda', 'sbert', 'chatgpt', 'entail_ml']
             plot_model_evaluation(models)
         elif c == 2:
             plot_coders_agreement()

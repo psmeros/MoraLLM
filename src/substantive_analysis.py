@@ -26,10 +26,11 @@ def compute_distribution(interviews):
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='boxen', width=.7, legend=False, seed=42, aspect=2, palette='Set2')
+    g = sns.displot(data=data, x='Value', y='Morality', hue='Morality', hue_order=MORALITY_ORIGIN, kind='hist', legend=False, aspect=2, palette='Set2')
     g.figure.suptitle('Overall Distribution', y= 1.05, x=.5)
     g.set_ylabels('')
     g.set_xlabels('')
+    g.set(xlim=(0, 100))
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     plt.savefig('data/plots/fig-morality_distro.png', bbox_inches='tight')

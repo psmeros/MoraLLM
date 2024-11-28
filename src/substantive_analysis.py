@@ -403,7 +403,7 @@ if __name__ == '__main__':
                           'Intercept': True,
                           'Previous Behavior': False,
                           'Model': 'OLS',
-                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
+                          'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS]
             confs = confs[:]

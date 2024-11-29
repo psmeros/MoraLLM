@@ -359,9 +359,12 @@ def prepare_data(interviews, extend_dataset):
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
 
+    interviews = pd.concat([interviews, pd.read_csv('data/interviews/alignments/gold_standard.csv')], axis=1)
+    interviews[[wave + ':' + mo + '_gold' for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN]] = pd.concat([interviews[wave + ':' + mo + '_gold'].fillna(interviews[wave + ':' + mo + '_Coders']) for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN], axis=1)
+
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
-    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS + ['lda', 'sbert', 'chatgpt'] for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS + ['gold', 'lda', 'sbert', 'chatgpt'] for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 

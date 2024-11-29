@@ -360,7 +360,7 @@ def prepare_data(interviews, extend_dataset):
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
-    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS + ['lda', 'sbert', 'chatgpt'] for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
@@ -377,6 +377,7 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [4]
     interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
+    interviews = pd.concat([interviews]+[pd.DataFrame(pd.read_pickle('data/cache/morality_model-' + model + '.pkl')[MORALITY_ORIGIN].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN]) for model in ['lda', 'sbert', 'chatgpt']], axis=1)
 
     for c in config:
         if c == 0:

@@ -262,7 +262,6 @@ def merge_codings(interviews, return_codings = False, codings_folder = 'data/int
     codings_wave_1 = codings_wave_1[0].join(codings_wave_1[1], lsuffix='_'+codings_wave_1[0].attrs['Coder'], rsuffix='_'+codings_wave_1[1].attrs['Coder'])
     codings_wave_3 = codings_wave_3[0].join(codings_wave_3[1], lsuffix='_'+codings_wave_3[0].attrs['Coder'], rsuffix='_'+codings_wave_3[1].attrs['Coder'])
     codings = pd.concat([codings_wave_1, codings_wave_3])
-    codings = codings[~(~codings).all(axis=1)]
     codings = codings.reset_index()
 
     if return_codings:
@@ -354,6 +353,8 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 
 #Merge all different types of data
 def prepare_data(interviews, extend_dataset):
+    interviews = pd.concat([interviews]+[pd.DataFrame(pd.read_pickle('data/cache/morality_model-' + model + '.pkl')[MORALITY_ORIGIN].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN]) for model in ['lda', 'sbert', 'chatgpt']], axis=1)
+
     interviews = merge_codings(interviews)
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
@@ -377,7 +378,6 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [4]
     interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
-    interviews = pd.concat([interviews]+[pd.DataFrame(pd.read_pickle('data/cache/morality_model-' + model + '.pkl')[MORALITY_ORIGIN].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN]) for model in ['lda', 'sbert', 'chatgpt']], axis=1)
 
     for c in config:
         if c == 0:

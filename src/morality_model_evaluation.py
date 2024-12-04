@@ -3,42 +3,40 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from __init__ import *
-from sklearn.metrics import cohen_kappa_score, log_loss
+from sklearn.metrics import cohen_kappa_score, f1_score
 
-from src.helpers import CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
-from src.parser import merge_codings
+from src.helpers import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
+from src.parser import merge_codings, prepare_data
 
 
 #Plot mean-squared error for all models
 def plot_model_evaluation(models):
+
     #Prepare data
-    codings = merge_codings(None, return_codings=True)
+    interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
+    interviews = prepare_data(interviews, extend_dataset=True)
 
-    #Compute golden labels
-    coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    golden_labels = (coder_A_labels & coder_B_labels)
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in CODED_WAVES]).dropna()
+    data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
 
-    #Loss weights
-    weights = 1 - golden_labels.sum()/golden_labels.sum().sum()
+    for threshold in ['.25', '.50', '.75']:
+        data[[mo + '_' + model + threshold for mo in MORALITY_ORIGIN for model in models]] = (data[[mo + '_' + model for mo in MORALITY_ORIGIN for model in models]] > float(threshold)).astype(int)
 
     #Compute coders agreement
-    coders_agreement = (pd.Series({mo:log_loss(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}) * weights).sum()
+    codings = merge_codings(None, return_codings=True)
+    coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
+    coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
+    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN})).sum()
 
     #Compute mean squared error for all models
     losses = []
     for model in models:
-        interviews = pd.read_pickle('data/cache/morality_model-'+model+'.pkl')
-        interviews = merge_codings(interviews)
-        interviews = interviews.dropna(subset=[mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS])
-        model_output = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-        coders_output = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-        loss = pd.DataFrame([{mo:log_loss(coders_output[mo], model_output[mo]) for mo in MORALITY_ORIGIN}]) * weights
-        loss['Model'] = model
-        losses.append(loss)
+        for threshold in ['.25', '.50', '.75']:
+            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold]) for mo in MORALITY_ORIGIN}])
+            loss['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt':'GPT-4.0'}.get(model, model) + ' (' + threshold + ')'
+            losses.append(loss)
 
     losses = pd.concat(losses, ignore_index=True).iloc[::-1]
-    losses['Model'] = losses['Model'].replace({'lda':'SeededLDA', 'sbert':'SBERT', 'entail_ml':'MoraLLM', 'chatgpt':'GPT-4.0'})
 
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
@@ -47,11 +45,11 @@ def plot_model_evaluation(models):
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    min_loss = losses[MORALITY_ORIGIN].sum(axis=1).min()
-    # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
-    plt.xlabel('Cross-Entropy Loss')
+    tick = losses[MORALITY_ORIGIN].sum(axis=1).max()
+    plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
+    plt.xlabel('F1 Score')
     plt.ylabel('')
-    # plt.xticks([coders_agreement, min_loss], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(min_loss, 1)).replace('0.', '.')])
+    plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(tick, 1)).replace('0.', '.')])
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')
@@ -114,11 +112,11 @@ def plot_ecdf(model):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3]
+    config = [1]
     
     for c in config:
         if c == 1:
-            models = ['lda', 'sbert', 'chatgpt', 'entail_ml']
+            models = ['lda', 'chatgpt', 'Model']
             plot_model_evaluation(models)
         elif c == 2:
             plot_coders_agreement()

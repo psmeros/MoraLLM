@@ -18,27 +18,33 @@ def plot_model_evaluation(models):
 
     data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in CODED_WAVES]).dropna()
     data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
+    weights = pd.Series((data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum()/data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum().sum()).values, index=MORALITY_ORIGIN)
 
-    for threshold in ['.25', '.50', '.75']:
+    lower_limit, upper_limit = .3, .05
+    len_before = len(data)
+    data = data[data[[mo + '_Model' for mo in MORALITY_ORIGIN]].map(lambda x: True if x > lower_limit or x < upper_limit else False).all(axis=1)]
+
+    for threshold in ['.3', '.6', '.9']:
         data[[mo + '_' + model + threshold for mo in MORALITY_ORIGIN for model in models]] = (data[[mo + '_' + model for mo in MORALITY_ORIGIN for model in models]] > float(threshold)).astype(int)
 
     #Compute coders agreement
     codings = merge_codings(None, return_codings=True)
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
     coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN})).sum()
+    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}) * weights).sum()
 
     #Compute mean squared error for all models
     losses = []
     for model in models:
-        for threshold in ['.25', '.50', '.75']:
-            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold]) for mo in MORALITY_ORIGIN}])
+        for threshold in ['.3', '.6', '.9']:
+            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold]) for mo in MORALITY_ORIGIN}]) * weights
             loss['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt':'GPT-4.0'}.get(model, model) + ' (' + threshold + ')'
             losses.append(loss)
 
     losses = pd.concat(losses, ignore_index=True).iloc[::-1]
 
     #Plot model comparison
+    print('Data proportion:', len(data)/len_before)
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
     losses.plot(kind='barh', x = 'Model', stacked=True, color=list(sns.color_palette('Set2')))
@@ -46,10 +52,11 @@ def plot_model_evaluation(models):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     tick = losses[MORALITY_ORIGIN].sum(axis=1).max()
+    plt.axvline(x=tick, linestyle=':', linewidth=1.5, color='grey')
     plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
     plt.xlabel('F1 Score')
     plt.ylabel('')
-    plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 1)).replace('0.', '.'), str(round(tick, 1)).replace('0.', '.')])
+    plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 2)).replace('0.', '.'), str(round(tick, 2)).replace('0.', '.')])
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')

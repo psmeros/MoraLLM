@@ -15,7 +15,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
-from src.helpers import CHATGPT_PROMPT, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE, UNCERTAINT_TERMS
+from src.helpers import CHATGPT_BOOL_PROMPT, CHATGPT_PROB_PROMPT, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE, UNCERTAINT_TERMS
 from src.parser import wave_parser
 
 
@@ -57,11 +57,12 @@ def compute_morality_source(models):
             data = data.join(morality_origin)
 
         #ChatGPT model
-        elif model == 'chatgpt':
+        elif model in ['chatgpt_prob', 'chatgpt_bool']:
+            prompt = CHATGPT_PROB_PROMPT if model == 'chatgpt_prob' else CHATGPT_BOOL_PROMPT if model == 'chatgpt_bool' else ''
             #Call OpenAI API
             openai.api_key = os.getenv('OPENAI_API_KEY')
-            tokenizer = lambda text, token_limit=128: ' '.join(text.split(' ')[:token_limit])
-            classifier = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': CHATGPT_PROMPT},{'role': 'user','content': text}], temperature=.2, max_tokens=32, frequency_penalty=0, presence_penalty=0)
+            tokenizer = lambda text, token_limit=128000: ' '.join(text.split(' ')[:token_limit])
+            classifier = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': prompt},{'role': 'user','content': text}], temperature=.2, max_tokens=32, frequency_penalty=0, presence_penalty=0)
             aggregator = lambda response: pd.Series({mo:float(re.search(mo+'.*:(.*?)(\n|$)', response['choices'][0]['message']['content']).group(1).strip()) if re.search(mo+'.*:(.*?)(\n|$)', response['choices'][0]['message']['content']) else 0.0 for mo in MORALITY_ORIGIN})
             full_pipeline = lambda text: aggregator(classifier(tokenizer(text)))
 
@@ -150,7 +151,7 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
-            models = ['lda', 'lg', 'sbert', 'chatgpt', 'entail_ml']
+            models = ['lda', 'lg', 'sbert', 'chatgpt_prob', 'chatgpt_bool', 'entail_ml']
             compute_morality_source(models)
         elif c == 2:
             model = 'entail_ml'

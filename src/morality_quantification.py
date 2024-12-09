@@ -61,7 +61,7 @@ def compute_morality_source(models):
             prompt = CHATGPT_PROB_PROMPT if model == 'chatgpt_prob' else CHATGPT_BOOL_PROMPT if model == 'chatgpt_bool' else ''
             #Call OpenAI API
             openai.api_key = os.getenv('OPENAI_API_KEY')
-            tokenizer = lambda text, token_limit=1024: ' '.join(text.split(' ')[:token_limit])
+            tokenizer = lambda text, token_limit=128: ' '.join(text.split(' ')[:token_limit])
             classifier = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': prompt},{'role': 'user','content': text}], temperature=.2, max_tokens=32, frequency_penalty=0, presence_penalty=0)
             if model == 'chatgpt_prob':
                 aggregator = lambda response: pd.Series({mo:float(re.search(mo+'.*:(.*?)(\n|$)', response['choices'][0]['message']['content']).group(1).strip()) if re.search(mo+'.*:(.*?)(\n|$)', response['choices'][0]['message']['content']) else 0.0 for mo in MORALITY_ORIGIN})

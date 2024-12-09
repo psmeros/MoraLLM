@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sns
 from __init__ import *
 from sklearn.metrics import cohen_kappa_score, f1_score
+from IPython.display import display
 
 from src.helpers import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
 from src.parser import merge_codings, prepare_data
@@ -13,18 +14,15 @@ from src.parser import merge_codings, prepare_data
 def plot_model_evaluation(models):
 
     #Prepare data
-    interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
+    interviews = pd.read_pickle('data/cache/morality_model-entail_ml_explained.pkl')
     interviews = prepare_data(interviews, extend_dataset=True)
 
     data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in CODED_WAVES]).dropna()
     data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
     weights = pd.Series((data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum()/data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum().sum()).values, index=MORALITY_ORIGIN)
 
-    lower_limit, upper_limit = .3, .05
-    len_before = len(data)
-    data = data[data[[mo + '_Model' for mo in MORALITY_ORIGIN]].map(lambda x: True if x > lower_limit or x < upper_limit else False).all(axis=1)]
 
-    for threshold in ['.3', '.6', '.9']:
+    for threshold in ['.1']:
         data[[mo + '_' + model + threshold for mo in MORALITY_ORIGIN for model in models]] = (data[[mo + '_' + model for mo in MORALITY_ORIGIN for model in models]] > float(threshold)).astype(int)
 
     #Compute coders agreement
@@ -37,19 +35,20 @@ def plot_model_evaluation(models):
     losses = []
     for model in models:
         if model != 'chatgpt_bool':
-            for threshold in ['.3', '.6', '.9']:
-                loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold]) for mo in MORALITY_ORIGIN}]) * weights
+            for threshold in ['.1']:
+                loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold]) for mo in MORALITY_ORIGIN}])
                 loss['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt_prob':'GPT-4.0-Prob'}.get(model, model) + ' (' + threshold + ')'
                 losses.append(loss)
         elif model == 'chatgpt_bool':
-            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model]) for mo in MORALITY_ORIGIN}]) * weights
+            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model]) for mo in MORALITY_ORIGIN}])
             loss['Model'] = {'chatgpt_bool':'GPT-4.0-Bin'}.get(model, model)
             losses.append(loss)
 
     losses = pd.concat(losses, ignore_index=True).iloc[::-1]
+    display(losses.set_index('Model'))
+    losses[MORALITY_ORIGIN] = losses[MORALITY_ORIGIN] * weights
 
     #Plot model comparison
-    print('Data proportion:', len(data)/len_before)
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
     losses.plot(kind='barh', x = 'Model', stacked=True, color=list(sns.color_palette('Set2')))

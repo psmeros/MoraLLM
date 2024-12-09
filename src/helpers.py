@@ -186,7 +186,7 @@ CODERS = ['Leke', 'Tomas']
 
 CHATGPT_PROB_PROMPT = 'Estimate the independent probability (from 0.0 to 1.0) of the following text belonging individually to the categories: Intuitive, Consequentialist, Social, Theistic. Response in the form \"Category:Probability\".'
 
-CHATGPT_BOOL_PROMPT = 'Discover whether the following text belongs to any of the categories: Intuitive, Consequentialist, Social, Theistic. Response in the form \"Category:True/False\".'
+CHATGPT_BOOL_PROMPT = 'Estimate whether the following text belongs to the categories: Intuitive, Consequentialist, Social, Theistic. Response strictly in the form \"Category:True/False\".'
 
 SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'PINCOME':'Household Income',

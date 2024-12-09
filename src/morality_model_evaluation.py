@@ -36,9 +36,14 @@ def plot_model_evaluation(models):
     #Compute mean squared error for all models
     losses = []
     for model in models:
-        for threshold in ['.3', '.6', '.9']:
-            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold]) for mo in MORALITY_ORIGIN}]) * weights
-            loss['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt':'GPT-4.0'}.get(model, model) + ' (' + threshold + ')'
+        if model != 'chatgpt_bool':
+            for threshold in ['.3', '.6', '.9']:
+                loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold]) for mo in MORALITY_ORIGIN}]) * weights
+                loss['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt_prob':'GPT-4.0-Prob'}.get(model, model) + ' (' + threshold + ')'
+                losses.append(loss)
+        elif model == 'chatgpt_bool':
+            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model]) for mo in MORALITY_ORIGIN}]) * weights
+            loss['Model'] = {'chatgpt_bool':'GPT-4.0-Bin'}.get(model, model)
             losses.append(loss)
 
     losses = pd.concat(losses, ignore_index=True).iloc[::-1]
@@ -123,7 +128,7 @@ if __name__ == '__main__':
     
     for c in config:
         if c == 1:
-            models = ['lda', 'chatgpt', 'Model']
+            models = ['lda', 'chatgpt_prob', 'chatgpt_bool', 'Model']
             plot_model_evaluation(models)
         elif c == 2:
             plot_coders_agreement()

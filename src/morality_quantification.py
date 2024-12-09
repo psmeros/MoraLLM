@@ -49,7 +49,7 @@ def compute_morality_source(models):
 
             #Trasformation functions
             classifier = lambda text: morality_pipeline(text.split(NEWLINE), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label)
-            aggregator = lambda l: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])} for r in l]).max()
+            aggregator = lambda l: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])} for r in l]).mean()
             full_pipeline = lambda text: aggregator(classifier(text))
 
             #Classify morality origin and join results
@@ -154,8 +154,8 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
-            models = ['lda', 'lg', 'sbert', 'chatgpt_prob', 'chatgpt_bool', 'entail_ml']
+            models = ['lda', 'lg', 'sbert', 'chatgpt_prob', 'chatgpt_bool', 'entail_ml', 'entail_ml_explained']
             compute_morality_source(models)
         elif c == 2:
-            model = 'entail_ml'
+            model = 'entail_ml_explained'
             compute_linguistics(model)

@@ -164,10 +164,10 @@ METADATA_RACE_MAP = {'Caucasian':'White',
 
 MORALITY_ORIGIN = ['Intuitive', 'Consequentialist', 'Social', 'Theistic']
 
-MORALITY_ORIGIN_EXPLAINED = {**dict.fromkeys(['instinct', 'intuition', 'gut feelings'], 'Intuitive'),
-                             **dict.fromkeys(['outcomes', 'consequences'], 'Consequentialist'),
-                             **dict.fromkeys(['social norms', 'parents', 'friends'], 'Social'),
-                             **dict.fromkeys(['religion', 'god', 'bible', 'commandments', 'testament'], 'Theistic')}
+MORALITY_ORIGIN_EXPLAINED = {**dict.fromkeys(['intuition'], 'Intuitive'),
+                             **dict.fromkeys(['consequences'], 'Consequentialist'),
+                             **dict.fromkeys(['social'], 'Social'),
+                             **dict.fromkeys(['religion', 'god', 'bible', 'commandments'], 'Theistic')}
 
 NEWLINE = '\n\n\n'
 

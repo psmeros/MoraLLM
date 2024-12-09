@@ -162,23 +162,12 @@ METADATA_RACE_MAP = {'Caucasian':'White',
                      'Asian (Chinese)':'Asian',
                      'Don’t know':None}
 
-MORALITY_ORIGIN =   ['Experience',
-                     'Consequences',
-                     'Family',
-                     'Community',
-                     'Friends',
-                     'Media',
-                     'Laws',
-                     'Holy Scripture']
+MORALITY_ORIGIN = ['Intuitive', 'Consequentialist', 'Social', 'Theistic']
 
-MORALITY_ORIGIN_EXPLAINED = {'Experience and Instinct and Feeling':'Experience',
-                             'Consequences':'Consequences',
-                             'Family and Parents':'Family',
-                             'Community and Society and School':'Community',
-                             'Friends':'Friends',
-                             'Media and TV and Books':'Media',
-                             'Laws and Rules':'Laws',
-                             'Holy Scripture and God and Bible':'Holy Scripture'}
+MORALITY_ORIGIN_EXPLAINED = {**dict.fromkeys(['instinct', 'intuition', 'gut feelings'], 'Intuitive'),
+                             **dict.fromkeys(['outcomes', 'consequences'], 'Consequentialist'),
+                             **dict.fromkeys(['social norms', 'parents', 'friends'], 'Social'),
+                             **dict.fromkeys(['religion', 'god', 'bible', 'commandments', 'testament'], 'Theistic')}
 
 NEWLINE = '\n\n\n'
 
@@ -291,9 +280,6 @@ DEMOGRAPHICS = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
 
 CODED_WAVES = ['Wave 1', 'Wave 3']
 MORALITY_ESTIMATORS = ['Model', 'Coders']
-
-MERGE_MORALITY_ORIGINS = True
-MORALITY_ORIGIN = ['Intuitive', 'Consequentialist', 'Social', 'Theistic'] if MERGE_MORALITY_ORIGINS else MORALITY_ORIGIN
 
 UNCERTAINT_TERMS = ['hypothetically speaking', 'possibly', 'potentially', 'must', 'equivocal', 'it looks like', 'is likely to', 'unclear', 'could be', 'it is conceivable', 'reportedly', 'could', 'allegedly', 'seemingly', 'tends to', 'conceivably', 'apparently', 'likely', 'probably', 'there is a chance', 'will', 'unsure', 'there is a possibility', 'supposedly', 'feasibly', 'suggests that', 'it is feasible', 'is unlikely to', 'may', 'arguably', 'might', 'is probable', 'perhaps', 'might be', 'vague', 'it is possible', 'maybe', 'presumably', 'uncertain', 'ambiguous', 'it appears', 'hypothetically', 'would', 'is improbable', 'doubtful', 'imaginably', 'it seems', 'can', 'ostensibly', 'should']
 

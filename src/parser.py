@@ -5,7 +5,7 @@ import pandas as pd
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, MERGE_MORALITY_ORIGINS, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -246,12 +246,11 @@ def merge_codings(interviews, return_codings = False, codings_folder = 'data/int
             coding['Family'] = coding['Family'] | coding['Parents']
             coding = coding.drop(['Intrinsic', 'Parents'], axis=1)
 
-            if MERGE_MORALITY_ORIGINS:
-                coding['Intuitive'] = coding['Experience']
-                coding['Consequentialist'] = coding['Consequences']
-                coding['Social'] = coding[['Family', 'Community', 'Friends']].any(axis=1)
-                coding['Theistic'] = coding['Holy Scripture']
-                coding = coding.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
+            coding['Intuitive'] = coding['Experience']
+            coding['Consequentialist'] = coding['Consequences']
+            coding['Social'] = coding[['Family', 'Community', 'Friends']].any(axis=1)
+            coding['Theistic'] = coding['Holy Scripture']
+            coding = coding.drop(['Experience', 'Consequences', 'Family', 'Community', 'Friends', 'Media', 'Laws', 'Holy Scripture'], axis=1)
 
             if coding.attrs['Wave'] == 1:
                 codings_wave_1.append(coding)

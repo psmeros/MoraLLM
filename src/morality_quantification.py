@@ -39,7 +39,7 @@ def compute_morality_source(models):
         #NLI model
         if model in ['entail', 'entail_ml', 'entail_explained', 'entail_ml_explained']:
             #Premise and hypothesis templates
-            hypothesis_template = 'This example is {}.'
+            hypothesis_template = 'The reasoning in this example is based on {}.'
             model_params = {'device':0} if torch.cuda.is_available() else {}
             morality_pipeline = pipeline('zero-shot-classification', model='facebook/bart-large-mnli', **model_params)
 
@@ -49,7 +49,7 @@ def compute_morality_source(models):
 
             #Trasformation functions
             classifier = lambda text: morality_pipeline(text.split(NEWLINE), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label)
-            aggregator = lambda l: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])} for r in l]).mean()
+            aggregator = lambda l: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])} for r in l]).max()
             full_pipeline = lambda text: aggregator(classifier(text))
 
             #Classify morality origin and join results

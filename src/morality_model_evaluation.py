@@ -22,7 +22,7 @@ def plot_model_evaluation(models):
     weights = pd.Series((data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum()/data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum().sum()).values, index=MORALITY_ORIGIN)
 
 
-    for threshold in ['.1']:
+    for threshold in ['.9']:
         data[[mo + '_' + model + threshold for mo in MORALITY_ORIGIN for model in models]] = (data[[mo + '_' + model for mo in MORALITY_ORIGIN for model in models]] > float(threshold)).astype(int)
 
     #Compute coders agreement
@@ -35,12 +35,12 @@ def plot_model_evaluation(models):
     losses = []
     for model in models:
         if model != 'chatgpt_bool':
-            for threshold in ['.1']:
-                loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold]) for mo in MORALITY_ORIGIN}])
+            for threshold in ['.9']:
+                loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold], average='weighted') for mo in MORALITY_ORIGIN}])
                 loss['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt_prob':'GPT-4.0-Prob'}.get(model, model) + ' (' + threshold + ')'
                 losses.append(loss)
         elif model == 'chatgpt_bool':
-            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model]) for mo in MORALITY_ORIGIN}])
+            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
             loss['Model'] = {'chatgpt_bool':'GPT-4.0-Bin'}.get(model, model)
             losses.append(loss)
 
@@ -58,7 +58,7 @@ def plot_model_evaluation(models):
     tick = losses[MORALITY_ORIGIN].sum(axis=1).max()
     plt.axvline(x=tick, linestyle=':', linewidth=1.5, color='grey')
     plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
-    plt.xlabel('F1 Score')
+    plt.xlabel('Weighted F1 Score')
     plt.ylabel('')
     plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 2)).replace('0.', '.'), str(round(tick, 2)).replace('0.', '.')])
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)

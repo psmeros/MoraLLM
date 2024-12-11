@@ -15,7 +15,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
-from src.helpers import CHATGPT_BOOL_PROMPT, CHATGPT_PROB_PROMPT, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, NEWLINE, UNCERTAINT_TERMS
+from src.helpers import chatgpt_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, UNCERTAINT_TERMS
 from src.parser import wave_parser
 
 
@@ -60,17 +60,13 @@ def compute_morality_source(models, full_QnA):
             data = data.join(morality_origin)
 
         #ChatGPT model
-        elif model in ['chatgpt_prob', 'chatgpt_bool']:
-            prompt = CHATGPT_PROB_PROMPT if model == 'chatgpt_prob' else CHATGPT_BOOL_PROMPT if model == 'chatgpt_bool' else ''
+        elif model in ['chatgpt_bin', 'chatgpt_quant']:
+            response = 'bin' if model == 'chatgpt_bin' else 'quant' if model == 'chatgpt_quant' else ''
             #Call OpenAI API
             openai.api_key = os.getenv('OPENAI_API_KEY')
-            tokenizer = lambda text, token_limit=128: ' '.join(text.split(' ')[:token_limit])
-            classifier = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': prompt},{'role': 'user','content': text}], temperature=.2, max_tokens=32, frequency_penalty=0, presence_penalty=0)
-            if model == 'chatgpt_prob':
-                aggregator = lambda response: pd.Series({mo:float(re.search(mo+'.*:(.*?)(\n|$)', response['choices'][0]['message']['content']).group(1).strip()) if re.search(mo+'.*:(.*?)(\n|$)', response['choices'][0]['message']['content']) else 0.0 for mo in MORALITY_ORIGIN})
-            elif model == 'chatgpt_bool':
-                aggregator = lambda response: pd.Series({mo:int(eval(re.search(mo+'.*:(.*?)(\n|$)', response['choices'][0]['message']['content']).group(1).strip())) if re.search(mo+'.*:(.*?)(\n|$)', response['choices'][0]['message']['content']) else 0.0 for mo in MORALITY_ORIGIN})
-            full_pipeline = lambda text: aggregator(classifier(tokenizer(text)))
+            classifier = lambda text: [openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': chatgpt_prompt(mo, response)},{'role': 'user','content': text}], temperature=.2, max_tokens=32, frequency_penalty=0, presence_penalty=0) for mo in MORALITY_ORIGIN]
+            aggregator = lambda r: pd.Series({mo:(lambda n: float(n) if n.strip().isdigit() else 0)(r[i]['choices'][0]['message']['content']) for i, mo in enumerate(MORALITY_ORIGIN)})
+            full_pipeline = lambda text: aggregator(classifier(text))
 
             #Classify morality origin and join results
             morality_origin = data[morality_text].apply(full_pipeline)
@@ -166,7 +162,7 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
     full_QnA = True
-    models = ['lda', 'lg', 'sbert', 'chatgpt_prob', 'chatgpt_bool', 'entail_ml', 'entail_ml_explained']
+    models = ['lda', 'lg', 'sbert', 'chatgpt_bin', 'chatgpt_quant', 'entail_ml', 'entail_ml_explained']
 
     for c in config:
         if c == 1:

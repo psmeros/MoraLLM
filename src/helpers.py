@@ -173,22 +173,12 @@ NEWLINE = '\n\n\n'
 
 CODERS = ['Leke', 'Tomas']
 
-CHATGPT_PROB_PROMPT = """Classify these interview excerpts into four categories of moral reasoning: Intuitive, Consequentialist, Social, and Theistic.
-Here is a detailed explanation of each category:
-Intuitive: Moral reasoning in this category is based on instinct, gut feelings, or innate senses of right and wrong.
-Consequentialist: This category evaluates the morality of actions based on their outcomes or consequences.
-Social: This category emphasizes the role of social norms, relationships, parents, friends, and communal well-being.
-Theistic: Moral reasoning in this category is guided by religious beliefs, divine principles, god, bible, commandments, or a sense of duty to a higher power.
-Task: When analyzing a given text, estimate the independent probability (from 0.0 to 1.0) of the four categories describing the moral reasoning expressed in the text. Response strictly in the form \"Category:Probability\"."""
-
-CHATGPT_BOOL_PROMPT = """Classify these interview excerpts into four categories of moral reasoning: Intuitive, Consequentialist, Social, and Theistic.
-Here is a detailed explanation of each category:
-Intuitive: Moral reasoning in this category is based on instinct, gut feelings, or innate senses of right and wrong.
-Consequentialist: This category evaluates the morality of actions based on their outcomes or consequences.
-Social: This category emphasizes the role of social norms, relationships, parents, friends, and communal well-being.
-Theistic: Moral reasoning in this category is guided by religious beliefs, divine principles, god, bible, commandments, or a sense of duty to a higher power.
-Task: When analyzing a given text, estimate whether the four categories describe the moral reasoning expressed in the text. Response strictly in the form \"Category:True/False\"."""
-
+chatgpt_prompt = lambda mo, r: """You are a helpful assistant that classifies interview transcripts.
+In these interviews, respondents are asked by the interviewers how they make decisions.
+Interviewers are marked with "I:" and respondents are marked with "R:" in the transcripts.
+Your job is to detect whether respondents refer to """ + \
+('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') + '\n'+ \
+('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly with 0 if they do not refer, with 0.5 if they somewhat refer, and with 1 if they truly refer.' if r == 'quant' else '')
 
 SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'PINCOME':'Household Income',

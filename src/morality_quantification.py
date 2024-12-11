@@ -20,15 +20,24 @@ from src.parser import wave_parser
 
 
 #Compute morality source of interviews
-def compute_morality_source(models):
+def compute_morality_source(models, full_QnA):
     interviews = wave_parser()
 
     #Locate morality text in interviews
     morality_text = 'Morality Text'
-    interviews[morality_text] = ''
-    interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
-    interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: NEWLINE.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
-    interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: NEWLINE.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
+
+    if full_QnA:
+        interviews['Morality_Full_Text'] = interviews['Morality_Full_Text'].replace('', np.nan)
+        interviews = interviews.dropna(subset=['Morality_Full_Text']).reset_index(drop=True)
+        interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
+        interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
+        interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
+    else:
+        interviews[morality_text] = ''
+        interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
+        interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
+        interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
+
     interviews[morality_text] = interviews[morality_text].replace('', np.nan)
     interviews = interviews.dropna(subset=[morality_text]).reset_index(drop=True)
 
@@ -109,53 +118,64 @@ def compute_morality_source(models):
 
         data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
-def compute_linguistics(model):
-    data = pd.read_pickle('data/cache/morality_model-' + model + '.pkl')
-    morality_text = 'Morality Text'
+def compute_linguistics(models):
+    #Compute for all models
+    for model in models:
 
-    #Count words in morality text
-    nlp = spacy.load('en_core_web_lg')
-    count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
-    data['Verbosity'] = data[morality_text].map(count)
-    data = data[data['Verbosity'] < data['Verbosity'].quantile(.95)].reset_index(drop=True)
-    
-    #Count uncertain terms in morality text
-    pattern = r'\b(' + '|'.join(re.escape(term) for term in UNCERTAINT_TERMS) + r')\b'
-    count = lambda section : 0 if pd.isna(section) else len(re.findall(pattern, section.lower()))
-    data['Uncertainty'] = data[morality_text].map(count)
+        data = pd.read_pickle('data/cache/morality_model-' + model + '.pkl')
+        
+        #Locate morality text in interviews
+        morality_text = 'Morality Text'
+        data[morality_text] = ''
+        data.loc[data['Wave'] == 1, morality_text] = data.loc[data['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
+        data.loc[data['Wave'] == 2, morality_text] = data.loc[data['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
+        data.loc[data['Wave'] == 3, morality_text] = data.loc[data['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
+        data[morality_text] = data[morality_text].replace('', np.nan)
+        data = data.dropna(subset=[morality_text]).reset_index(drop=True)
 
-    #Measure readability in morality text
-    measure = lambda section : 0 if pd.isna(section) else textstat.flesch_reading_ease(section)
-    data['Complexity'] = data[morality_text].map(measure)
+        #Count words in morality text
+        nlp = spacy.load('en_core_web_lg')
+        count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
+        data['Verbosity'] = data[morality_text].map(count)
+        data = data[data['Verbosity'] < data['Verbosity'].quantile(.95)].reset_index(drop=True)
+        
+        #Count uncertain terms in morality text
+        pattern = r'\b(' + '|'.join(re.escape(term) for term in UNCERTAINT_TERMS) + r')\b'
+        count = lambda section : 0 if pd.isna(section) else len(re.findall(pattern, section.lower()))
+        data['Uncertainty'] = data[morality_text].map(count)
 
-    #Measure sentiment in morality text
-    model_params = {'device':0} if torch.cuda.is_available() else {}
-    sentiment_pipeline = pipeline('sentiment-analysis', **model_params)
-    cumpute_score = lambda r : (r['score'] + 1)/2 if r['label'] == 'POSITIVE' else (-r['score'] + 1)/2 if r['label'] == 'NEGATIVE' else .5
-    data['Sentiment'] = pd.Series(sentiment_pipeline(data[morality_text].tolist(), truncation=True)).map(cumpute_score)
+        #Measure readability in morality text
+        measure = lambda section : 0 if pd.isna(section) else textstat.flesch_reading_ease(section)
+        data['Complexity'] = data[morality_text].map(measure)
 
-    #Normalize values
-    data['Uncertainty'] = minmax_scale(data['Uncertainty'].astype(int) / data['Verbosity'].astype(int))
-    data['Verbosity'] = minmax_scale(np.log(data['Verbosity'].astype(int)))
-    data['Complexity'] = minmax_scale((data['Complexity']).astype(float))
-    data['Sentiment'] = minmax_scale(data['Sentiment'].astype(float))
+        #Measure sentiment in morality text
+        model_params = {'device':0} if torch.cuda.is_available() else {}
+        sentiment_pipeline = pipeline('sentiment-analysis', model='distilbert/distilbert-base-uncased-finetuned-sst-2-english', **model_params)
+        cumpute_score = lambda r : (r['score'] + 1)/2 if r['label'] == 'POSITIVE' else (-r['score'] + 1)/2 if r['label'] == 'NEGATIVE' else .5
+        data['Sentiment'] = pd.Series(sentiment_pipeline(data[morality_text].tolist(), truncation=True)).map(cumpute_score)
 
-    #Save full morality dialogue
-    data.loc[data['Wave'] == 1, morality_text] = data.loc[data['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
-    data.loc[data['Wave'] == 2, morality_text] = data.loc[data['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
-    data.loc[data['Wave'] == 3, morality_text] = data.loc[data['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
+        #Normalize values
+        data['Uncertainty'] = minmax_scale(data['Uncertainty'].astype(int) / data['Verbosity'].astype(int))
+        data['Verbosity'] = minmax_scale(np.log(data['Verbosity'].astype(int)))
+        data['Complexity'] = minmax_scale((data['Complexity']).astype(float))
+        data['Sentiment'] = minmax_scale(data['Sentiment'].astype(float))
 
-    data.to_pickle('data/cache/morality_model-' + model + '.pkl')
+        #Save full morality dialogue
+        data.loc[data['Wave'] == 1, morality_text] = data.loc[data['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
+        data.loc[data['Wave'] == 2, morality_text] = data.loc[data['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
+        data.loc[data['Wave'] == 3, morality_text] = data.loc[data['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
+
+        data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
 
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
+    full_QnA = True
+    models = ['lda', 'lg', 'sbert', 'chatgpt_prob', 'chatgpt_bool', 'entail_ml', 'entail_ml_explained']
 
     for c in config:
         if c == 1:
-            models = ['lda', 'lg', 'sbert', 'chatgpt_prob', 'chatgpt_bool', 'entail_ml', 'entail_ml_explained']
-            compute_morality_source(models)
+            compute_morality_source(models, full_QnA=full_QnA)
         elif c == 2:
-            model = 'entail_ml_explained'
-            compute_linguistics(model)
+            compute_linguistics(models)

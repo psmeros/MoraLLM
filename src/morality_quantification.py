@@ -45,7 +45,7 @@ def compute_morality_source(models, full_QnA):
             #Premise and hypothesis templates
             hypothesis_template = 'The reasoning in this example is based on {}.'
             model_params = {'device':0} if torch.cuda.is_available() else {}
-            morality_pipeline = pipeline('zero-shot-classification', model='facebook/bart-large-mnli', **model_params)
+            morality_pipeline = pipeline('zero-shot-classification', model='microsoft/deberta-large-mnli', **model_params)
 
             #Model variants
             multi_label = True if model in ['entail_ml', 'entail_ml_explained'] else False

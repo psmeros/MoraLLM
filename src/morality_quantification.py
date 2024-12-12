@@ -45,7 +45,7 @@ def compute_morality_source(models, full_QnA):
             #Premise and hypothesis templates
             hypothesis_template = 'The reasoning in this example is based on {}.'
             model_params = {'device':0} if torch.cuda.is_available() else {}
-            morality_pipeline = pipeline('zero-shot-classification', model='microsoft/deberta-large-mnli', **model_params)
+            morality_pipeline = pipeline('zero-shot-classification', model='roberta-large-mnli', **model_params)
 
             #Model variants
             multi_label = True if model in ['entail_ml', 'entail_ml_explained'] else False
@@ -53,7 +53,7 @@ def compute_morality_source(models, full_QnA):
 
             #Trasformation functions
             classifier = lambda series: pd.Series(morality_pipeline(series.tolist(), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label))
-            aggregator = lambda r: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])}]).mean()
+            aggregator = lambda r: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])}]).max()
             
             #Classify morality origin and join results
             morality_origin = classifier(data[morality_text]).apply(aggregator)

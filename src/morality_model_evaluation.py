@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.preprocessing import scale
 from __init__ import *
 from sklearn.metrics import cohen_kappa_score, f1_score
 from IPython.display import display
@@ -21,41 +22,49 @@ def plot_model_evaluation(models):
     data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
     weights = pd.Series((data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum()/data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum().sum()).values, index=MORALITY_ORIGIN)
 
-
-    for threshold in ['.9']:
-        data[[mo + '_' + model + threshold for mo in MORALITY_ORIGIN for model in models]] = (data[[mo + '_' + model for mo in MORALITY_ORIGIN for model in models]] > float(threshold)).astype(int)
+    #Compute best threshold for binarization
+    best_thresholds = []
+    max_f1s = []
+    for mo in MORALITY_ORIGIN:
+        max_f1 = 0
+        best_threshold = 0
+        for threshold in range(-300, 300, 5):
+            slice = (scale(data[[mo + '_Model']]) > threshold/100).astype(int)
+            f1 = f1_score(data[mo + '_gold'], slice, average='weighted')
+            if f1 > max_f1:
+                max_f1 = f1
+                best_threshold = threshold/100
+        best_thresholds.append(best_threshold)
+        max_f1s.append(max_f1)
+    print((pd.Series(max_f1s, index=MORALITY_ORIGIN) * weights).sum())
+    data[[mo + '_nli_bin' for mo in MORALITY_ORIGIN]] = (scale(data[[mo + '_Model' for mo in MORALITY_ORIGIN]]) > best_thresholds).astype(int)
+    models = list(map(lambda x: x.replace('Model', 'nli_bin'), models))
 
     #Compute coders agreement
     codings = merge_codings(None, return_codings=True)
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
     coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}) * weights).sum()
+    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo], average='weighted') for mo in MORALITY_ORIGIN}) * weights).sum()
 
-    #Compute mean squared error for all models
-    losses = []
+    #Compute f1 score for all models
+    f1s = []
     for model in models:
-        if model != 'chatgpt_bool':
-            for threshold in ['.9']:
-                loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model  + threshold], average='weighted') for mo in MORALITY_ORIGIN}])
-                loss['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt_prob':'GPT-4.0-Prob'}.get(model, model) + ' (' + threshold + ')'
-                losses.append(loss)
-        elif model == 'chatgpt_bool':
-            loss = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-            loss['Model'] = {'chatgpt_bool':'GPT-4.0-Bin'}.get(model, model)
-            losses.append(loss)
+        f1 = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
+        f1['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt_prob':'GPT-4.0-Prob', 'chatgpt_bool':'GPT-4.0-Bin'}.get(model, model)
+        f1s.append(f1)
 
-    losses = pd.concat(losses, ignore_index=True).iloc[::-1]
-    display(losses.set_index('Model'))
-    losses[MORALITY_ORIGIN] = losses[MORALITY_ORIGIN] * weights
+    f1s = pd.concat(f1s, ignore_index=True).iloc[::-1]
+    display(f1s.set_index('Model'))
+    f1s[MORALITY_ORIGIN] = f1s[MORALITY_ORIGIN] * weights
 
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    losses.plot(kind='barh', x = 'Model', stacked=True, color=list(sns.color_palette('Set2')))
+    f1s.plot(kind='barh', x = 'Model', stacked=True, color=list(sns.color_palette('Set2')))
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    tick = losses[MORALITY_ORIGIN].sum(axis=1).max()
+    tick = f1s[MORALITY_ORIGIN].sum(axis=1).max()
     plt.axvline(x=tick, linestyle=':', linewidth=1.5, color='grey')
     plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
     plt.xlabel('Weighted F1 Score')
@@ -127,7 +136,7 @@ if __name__ == '__main__':
     
     for c in config:
         if c == 1:
-            models = ['lda', 'chatgpt_prob', 'chatgpt_bool', 'Model']
+            models = ['chatgpt_bin', 'chatgpt_quant', 'Model']
             plot_model_evaluation(models)
         elif c == 2:
             plot_coders_agreement()

@@ -352,7 +352,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 
 #Merge all different types of data
 def prepare_data(interviews, extend_dataset):
-    interviews = pd.concat([interviews]+[pd.DataFrame(pd.read_pickle('data/cache/morality_model-' + model + '.pkl')[MORALITY_ORIGIN].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN]) for model in ['lda', 'sbert', 'chatgpt_prob', 'chatgpt_bool']], axis=1)
+    interviews = pd.concat([interviews]+[pd.DataFrame(pd.read_pickle('data/cache/morality_model-' + model + '.pkl')[MORALITY_ORIGIN].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN]) for model in ['chatgpt_bin', 'chatgpt_quant']], axis=1)
 
     interviews = merge_codings(interviews)
     interviews = merge_matches(interviews, extend_dataset)
@@ -363,7 +363,7 @@ def prepare_data(interviews, extend_dataset):
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
-    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS + ['gold', 'lda', 'sbert', 'chatgpt_prob', 'chatgpt_bool'] for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS + ['gold', 'chatgpt_bin', 'chatgpt_quant'] for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 

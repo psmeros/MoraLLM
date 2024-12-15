@@ -67,7 +67,7 @@ def compute_morality_source(models, excerpt):
             response = 'bin' if model == 'chatgpt_bin' else 'quant' if model == 'chatgpt_quant' else ''
             #Call OpenAI API
             openai.api_key = os.getenv('OPENAI_API_KEY')
-            classifier = lambda text: [openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': chatgpt_prompt(mo, response)},{'role': 'user','content': text}], temperature=.2, max_tokens=32, frequency_penalty=0, presence_penalty=0) for mo in MORALITY_ORIGIN]
+            classifier = lambda text: [openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': chatgpt_prompt(mo, response)},{'role': 'user','content': text}], temperature=.2, max_tokens=32, frequency_penalty=0, presence_penalty=0, seed=42) for mo in MORALITY_ORIGIN]
             aggregator = lambda r: pd.Series({mo:(lambda n: float(n) if n.strip().isdigit() else 0)(r[i]['choices'][0]['message']['content']) for i, mo in enumerate(MORALITY_ORIGIN)})
             full_pipeline = lambda text: aggregator(classifier(text))
 

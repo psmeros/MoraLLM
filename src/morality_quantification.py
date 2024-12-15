@@ -20,19 +20,22 @@ from src.parser import wave_parser
 
 
 #Compute morality source of interviews
-def compute_morality_source(models, full_QnA):
+def compute_morality_source(models, excerpt):
     interviews = wave_parser()
 
     #Locate morality text in interviews
     morality_text = 'Morality Text'
-    if full_QnA:
+    if excerpt == 'full_QnA':
         interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
         interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
         interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
-    else:
+    elif excerpt == 'response':
         interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
         interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
         interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
+    elif excerpt == 'summary':
+        interviews = interviews.merge(pd.read_csv('data/interviews/alignments/interview_summaries.csv'), how='left')
+        interviews[morality_text] = interviews['Summary']
     interviews[morality_text] = interviews[morality_text].replace('', np.nan)
     interviews = interviews.dropna(subset=[morality_text]).reset_index(drop=True)
 
@@ -161,11 +164,11 @@ def compute_linguistics(models):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2]
-    full_QnA = True
+    excerpt = 'summary'
     models = ['lda', 'lg', 'sbert', 'chatgpt_bin', 'chatgpt_quant', 'entail_ml', 'entail_ml_explained']
 
     for c in config:
         if c == 1:
-            compute_morality_source(models, full_QnA=full_QnA)
+            compute_morality_source(models, excerpt=excerpt)
         elif c == 2:
             compute_linguistics(models)

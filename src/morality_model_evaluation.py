@@ -19,7 +19,7 @@ def plot_model_evaluation(models):
 
     data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in CODED_WAVES]).dropna()
     data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
-    weights = pd.Series((data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum()/data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum().sum()).values, index=MORALITY_ORIGIN)
+    # weights = pd.Series((data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum()/data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum().sum()).values, index=MORALITY_ORIGIN)
 
     #Compute best threshold for binarization
     for model in models[-2:]:
@@ -30,45 +30,55 @@ def plot_model_evaluation(models):
             best_threshold = 0
             for threshold in range(-300, 300, 5):
                 slice = (scale(data[[mo + '_' + model]]) > threshold/100).astype(int)
-                f1 = f1_score(data[mo + '_gold'], slice, average='weighted')
+                f1 = f1_score(data[mo + '_chatgpt_bin'], slice, average='weighted')
                 if f1 > max_f1:
                     max_f1 = f1
                     best_threshold = threshold/100
             best_thresholds.append(best_threshold)
             max_f1s.append(max_f1)
-        print((pd.Series(max_f1s, index=MORALITY_ORIGIN) * weights).sum())
+        print((pd.Series(max_f1s, index=MORALITY_ORIGIN)).mean())
         data[[mo + '_' + model for mo in MORALITY_ORIGIN]] = (scale(data[[mo + '_' + model for mo in MORALITY_ORIGIN]]) > best_thresholds).astype(int)
 
     #Compute coders agreement
     codings = merge_codings(None, return_codings=True)
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
     coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo], average='weighted') for mo in MORALITY_ORIGIN}) * weights).sum()
+    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo], average='weighted') for mo in MORALITY_ORIGIN})).mean()
+
 
     #Compute f1 score for all models
+    for label in [0,1]:
+        f1s = []
+        for model in models:
+            f1 = pd.DataFrame([{mo:round(f1_score(data[mo + '_gold'], data[mo + '_' + model], average='binary', pos_label=label), 2) for mo in MORALITY_ORIGIN}])
+            f1['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt_prob':'GPT-4.0-Prob', 'chatgpt_bool':'GPT-4.0-Bin'}.get(model, model)
+            f1['Label'] = label
+            f1s.append(f1)
+        f1s = pd.concat(f1s, ignore_index=True).iloc[::-1]
+        display(f1s.set_index('Model'))
+
     f1s = []
     for model in models:
         f1 = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
         f1['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt_prob':'GPT-4.0-Prob', 'chatgpt_bool':'GPT-4.0-Bin'}.get(model, model)
         f1s.append(f1)
-
     f1s = pd.concat(f1s, ignore_index=True).iloc[::-1]
-    display(f1s.set_index('Model'))
-    f1s[MORALITY_ORIGIN] = f1s[MORALITY_ORIGIN] * weights
+    f1s = f1s.set_index('Model').stack().reset_index().rename(columns={'level_1':'Morality', 0:'F1 Score'})
 
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    f1s.plot(kind='barh', x = 'Model', stacked=True, color=list(sns.color_palette('Set2')))
+    sns.barplot(data=f1s, y='Model', x='F1 Score', hue='Morality', palette='Set2')
+
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    tick = f1s[MORALITY_ORIGIN].sum(axis=1).max()
-    plt.axvline(x=tick, linestyle=':', linewidth=1.5, color='grey')
-    plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
+    # tick = f1s[MORALITY_ORIGIN].sum(axis=1).max()
+    # plt.axvline(x=tick, linestyle=':', linewidth=1.5, color='grey')
+    plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Mean Annotators Agreement')
     plt.xlabel('Weighted F1 Score')
     plt.ylabel('')
-    plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 2)).replace('0.', '.'), str(round(tick, 2)).replace('0.', '.')])
+    # plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 2)).replace('0.', '.'), str(round(tick, 2)).replace('0.', '.')])
     plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')
@@ -135,7 +145,7 @@ if __name__ == '__main__':
     
     for c in config:
         if c == 1:
-            models = ['chatgpt_bin', 'chatgpt_sum_bin', 'chatgpt_quant', 'chatgpt_sum_quant', 'nli_bin', 'nli_sum_bin']
+            models = ['chatgpt_bin', 'chatgpt_sum_bin', 'nli_bin', 'nli_sum_bin']
             plot_model_evaluation(models)
         elif c == 2:
             plot_coders_agreement()

@@ -226,7 +226,7 @@ def merge_matches(interviews, extend_dataset, wave_list = ['Wave 1', 'Wave 2', '
     return matches
 
 #Merge codings from two coders for wave 1 and wave 3 of interviews
-def merge_codings(interviews, return_codings = False, codings_folder = 'data/interviews/codings'):
+def merge_codings(interviews, return_codings = False, codings_folder = 'data/interviews/codings', gold_file = 'data/interviews/alignments/gold_standard.csv'):
     #Parse codings
     codings_wave_1 = []
     codings_wave_3 = []
@@ -267,7 +267,12 @@ def merge_codings(interviews, return_codings = False, codings_folder = 'data/int
         interviews = codings
     else:
         codings = pd.concat([codings[['Wave', 'Interview Code']], codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN), axis=1)], axis=1)
-        interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], suffixes=('_' + MORALITY_ESTIMATORS[0], '_' + MORALITY_ESTIMATORS[1]), how = 'left', validate = '1:1')
+        
+        gold = pd.read_csv(gold_file)
+        gold = codings.merge(gold, on=['Wave', 'Interview Code'], suffixes=('', '_gold'), how = 'left')
+        gold[[mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.concat([gold[mo + '_gold'].fillna(gold[mo]) for mo in MORALITY_ORIGIN], axis=1)
+        gold = gold.drop(MORALITY_ORIGIN, axis=1)
+        interviews = interviews.merge(gold, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
         #Hybrid morality estimation
         if len(MORALITY_ESTIMATORS) == 3:
             interviews[[mo + '_' + MORALITY_ESTIMATORS[2] for mo in MORALITY_ORIGIN]] = interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values * interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values
@@ -345,7 +350,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     interviews['Wave 1:Age'] = interviews['Wave 1:Age'].fillna(interviews['Wave 3:Age'] - int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
     interviews[['Wave 2:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]]
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
-    interviews[['Wave 2:' + mo + '_Coders' for mo in MORALITY_ORIGIN]] = pd.NA
+    interviews[['Wave 2:' + mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.NA
     interviews[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
 
     return interviews
@@ -361,9 +366,6 @@ def prepare_data(models, extend_dataset):
     interviews = merge_codings(interviews)
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
-
-    interviews = pd.concat([interviews, pd.read_csv('data/interviews/alignments/gold_standard.csv')], axis=1)
-    interviews[[wave + ':' + mo + '_gold' for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN]] = pd.concat([interviews[wave + ':' + mo + '_gold'].fillna(interviews[wave + ':' + mo + '_Coders']) for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN], axis=1)
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
@@ -388,7 +390,7 @@ if __name__ == '__main__':
         if c == 0:
             interviews = wave_parser()
         elif c == 1:
-            models = ['chatgpt_bin', 'chatgpt_quant', 'entail_ml_explained']
+            models = ['chatgpt_bin', 'chatgpt_quant', 'nli_bin']
             extend_dataset = True
             interviews = prepare_data(models, extend_dataset=extend_dataset)
             interviews.sort_values(by='Survey Id').to_clipboard(index=False)

@@ -351,8 +351,12 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     return interviews
 
 #Merge all different types of data
-def prepare_data(interviews, extend_dataset):
-    interviews = pd.concat([interviews]+[pd.DataFrame(pd.read_pickle('data/cache/morality_model-' + model + '.pkl')[MORALITY_ORIGIN].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN]) for model in ['chatgpt_bin', 'chatgpt_quant']], axis=1)
+def prepare_data(models, extend_dataset):
+
+    interviews = pd.read_pickle('data/cache/morality_model-'+models[-1]+'.pkl')
+    interviews[[mo + '_' + models[-1] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
+    for model in models[:-1]:
+        interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))
 
     interviews = merge_codings(interviews)
     interviews = merge_matches(interviews, extend_dataset)
@@ -363,7 +367,7 @@ def prepare_data(interviews, extend_dataset):
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
-    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in MORALITY_ESTIMATORS + ['gold', 'chatgpt_bin', 'chatgpt_quant'] for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in ['gold'] + models for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
@@ -378,18 +382,13 @@ def prepare_data(interviews, extend_dataset):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
-    interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
+    config = [1]
 
     for c in config:
         if c == 0:
             interviews = wave_parser()
-        if c == 1:
-            interviews = merge_codings(interviews)
-        elif c == 2:
-            interviews = merge_matches(interviews)
-        elif c == 3:
-            interviews = merge_surveys(interviews)
-        elif c == 4:
-            interviews = prepare_data(interviews, extend_dataset=True)
+        elif c == 1:
+            models = ['chatgpt_bin', 'chatgpt_quant', 'entail_ml_explained']
+            extend_dataset = True
+            interviews = prepare_data(models, extend_dataset=extend_dataset)
             interviews.sort_values(by='Survey Id').to_clipboard(index=False)

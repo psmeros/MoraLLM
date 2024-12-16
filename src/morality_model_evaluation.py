@@ -15,30 +15,29 @@ from src.parser import merge_codings, prepare_data
 def plot_model_evaluation(models):
 
     #Prepare data
-    interviews = pd.read_pickle('data/cache/morality_model-entail_ml_explained.pkl')
-    interviews = prepare_data(interviews, extend_dataset=True)
+    interviews = prepare_data(models, extend_dataset=True)
 
     data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in CODED_WAVES]).dropna()
     data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
     weights = pd.Series((data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum()/data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum().sum()).values, index=MORALITY_ORIGIN)
 
     #Compute best threshold for binarization
-    best_thresholds = []
-    max_f1s = []
-    for mo in MORALITY_ORIGIN:
-        max_f1 = 0
-        best_threshold = 0
-        for threshold in range(-300, 300, 5):
-            slice = (scale(data[[mo + '_Model']]) > threshold/100).astype(int)
-            f1 = f1_score(data[mo + '_gold'], slice, average='weighted')
-            if f1 > max_f1:
-                max_f1 = f1
-                best_threshold = threshold/100
-        best_thresholds.append(best_threshold)
-        max_f1s.append(max_f1)
-    print((pd.Series(max_f1s, index=MORALITY_ORIGIN) * weights).sum())
-    data[[mo + '_nli_bin' for mo in MORALITY_ORIGIN]] = (scale(data[[mo + '_Model' for mo in MORALITY_ORIGIN]]) > best_thresholds).astype(int)
-    models = list(map(lambda x: x.replace('Model', 'nli_bin'), models))
+    for model in models[-2:]:
+        best_thresholds = []
+        max_f1s = []
+        for mo in MORALITY_ORIGIN:
+            max_f1 = 0
+            best_threshold = 0
+            for threshold in range(-300, 300, 5):
+                slice = (scale(data[[mo + '_' + model]]) > threshold/100).astype(int)
+                f1 = f1_score(data[mo + '_gold'], slice, average='weighted')
+                if f1 > max_f1:
+                    max_f1 = f1
+                    best_threshold = threshold/100
+            best_thresholds.append(best_threshold)
+            max_f1s.append(max_f1)
+        print((pd.Series(max_f1s, index=MORALITY_ORIGIN) * weights).sum())
+        data[[mo + '_' + model for mo in MORALITY_ORIGIN]] = (scale(data[[mo + '_' + model for mo in MORALITY_ORIGIN]]) > best_thresholds).astype(int)
 
     #Compute coders agreement
     codings = merge_codings(None, return_codings=True)
@@ -136,7 +135,7 @@ if __name__ == '__main__':
     
     for c in config:
         if c == 1:
-            models = ['chatgpt_bin', 'chatgpt_quant', 'Model']
+            models = ['chatgpt_bin', 'chatgpt_sum_bin', 'chatgpt_quant', 'chatgpt_sum_quant', 'nli_bin', 'nli_sum_bin']
             plot_model_evaluation(models)
         elif c == 2:
             plot_coders_agreement()

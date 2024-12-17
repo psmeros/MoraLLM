@@ -21,7 +21,7 @@ from src.parser import wave_parser
 
 #Compute morality source of interviews
 def compute_morality_source(models, excerpt):
-    interviews = wave_parser()
+    interviews = pd.read_pickle('data/cache/interviews.pkl')
 
     #Locate morality text in interviews
     morality_text = 'Morality Text'
@@ -34,8 +34,7 @@ def compute_morality_source(models, excerpt):
         interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
         interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
     elif excerpt == 'summary':
-        interviews = interviews.merge(pd.read_csv('data/interviews/alignments/interview_summaries.csv'), how='left')
-        interviews[morality_text] = interviews['Summary']
+        interviews[morality_text] = interviews['Morality Summary']
     interviews[morality_text] = interviews[morality_text].replace('', np.nan)
     interviews = interviews.dropna(subset=[morality_text]).reset_index(drop=True)
 

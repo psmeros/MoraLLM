@@ -1,11 +1,12 @@
 import os
 import re
 
+import openai
 import pandas as pd
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -382,14 +383,25 @@ def prepare_data(models, extend_dataset):
     interviews = interviews[columns]
     return interviews
 
+#Compute summary of morality text
+def compute_morality_summary():
+    interviews = wave_parser()
+    #OpenAI API
+    openai.api_key = os.getenv('OPENAI_API_KEY')
+    summarizer = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': CHATGPT_SUMMARY_PROMPT},{'role': 'user','content': text}], temperature=.2, max_tokens=64, frequency_penalty=0, presence_penalty=0, seed=42)
+    aggregator = lambda r: r['choices'][0]['message']['content']
+    full_pipeline = lambda text: aggregator(summarizer(text))
+    interviews['Morality Summary'] = interviews['Morality_Full_Text'].apply(full_pipeline)
+    interviews.to_pickle('data/cache/interviews.pkl')
+
 if __name__ == '__main__':
     #Hyperparameters
     config = [1]
 
     for c in config:
-        if c == 0:
-            interviews = wave_parser()
-        elif c == 1:
+        if c == 1:
+            compute_morality_summary()
+        elif c == 2:
             models = ['chatgpt_bin', 'chatgpt_quant', 'nli_bin']
             extend_dataset = True
             interviews = prepare_data(models, extend_dataset=extend_dataset)

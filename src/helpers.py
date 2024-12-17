@@ -173,6 +173,13 @@ NEWLINE = '\n\n\n'
 
 CODERS = ['Leke', 'Tomas']
 
+CHATGPT_SUMMARY_PROMPT = """You are a helpful assistant that summarizes interview transcripts.
+In these interviews, respondents are asked by the interviewers how they make decisions.
+Interviewers are marked with "I:" and respondents are marked with "R:" in the transcripts.
+Your job is to summarize each transcript strictly in one sentence.
+Make sure to include any references of the respondents to intuition, the consequences of their actions, social influences such as parents or friends, or religious reasons.
+If there are more than one references, order them in the summary according to their importance."""
+
 chatgpt_prompt = lambda mo, r: """You are a helpful assistant that classifies interview transcripts.
 In these interviews, respondents are asked by the interviewers how they make decisions.
 Interviewers are marked with "I:" and respondents are marked with "R:" in the transcripts.

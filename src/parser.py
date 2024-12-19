@@ -386,6 +386,8 @@ def prepare_data(models, extend_dataset):
 #Compute summary of morality text
 def compute_morality_summary():
     interviews = wave_parser()
+    interviews['Morality_Full_Text'] = interviews['Morality_Full_Text'].replace('', pd.NA)
+    interviews = interviews.dropna(subset=['Morality_Full_Text']).reset_index(drop=True)
     #OpenAI API
     openai.api_key = os.getenv('OPENAI_API_KEY')
     summarizer = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': CHATGPT_SUMMARY_PROMPT},{'role': 'user','content': text}], temperature=.2, max_tokens=64, frequency_penalty=0, presence_penalty=0, seed=42)

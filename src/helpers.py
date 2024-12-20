@@ -166,7 +166,7 @@ MORALITY_ORIGIN = ['Intuitive', 'Consequentialist', 'Social', 'Theistic']
 
 MORALITY_ORIGIN_EXPLAINED = {**dict.fromkeys(['intuition'], 'Intuitive'),
                              **dict.fromkeys(['consequences'], 'Consequentialist'),
-                             **dict.fromkeys(['social influences', 'parents', 'friends'], 'Social'),
+                             **dict.fromkeys(['social'], 'Social'),
                              **dict.fromkeys(['religion'], 'Theistic')}
 
 NEWLINE = '\n\n\n'
@@ -185,7 +185,7 @@ In these interviews, respondents are asked by the interviewers how they make dec
 Interviewers are marked with "I:" and respondents are marked with "R:" in the transcripts.
 Your job is to detect whether respondents refer to """ + \
 ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') + '\n'+ \
-('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly with 0 if they do not refer, with 0.5 if they somewhat refer, and with 1 if they truly refer.' if r == 'quant' else '')
+('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly with a float number in the range [0, 1] denoting importance, from 0 (no importance) to 1 (maximum importance).' if r == 'quant' else '')
 
 SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'PINCOME':'Household Income',

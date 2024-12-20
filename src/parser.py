@@ -390,7 +390,7 @@ def compute_morality_summary():
     interviews = interviews.dropna(subset=['Morality_Full_Text']).reset_index(drop=True)
     #OpenAI API
     openai.api_key = os.getenv('OPENAI_API_KEY')
-    summarizer = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': CHATGPT_SUMMARY_PROMPT},{'role': 'user','content': text}], temperature=.2, max_tokens=64, frequency_penalty=0, presence_penalty=0, seed=42)
+    summarizer = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': CHATGPT_SUMMARY_PROMPT},{'role': 'user','content': text}], temperature=.2, max_tokens=256, frequency_penalty=0, presence_penalty=0, seed=42)
     aggregator = lambda r: r['choices'][0]['message']['content']
     full_pipeline = lambda text: aggregator(summarizer(text))
     interviews['Morality Summary'] = interviews['Morality_Full_Text'].apply(full_pipeline)

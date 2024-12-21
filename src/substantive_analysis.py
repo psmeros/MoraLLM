@@ -339,7 +339,7 @@ if __name__ == '__main__':
     config = [5]
     extend_dataset = True
     to_latex = False
-    model = 'nli_sum_256'
+    model = 'nli_sum_quant'
     interviews = prepare_data([model], extend_dataset)
     interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 

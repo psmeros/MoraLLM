@@ -115,7 +115,7 @@ if __name__ == '__main__':
     
     for c in config:
         if c == 1:
-            models = ['chatgpt_bin', 'chatgpt_sum_bin', 'nli_bin', 'nli_sum_bin_64', 'nli_sum_bin_128', 'nli_sum_bin_128s', 'nli_sum_bin_old']
+            models = ['chatgpt_bin', 'chatgpt_quant', 'chatgpt_sum_bin', 'chatgpt_sum_quant', 'nli_bin', 'nli_quant', 'nli_sum_bin', 'nli_sum_quant']
             plot_model_evaluation(models)
         elif c == 2:
             plot_coders_agreement()

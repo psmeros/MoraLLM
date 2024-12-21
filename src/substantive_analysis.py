@@ -148,7 +148,7 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     g = sns.catplot(data=shifts, x='value', y='morality', hue='order', orient='h', order=MORALITY_ORIGIN, col='Attribute', col_order=legends.values(), col_wrap=3, kind='point', err_kws={'linewidth': 3}, dodge=.7, markers=['s']*len(MORALITY_ORIGIN)+['v']*len(MORALITY_ORIGIN), markersize=15, legend=False, seed=42, aspect=1.5, palette=2*sns.color_palette('Set2', n_colors=len(MORALITY_ORIGIN)))
     g.figure.suptitle('Crosswave Morality Diffusion by Social Categories', x=.5)
     g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
-    g.set(xlim=(-10, 10))
+    g.set(xlim=(-25, 25))
     g.set_xlabels('')
     g.set_ylabels('')
     ax = plt.gca()
@@ -316,7 +316,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 results = pd.concat([pd.DataFrame(('(' + pd.DataFrame(scale(results[:-1].map(lambda c: c[0] if not pd.isna(c) else None))).map(str) + ',' + pd.DataFrame(results[:-1].map(lambda c: c[1] if not pd.isna(c) else None)).map(str).values + ')').values, index=results[:-1].index, columns=results[:-1].columns).map(str).replace('(nan,nan)', 'None').map(eval).map(format_pvalue), pd.DataFrame(results.iloc[-1]).T])
             
             #Compute Results
-            elif conf['Model'] in ['Pearson']:                
+            elif conf['Model'] in ['Pearson']:
                 #Compute Correlations
                 results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=MORALITY_ESTIMATORS)
                 for estimator in MORALITY_ESTIMATORS:
@@ -341,6 +341,7 @@ if __name__ == '__main__':
     to_latex = False
     model = 'nli_sum_256'
     interviews = prepare_data([model], extend_dataset)
+    interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 
     for c in config:
         if c == 1:

@@ -398,13 +398,13 @@ def compute_morality_summary():
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [2]
 
     for c in config:
         if c == 1:
             compute_morality_summary()
         elif c == 2:
-            models = ['chatgpt_bin', 'chatgpt_quant', 'nli_bin']
+            models = ['chatgpt_bin', 'chatgpt_quant', 'chatgpt_sum_bin', 'chatgpt_sum_quant', 'nli_bin', 'nli_quant', 'nli_sum_bin', 'nli_sum_quant']
             extend_dataset = True
             interviews = prepare_data(models, extend_dataset=extend_dataset)
             interviews.sort_values(by='Survey Id').to_clipboard(index=False)

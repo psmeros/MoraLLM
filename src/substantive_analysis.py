@@ -331,16 +331,16 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         results = pd.concat(extended_results, axis=1).fillna('-')
         results = results[[pr.split('_')[0] for pr in conf['Predictions']] if conf['Predictions'] else results.columns]
         results = pd.concat([results.drop(index='N'), results.loc[['N']]])
-        print('Average AUC-ROC: ' + str(round(np.array(auc_roc).mean()*100, 1)) + '%' if auc_roc else '') 
+        print('Average AUC-ROC: ' + str(round(np.array(auc_roc).mean(), 2)) if auc_roc else '') 
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':
     #Hyperparameters
     config = [5]
-    interviews = pd.read_pickle('data/cache/morality_model-entail_ml.pkl')
     extend_dataset = True
     to_latex = False
-    interviews = prepare_data(interviews, extend_dataset)
+    model = 'nli_sum_256'
+    interviews = prepare_data([model], extend_dataset)
 
     for c in config:
         if c == 1:
@@ -361,7 +361,7 @@ if __name__ == '__main__':
                          {'Descrition': 'Predicting Future Behavior: ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 3'],
                           'To_Wave': ['Wave 2', 'Wave 4'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator in MORALITY_ESTIMATORS else ['Moral Schemas'],
+                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator != 'Moral Schemas' else ['Moral Schemas'],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
                           'Intercept': True,
@@ -369,12 +369,12 @@ if __name__ == '__main__':
                           'Model': 'Probit',
                           'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
-                    for estimator in ['Moral Schemas'] + MORALITY_ESTIMATORS] + [
+                    for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
                          {'Descrition': 'Explaining Current Behavior: ' + estimator,
                           'From_Wave': ['Wave 1', 'Wave 3'],
                           'To_Wave': ['Wave 1', 'Wave 3'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator in MORALITY_ESTIMATORS else ['Moral Schemas'],
+                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator != 'Moral Schemas' else ['Moral Schemas'],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
                           'Intercept': True,
@@ -382,7 +382,7 @@ if __name__ == '__main__':
                           'Model': 'Probit',
                           'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
-                    for estimator in ['Moral Schemas'] + MORALITY_ESTIMATORS] + [
+                    for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Computing Pairwise Correlations [6:7]
                          {'Descrition': 'Computing Pairwise Correlations',
                           'From_Wave': ['Wave 1', 'Wave 3'], 
@@ -407,5 +407,5 @@ if __name__ == '__main__':
                           'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS]
-            confs = confs[:]
+            confs = [confs[1], confs[4]]
             compute_behavioral_regressions(interviews, confs, to_latex)

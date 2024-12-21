@@ -185,7 +185,7 @@ In these interviews, respondents are asked by the interviewers how they make dec
 Interviewers are marked with "I:" and respondents are marked with "R:" in the transcripts.
 Your job is to detect whether respondents refer to """ + \
 ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') + '\n'+ \
-('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly with a float number in the range [0, 1] denoting importance, from 0 (no importance) to 1 (maximum importance).' if r == 'quant' else '')
+('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly on a Likert scale from 0 to 4, depending on the emphasis the respondents give to ' + ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') if r == 'quant' else '')
 
 SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'PINCOME':'Household Income',

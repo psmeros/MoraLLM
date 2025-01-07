@@ -172,6 +172,29 @@ def compute_synthetic_data(n=25):
     data.columns = ['Morality', 'Strong Summary', 'Weak Summary']
     data.to_pickle('data/cache/synthetic_data.pkl')
 
+#Compute synthetic morality origin
+def compute_synthetic_morality():
+    data = pd.read_pickle('data/cache/synthetic_data.pkl')
+
+    #Premise and hypothesis templates
+    hypothesis_template = 'The reasoning in this example is based on {}.'
+    model_params = {'device':0} if torch.cuda.is_available() else {}
+    morality_pipeline = pipeline('zero-shot-classification', model='roberta-large-mnli', **model_params)
+
+    #Trasformation functions
+    classifier = lambda series: pd.Series(morality_pipeline(series.tolist(), list(MORALITY_ORIGIN_EXPLAINED.keys()), hypothesis_template=hypothesis_template, multi_label=True))
+    aggregator = lambda r: pd.DataFrame([{MORALITY_ORIGIN_EXPLAINED[l]:s for l, s in zip(r['labels'], r['scores'])}]).max()
+    
+    #Classify morality origin and join results
+    morality_origin = classifier(data['Strong Summary']).apply(aggregator)
+    data = data.join(morality_origin)
+    morality_origin = classifier(data['Weak Summary']).apply(aggregator)
+    data = data.join(morality_origin, lsuffix='_strong', rsuffix='_weak')
+
+    data['Distinction'] = data.apply(lambda d: d[d['Morality'] + '_strong'] - d[d['Morality'] + '_weak'], axis=1)
+    data = data[['Morality', 'Strong Summary', 'Weak Summary', 'Distinction']]
+    data.to_pickle('data/cache/synthetic_data.pkl')
+
 if __name__ == '__main__':
     #Hyperparameters
     config = [3]
@@ -185,3 +208,4 @@ if __name__ == '__main__':
             compute_linguistics(models)
         elif c == 3:
             compute_synthetic_data()
+            compute_synthetic_morality()

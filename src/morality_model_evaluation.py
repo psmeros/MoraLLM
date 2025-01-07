@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -109,9 +110,28 @@ def plot_ecdf(model):
     plt.savefig('data/plots/fig-morality_ecdf.png', bbox_inches='tight')
     plt.show()
 
+#Plot morality distinction on synthetic data
+def plot_morality_distinction():
+    #Prepare Data
+    data = pd.read_pickle('data/cache/synthetic_data.pkl')
+    data['Distinction'] = data['Distinction'] * 100
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=data, x='Distinction', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Strong-Weak Morality Distinction', x=0.5)
+    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
+    g.set(xlim=(-100, 100))
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/fig-synthetic_distinction.png', bbox_inches='tight')
+    plt.show()
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [4]
     
     for c in config:
         if c == 1:
@@ -122,3 +142,5 @@ if __name__ == '__main__':
         elif c == 3:
             model = 'entail_ml'
             plot_ecdf(model)
+        elif c == 4:
+            plot_morality_distinction()

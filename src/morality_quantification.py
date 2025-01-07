@@ -15,7 +15,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
-from src.helpers import chatgpt_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, UNCERTAINT_TERMS
+from src.helpers import chatgpt_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, UNCERTAINT_TERMS
 from src.parser import wave_parser
 
 
@@ -159,10 +159,22 @@ def compute_linguistics(models):
 
         data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
+#Compute synthetic dataset
+def compute_synthetic_data(n=25):
+    #OpenAI API
+    openai.api_key = os.getenv('OPENAI_API_KEY')
+    synthesizer = lambda: [openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': chatgpt_synthetic_prompt(mo)},{'role': 'user','content': 'Generate strictly ' + str(n) + ' pairs without enumerating'}], temperature=.2, max_tokens=16384, frequency_penalty=0, presence_penalty=0, seed=42) for mo in MORALITY_ORIGIN]
+    aggregator = lambda r: pd.DataFrame(r, index=MORALITY_ORIGIN)['choices'].apply(lambda c: c[0]['message']['content']).str.split('\n').explode().str.split('%').apply(pd.Series).reset_index()
+    full_pipeline = lambda: aggregator(synthesizer())
+
+    #Generate synthetic data
+    data = full_pipeline()
+    data.columns = ['Morality', 'Strong Summary', 'Weak Summary']
+    data.to_pickle('data/cache/synthetic_data.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2]
+    config = [3]
     excerpt = 'summary'
     models = ['lda', 'lg', 'sbert', 'chatgpt_bin', 'chatgpt_quant', 'entail_ml', 'entail_ml_explained']
 
@@ -171,3 +183,5 @@ if __name__ == '__main__':
             compute_morality_source(models, excerpt=excerpt)
         elif c == 2:
             compute_linguistics(models)
+        elif c == 3:
+            compute_synthetic_data()

@@ -187,6 +187,14 @@ Your job is to detect whether respondents refer to """ + \
 ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') + '\n'+ \
 ('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly on a Likert scale from 0 to 4, depending on the emphasis the respondents give to ' + ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') if r == 'quant' else '')
 
+chatgpt_synthetic_prompt = lambda mo: """
+You are a helpful assistant that generates interview summaries.
+These summaries describe how people make decisions in one sentence.
+Generate pairs of summaries that refer to  """ + \
+('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') + '\n'+ \
+"""The first summary of each pair should have a very strong signal and the second should have a very weak signal.
+Respond strictly with each pair in a new line, separated by the special character '%'."""
+
 SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'PINCOME':'Household Income',
                                'PDADEDUC':'Father Education',

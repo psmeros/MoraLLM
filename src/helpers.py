@@ -196,9 +196,11 @@ The respondent prioritizes paying off debts and supporting loved ones over mater
 The respondent prioritizes using a hypothetical inheritance to pay off their mother's bills and secure their daughter's future, driven by gratitude for their mother's sacrifices, while also expressing a growing reliance on religious beliefs to guide their understanding of right and wrong, influenced by fears of moral consequences and the desire to avoid a negative legacy for their child.
 Generate pairs of summaries where the first summary gives more importance to  """ + \
 ('intuition' if mo == 'Intuitive'  else 'the consequences of actions' if mo == 'Consequentialist' else 'social influences' if mo == 'Social' else 'religious reasons' if mo == 'Theistic' else '') + \
-""" and less or no importance at all to the other three, and the second summary gives more importance to one or more of other three and less importance to """ + \
-('intuition' if mo == 'Intuitive'  else 'the consequences of actions' if mo == 'Consequentialist' else 'social influences' if mo == 'Social' else 'religious reasons' if mo == 'Theistic' else '') + '.\n' \
-"""Respond strictly with each pair in a new line, separated by the special character '%'."""
+""" and sometimes mentions also some of the other three factors, 
+and the second summary gives less importance to """ + \
+('intuition' if mo == 'Intuitive'  else 'the consequences of actions' if mo == 'Consequentialist' else 'social influences' if mo == 'Social' else 'religious reasons' if mo == 'Theistic' else '') + '\n' \
+""" and sometimes mentions also some of the other three factors.
+Respond strictly with each pair in a new line, separated by the special character '%'."""
 
 SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'PINCOME':'Household Income',

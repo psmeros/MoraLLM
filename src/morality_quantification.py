@@ -195,9 +195,16 @@ def compute_synthetic_morality():
     data = data[['Morality', 'Strong Summary', 'Weak Summary', 'Distinction']]
     data.to_pickle('data/cache/synthetic_data.pkl')
 
+#Binarize continuous morality
+def binarize_morality():
+    for model in ['nli', 'nli_sum']:
+        data = pd.read_pickle('data/cache/morality_model-' + model + '_quant.pkl')
+        data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN] > data[MORALITY_ORIGIN].median()).astype(int)
+        data.to_pickle('data/cache/morality_model-' + model + '_bin.pkl')
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [4]
     excerpt = 'summary'
     models = ['lda', 'lg', 'sbert', 'chatgpt_bin', 'chatgpt_quant', 'entail_ml', 'entail_ml_explained']
 
@@ -209,3 +216,5 @@ if __name__ == '__main__':
         elif c == 3:
             compute_synthetic_data()
             compute_synthetic_morality()
+        elif c == 4:
+            binarize_morality()

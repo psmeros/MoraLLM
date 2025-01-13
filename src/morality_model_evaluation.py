@@ -12,45 +12,45 @@ from src.parser import merge_codings, prepare_data
 
 
 #Plot mean-squared error for all models
-def plot_model_evaluation(models):
+def plot_model_evaluation(models, evaluation_waves):
 
     #Prepare data
     interviews = prepare_data(models, extend_dataset=True)
 
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in CODED_WAVES]).dropna()
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in evaluation_waves]).dropna()
     data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
-    weights = pd.Series((data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum()/data[[mo + '_gold' for mo in MORALITY_ORIGIN]].sum().sum()).values, index=MORALITY_ORIGIN)
+    print('Evaluation data size', len(data))
 
     #Compute coders agreement
     codings = merge_codings(None, return_codings=True)
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
     coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    coders_agreement = (pd.Series({mo:roc_auc_score(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN}) * weights).sum()
+    coders_agreement = (pd.Series({mo:roc_auc_score(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN})).mean()
 
     scores = []
     for model in models:
         score = pd.DataFrame([{mo:roc_auc_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-        score['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'Model':'MoraLLM', 'chatgpt_prob':'GPT-4.0-Prob', 'chatgpt_bool':'GPT-4.0-Bin'}.get(model, model)
+        score['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'nli_bin':'$NLI_{B}$', 'nli_quant':'$NLI_{Q}$', 'nli_sum_bin':'$NLI_{ΣB}$', 'nli_sum_quant':'$NLI_{ΣQ}$', 'chatgpt_bin':'$GPT_{B}$', 'chatgpt_quant':'$GPT_{Q}$', 'chatgpt_sum_bin':'$GPT_{ΣB}$', 'chatgpt_sum_quant':'$GPT_{ΣQ}$'}.get(model, model)
         scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
     display(scores.set_index('Model'))
-    scores['AUC Score'] = (scores[MORALITY_ORIGIN] * weights).sum(axis=1).round(2)
+    scores['AUC Score'] = (scores[MORALITY_ORIGIN]).mean(axis=1).round(2)
     display(scores.set_index('Model')[['AUC Score']])
     
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
-    sns.barplot(data=scores, y='Model', hue='Model', x='AUC Score', palette='pink_r')
+    sns.barplot(data=scores, y='Model', hue='Model', x='AUC Score', palette=sns.color_palette(palette='Greens', n_colors=4) + sns.color_palette(palette='Oranges', n_colors=4))
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     # tick = f1s[MORALITY_ORIGIN].sum(axis=1).max()
     # plt.axvline(x=tick, linestyle=':', linewidth=1.5, color='grey')
-    plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='Annotators Agreement')
+    plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
     plt.xlabel('Weighted AUC Score')
     plt.ylabel('')
     # plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 2)).replace('0.', '.'), str(round(tick, 2)).replace('0.', '.')])
-    plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
+    # plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')
     plt.show()
@@ -131,12 +131,13 @@ def plot_morality_distinction():
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [1]
     
     for c in config:
         if c == 1:
-            models = ['chatgpt_bin', 'chatgpt_quant', 'chatgpt_sum_bin', 'chatgpt_sum_quant', 'nli_bin', 'nli_quant', 'nli_sum_bin', 'nli_sum_quant']
-            plot_model_evaluation(models)
+            models = ['chatgpt_sum_quant', 'chatgpt_sum_bin', 'chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin', 'nli_quant', 'nli_bin']
+            evaluation_waves = ['Wave 1']
+            plot_model_evaluation(models, evaluation_waves)
         elif c == 2:
             plot_coders_agreement()
         elif c == 3:

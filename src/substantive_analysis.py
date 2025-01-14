@@ -256,7 +256,6 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             extended_confs = [raw_conf]
         
         extended_results = []
-        auc_roc = []
         for conf in extended_confs:
             #Add Reference for Moral Schemas
             if conf['Predictors'] == ['Moral Schemas']:
@@ -268,6 +267,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
             data['Wave'] = pd.concat([pd.Series([float(from_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave in conf['From_Wave']])
+            data['Wave Gap'] = pd.concat([pd.Series([float(to_wave.split()[1]) - float(from_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             
             #Binary Representation for Probit Model
             if conf['Model']  == 'Probit':
@@ -289,11 +289,11 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Results
             if conf['Model'] in ['Probit', 'OLS']:
                 #Define Formulas
-                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] and (p not in ['Cheat', 'Cutclass', 'Secret']) else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
+                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave") + Q("Wave Gap")' if conf['Dummy'] and (p not in ['Cheat', 'Cutclass', 'Secret']) else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
                 
                 #Run Regressions
                 results = {}
-                results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else []) + ['N']
+                results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave', 'Wave Gap'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else []) + ['N', 'AIC']
                 for formula, p in zip(formulas, conf['Predictions']):
                     y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                     groups = X['Q("Survey Id")']
@@ -302,18 +302,17 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                     fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
                     model = model(y, X).fit(maxiter=10000, **fit_params)
                     result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
-                    if conf['Model'] == 'Probit':
-                        auc_roc.append(roc_auc_score(y, model.predict(X), average='weighted'))
                     if conf['Previous Behavior']:
                         result['Previous Behavior'] = result['Q("' + p + '")']
                         result.pop('Q("' + p + '")')
                     result['N'] = int(model.nobs)
+                    result['AIC'] = round(model.aic, 2)
                     results[p.split('_')[0]] = result
                 results = pd.DataFrame(results)
                 results.index = results_index
 
                 #Scale Results
-                results = pd.concat([pd.DataFrame(('(' + pd.DataFrame(scale(results[:-1].map(lambda c: c[0] if not pd.isna(c) else None))).map(str) + ',' + pd.DataFrame(results[:-1].map(lambda c: c[1] if not pd.isna(c) else None)).map(str).values + ')').values, index=results[:-1].index, columns=results[:-1].columns).map(str).replace('(nan,nan)', 'None').map(eval).map(format_pvalue), pd.DataFrame(results.iloc[-1]).T])
+                results = pd.concat([pd.DataFrame(('(' + pd.DataFrame(scale(results[:-2].map(lambda c: c[0] if not pd.isna(c) else None))).map(str) + ',' + pd.DataFrame(results[:-2].map(lambda c: c[1] if not pd.isna(c) else None)).map(str).values + ')').values, index=results[:-2].index, columns=results[:-2].columns).map(str).replace('(nan,nan)', 'None').map(eval).map(format_pvalue), pd.DataFrame(results[-2:])])
             
             #Compute Results
             elif conf['Model'] in ['Pearson']:
@@ -330,8 +329,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         #Concatenate Results with and without controls
         results = pd.concat(extended_results, axis=1).fillna('-')
         results = results[[pr.split('_')[0] for pr in conf['Predictions']] if conf['Predictions'] else results.columns]
-        results = pd.concat([results.drop(index='N'), results.loc[['N']]])
-        print('Average AUC-ROC: ' + str(round(np.array(auc_roc).mean(), 2)) if auc_roc else '') 
+        results = pd.concat([results.drop(index=['N', 'AIC']), results.loc[['N', 'AIC']]])
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':
@@ -339,7 +337,7 @@ if __name__ == '__main__':
     config = [5]
     extend_dataset = True
     to_latex = False
-    model = 'nli_sum_quant'
+    model = 'nli_quant'
     interviews = prepare_data([model], extend_dataset)
     interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 
@@ -360,15 +358,15 @@ if __name__ == '__main__':
             confs = [
                         #Predicting Future Behavior: Moral Schemas + Model + Coders [0:3]
                          {'Descrition': 'Predicting Future Behavior: ' + estimator,
-                          'From_Wave': ['Wave 1', 'Wave 3'],
-                          'To_Wave': ['Wave 2', 'Wave 4'],
+                          'From_Wave': ['Wave 1', 'Wave 1', 'Wave 1', 'Wave 2', 'Wave 2', 'Wave 3'],
+                          'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4', 'Wave 3', 'Wave 4', 'Wave 4'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator != 'Moral Schemas' else ['Moral Schemas'],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
                           'Intercept': True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
-                          'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
+                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
@@ -408,5 +406,5 @@ if __name__ == '__main__':
                           'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS]
-            confs = [confs[1], confs[4]]
+            confs = [confs[1]]
             compute_behavioral_regressions(interviews, confs, to_latex)

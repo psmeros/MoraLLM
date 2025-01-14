@@ -317,8 +317,8 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Results
             elif conf['Model'] in ['Pearson']:
                 #Compute Correlations
-                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=MORALITY_ESTIMATORS)
-                for estimator in MORALITY_ESTIMATORS:
+                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=['nli_sum_quant', 'chatgpt_quant'])
+                for estimator in ['nli_sum_quant', 'chatgpt_quant']:
                     slice = data[[mo + '_' + estimator for mo in MORALITY_ORIGIN]].dropna().reset_index(drop=True)
                     for i in results.index[:-1]:
                         results.loc[i, estimator] = format_pvalue(pearsonr(slice[i.split(' - ')[0] + '_' + estimator], slice[i.split(' - ')[1] + '_' + estimator]))
@@ -329,7 +329,8 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         #Concatenate Results with and without controls
         results = pd.concat(extended_results, axis=1).fillna('-')
         results = results[[pr.split('_')[0] for pr in conf['Predictions']] if conf['Predictions'] else results.columns]
-        results = pd.concat([results.drop(index=['N', 'AIC']), results.loc[['N', 'AIC']]])
+        if conf['Model'] == 'Probit':
+            results = pd.concat([results.drop(index=['N', 'AIC']), results.loc[['N', 'AIC']]])
         print(results.to_latex()) if to_latex else display(results)
 
 if __name__ == '__main__':
@@ -338,7 +339,7 @@ if __name__ == '__main__':
     extend_dataset = True
     to_latex = False
     model = 'nli_quant'
-    interviews = prepare_data([model], extend_dataset)
+    interviews = prepare_data(['nli_quant', 'nli_sum_quant', 'chatgpt_quant'], extend_dataset)
     interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 
     for c in config:
@@ -384,9 +385,9 @@ if __name__ == '__main__':
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Computing Pairwise Correlations [6:7]
                          {'Descrition': 'Computing Pairwise Correlations',
-                          'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 1', 'Wave 3'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in MORALITY_ESTIMATORS],
+                          'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
+                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in ['nli_sum_quant', 'chatgpt_quant']],
                           'Predictions': [],
                           'Previous Behavior': False,
                           'Model': 'Pearson',
@@ -406,5 +407,5 @@ if __name__ == '__main__':
                           'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS]
-            confs = [confs[1]]
+            confs = [confs[1],confs[6]]
             compute_behavioral_regressions(interviews, confs, to_latex)

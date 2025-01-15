@@ -199,7 +199,7 @@ def compute_synthetic_morality():
 def binarize_morality():
     for model in ['nli', 'nli_sum']:
         data = pd.read_pickle('data/cache/morality_model-' + model + '_quant.pkl')
-        data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN] > data[MORALITY_ORIGIN].mean()).astype(int)
+        data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN] > .5).astype(int)
         data.to_pickle('data/cache/morality_model-' + model + '_bin.pkl')
 
 #Quantize continuous morality

@@ -267,7 +267,6 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
             data['Wave'] = pd.concat([pd.Series([float(from_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave in conf['From_Wave']])
-            data['Wave Gap'] = pd.concat([pd.Series([float(to_wave.split()[1]) - float(from_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             
             #Binary Representation for Probit Model
             if conf['Model']  == 'Probit':
@@ -289,11 +288,11 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Results
             if conf['Model'] in ['Probit', 'OLS']:
                 #Define Formulas
-                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave") + Q("Wave Gap")' if conf['Dummy'] and (p not in ['Cheat', 'Cutclass', 'Secret']) else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
+                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] and (p not in ['Cheat', 'Cutclass', 'Secret']) else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
                 
                 #Run Regressions
                 results = {}
-                results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave', 'Wave Gap'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else []) + ['N', 'AIC']
+                results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else []) + ['N', 'AIC']
                 for formula, p in zip(formulas, conf['Predictions']):
                     y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                     groups = X['Q("Survey Id")']
@@ -317,8 +316,8 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Results
             elif conf['Model'] in ['Pearson']:
                 #Compute Correlations
-                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=['nli_sum_quant', 'chatgpt_quant'])
-                for estimator in ['nli_sum_quant', 'chatgpt_quant']:
+                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin'])
+                for estimator in ['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin']:
                     slice = data[[mo + '_' + estimator for mo in MORALITY_ORIGIN]].dropna().reset_index(drop=True)
                     for i in results.index[:-1]:
                         results.loc[i, estimator] = format_pvalue(pearsonr(slice[i.split(' - ')[0] + '_' + estimator], slice[i.split(' - ')[1] + '_' + estimator]))
@@ -338,8 +337,8 @@ if __name__ == '__main__':
     config = [5]
     extend_dataset = True
     to_latex = False
-    model = 'nli_quant'
-    interviews = prepare_data(['nli_quant', 'nli_sum_quant', 'chatgpt_quant'], extend_dataset)
+    model = 'chatgpt_bin'
+    interviews = prepare_data(['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin', 'nli_quant', 'nli_bin'], extend_dataset)
     interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 
     for c in config:
@@ -359,8 +358,8 @@ if __name__ == '__main__':
             confs = [
                         #Predicting Future Behavior: Moral Schemas + Model + Coders [0:3]
                          {'Descrition': 'Predicting Future Behavior: ' + estimator,
-                          'From_Wave': ['Wave 1', 'Wave 1', 'Wave 1', 'Wave 2', 'Wave 2', 'Wave 3'],
-                          'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4', 'Wave 3', 'Wave 4', 'Wave 4'],
+                          'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
+                          'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator != 'Moral Schemas' else ['Moral Schemas'],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
@@ -385,9 +384,9 @@ if __name__ == '__main__':
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Computing Pairwise Correlations [6:7]
                          {'Descrition': 'Computing Pairwise Correlations',
-                          'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'], 
-                          'To_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in ['nli_sum_quant', 'chatgpt_quant']],
+                          'From_Wave': ['Wave 1'], 
+                          'To_Wave': ['Wave 1'],
+                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in ['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin']],
                           'Predictions': [],
                           'Previous Behavior': False,
                           'Model': 'Pearson',

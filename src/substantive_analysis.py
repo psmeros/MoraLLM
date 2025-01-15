@@ -338,7 +338,7 @@ if __name__ == '__main__':
     extend_dataset = True
     to_latex = False
     model = 'chatgpt_bin'
-    interviews = prepare_data(['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin', 'nli_quant', 'nli_bin'], extend_dataset)
+    interviews = prepare_data(['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin'], extend_dataset)
     interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 
     for c in config:

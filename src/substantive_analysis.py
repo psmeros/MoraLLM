@@ -375,7 +375,7 @@ if __name__ == '__main__':
                           'Intercept': True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
-                          'Controls': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
+                          'Controls': ['Number of Friends', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]

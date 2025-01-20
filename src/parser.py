@@ -361,6 +361,8 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 #Merge network variables
 def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     network = pd.read_stata(file)[NETWORK_ATTRIBUTES.keys()].rename(columns=NETWORK_ATTRIBUTES)
+    network = network.map(lambda x: None if x in ['DON\'T KNOW', 'LEGITIMATE SKIP'] else x)
+    network = network.map(lambda x: 4 if x in [4,5] else x)
     interviews = interviews.merge(network, on='Survey Id', how='left')
     return interviews
 

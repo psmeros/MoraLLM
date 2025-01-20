@@ -277,7 +277,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Descriptive Statistics for Controls
             if conf['Controls']:
                 stats = pd.DataFrame(data[conf['Controls']].apply(lambda c: c.astype(str).value_counts(dropna=False)).T.stack().reset_index().values, columns=['Variable', 'Value', 'Count'])
-                stats.sort_index(key=lambda x: x.map({key:i for i, key in enumerate(conf['Controls'])}))
+                stats = stats.sort_index(key=lambda x: x.map({key:i for i, key in enumerate(conf['Controls'])})).set_index('Variable')
                 stats['Count'] = stats['Count'].astype(int)
                 print(stats.to_latex()) if to_latex else display(stats)
 

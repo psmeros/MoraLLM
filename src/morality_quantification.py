@@ -196,18 +196,16 @@ def compute_synthetic_morality():
     data.to_pickle('data/cache/synthetic_data.pkl')
 
 #Binarize continuous morality
-def binarize_morality():
-    for model in ['nli', 'nli_sum']:
-        data = pd.read_pickle('data/cache/morality_model-' + model + '_quant.pkl')
-        data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN] > .5).astype(int)
-        data.to_pickle('data/cache/morality_model-' + model + '_bin.pkl')
+def binarize_morality(model):
+    data = pd.read_pickle('data/cache/morality_model-' + model + '_quant.pkl')
+    data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN].apply(minmax_scale) > .5).astype(int)
+    data.to_pickle('data/cache/morality_model-' + model + '_bin.pkl')
 
 #Quantize continuous morality
-def quantize_morality():
-    for model in ['nli', 'nli_sum']:
-        data = pd.read_pickle('data/cache/morality_model-' + model + '_quant.pkl')
-        data[MORALITY_ORIGIN] = pd.DataFrame([pd.qcut(data[mo], q=5, labels=False) * .25 for mo in MORALITY_ORIGIN]).T
-        data.to_pickle('data/cache/morality_model-' + model + '_quant-alt.pkl')
+def quantize_morality(model):
+    data = pd.read_pickle('data/cache/morality_model-' + model + '_quant.pkl')
+    data[MORALITY_ORIGIN] = pd.DataFrame([pd.qcut(data[mo], q=5, labels=False) * .25 for mo in MORALITY_ORIGIN]).T
+    data.to_pickle('data/cache/morality_model-' + model + '_quant-alt.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -224,5 +222,5 @@ if __name__ == '__main__':
             compute_synthetic_data()
             compute_synthetic_morality()
         elif c == 4:
-            binarize_morality()
-            quantize_morality()
+            model = 'sbert'
+            binarize_morality(model=model)

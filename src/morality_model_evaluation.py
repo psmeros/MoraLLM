@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from __init__ import *
-from sklearn.metrics import cohen_kappa_score, roc_auc_score
+from sklearn.metrics import cohen_kappa_score, f1_score
 from IPython.display import display
 
 from src.helpers import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
@@ -25,29 +25,29 @@ def plot_model_evaluation(models, evaluation_waves):
     codings = merge_codings(None, return_codings=True)
     coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
     coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    coders_agreement = (pd.Series({mo:roc_auc_score(coder_A_labels[mo], coder_B_labels[mo]) for mo in MORALITY_ORIGIN})).mean()
+    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo], average='weighted') for mo in MORALITY_ORIGIN})).mean()
 
     scores = []
     for model in models:
-        score = pd.DataFrame([{mo:roc_auc_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-        score['Model'] = {'lda':'SeededLDA', 'sbert':'SBERT', 'nli_bin':'$NLI_{B}$', 'nli_quant':'$NLI_{Q}$', 'nli_sum_bin':'$NLI_{ΣB}$', 'nli_sum_quant':'$NLI_{ΣQ}$', 'chatgpt_bin':'$GPT_{B}$', 'chatgpt_quant':'$GPT_{Q}$', 'chatgpt_sum_bin':'$GPT_{ΣB}$', 'chatgpt_sum_quant':'$GPT_{ΣQ}$'}.get(model, model)
+        score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
+        score['Model'] = {'lda_bin':'LDA', 'lda_sum_bin':'$LDA_{Σ}$', 'sbert_bin':'SBERT', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'NLI', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'GPT', 'chatgpt_sum_bin':'$GPT_{Σ}$'}.get(model, model)
         scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
     display(scores.set_index('Model'))
-    scores['AUC Score'] = (scores[MORALITY_ORIGIN]).mean(axis=1).round(2)
-    display(scores.set_index('Model')[['AUC Score']])
+    scores['score'] = (scores[MORALITY_ORIGIN]).mean(axis=1).round(2)
+    display(scores.set_index('Model')[['score']])
     
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
-    plt.figure(figsize=(10, 10))
-    sns.barplot(data=scores, y='Model', hue='Model', x='AUC Score', palette=sns.color_palette(palette='Greens', n_colors=4) + sns.color_palette(palette='Oranges', n_colors=4))
+    plt.figure(figsize=(10, 5))
+    sns.barplot(data=scores, y='Model', hue='Model', x='score', palette='Paired')
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     # tick = f1s[MORALITY_ORIGIN].sum(axis=1).max()
     # plt.axvline(x=tick, linestyle=':', linewidth=1.5, color='grey')
     plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
-    plt.xlabel('Weighted AUC Score')
+    plt.xlabel('Weighted F1 Score')
     plt.ylabel('')
     # plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 2)).replace('0.', '.'), str(round(tick, 2)).replace('0.', '.')])
     # plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     
     for c in config:
         if c == 1:
-            models = ['chatgpt_sum_quant', 'chatgpt_sum_bin', 'chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin', 'nli_quant', 'nli_bin']
+            models = ['chatgpt_sum_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_bin', 'lda_sum_bin', 'lda_bin']
             evaluation_waves = ['Wave 1']
             plot_model_evaluation(models, evaluation_waves)
         elif c == 2:

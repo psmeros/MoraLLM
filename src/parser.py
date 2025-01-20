@@ -359,9 +359,9 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 #Merge all different types of data
 def prepare_data(models, extend_dataset):
 
-    interviews = pd.read_pickle('data/cache/morality_model-'+models[-1]+'.pkl')
-    interviews[[mo + '_' + models[-1] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-    for model in models[:-1]:
+    interviews = pd.read_pickle('data/cache/morality_model-'+models[0]+'.pkl')
+    interviews[[mo + '_' + models[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
+    for model in models[1:]:
         interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))
 
     interviews = merge_codings(interviews)

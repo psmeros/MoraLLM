@@ -267,11 +267,20 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
             data['Wave'] = pd.concat([pd.Series([float(from_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave in conf['From_Wave']])
+            data = data.map(lambda x: np.nan if x == None else x)
+            data = data[~data[conf['Predictors']].isna().all(axis=1)]
             
             #Binary Representation for Probit Model
             if conf['Model']  == 'Probit':
                 data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]] = data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > .5) if not pd.isna(p) else pd.NA)
             
+            #Compute Descriptive Statistics for Controls
+            if conf['Controls']:
+                stats = pd.DataFrame(data[conf['Controls']].apply(lambda c: c.astype(str).value_counts(dropna=False)).T.stack().reset_index().values, columns=['Variable', 'Value', 'Count'])
+                stats.sort_index(key=lambda x: x.map({key:i for i, key in enumerate(conf['Controls'])}))
+                stats['Count'] = stats['Count'].astype(int)
+                print(stats.to_latex()) if to_latex else display(stats)
+
             #Add Reference Controls
             for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):
                 data = data.dropna(subset=attribute_name)
@@ -316,8 +325,8 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Results
             elif conf['Model'] in ['Pearson']:
                 #Compute Correlations
-                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin'])
-                for estimator in ['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin']:
+                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=['chatgpt_bin', 'nli_sum_bin'])
+                for estimator in ['chatgpt_bin', 'nli_sum_bin']:
                     slice = data[[mo + '_' + estimator for mo in MORALITY_ORIGIN]].dropna().reset_index(drop=True)
                     for i in results.index[:-1]:
                         results.loc[i, estimator] = format_pvalue(pearsonr(slice[i.split(' - ')[0] + '_' + estimator], slice[i.split(' - ')[1] + '_' + estimator]))
@@ -366,7 +375,7 @@ if __name__ == '__main__':
                           'Intercept': True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
-                          'Controls': ['Religion', 'Race', 'Gender', 'Region'],
+                          'Controls': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
@@ -384,9 +393,9 @@ if __name__ == '__main__':
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Computing Pairwise Correlations [6:7]
                          {'Descrition': 'Computing Pairwise Correlations',
-                          'From_Wave': ['Wave 1'], 
-                          'To_Wave': ['Wave 1'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in ['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin']],
+                          'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
+                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in ['chatgpt_bin', 'nli_sum_bin']],
                           'Predictions': [],
                           'Previous Behavior': False,
                           'Model': 'Pearson',

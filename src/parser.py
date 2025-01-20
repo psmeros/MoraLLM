@@ -6,7 +6,7 @@ import pandas as pd
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
 
 
 #Convert encoding of files in a folder
@@ -358,6 +358,12 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 
     return interviews
 
+#Merge network variables
+def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
+    network = pd.read_stata(file)[NETWORK_ATTRIBUTES.keys()].rename(columns=NETWORK_ATTRIBUTES)
+    interviews = interviews.merge(network, on='Survey Id', how='left')
+    return interviews
+
 #Merge all different types of data
 def prepare_data(models, extend_dataset):
 
@@ -369,12 +375,15 @@ def prepare_data(models, extend_dataset):
     interviews = merge_codings(interviews)
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
+    interviews = merge_network(interviews)
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
     columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in ['gold'] + models for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
+
+    columns += [wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Number of Friends']]
 
     columns += [wave + ':' + covariate for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for covariate in ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment']]
 

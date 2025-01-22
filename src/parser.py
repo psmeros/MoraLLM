@@ -463,9 +463,15 @@ def compute_linguistics():
 
     interviews.to_pickle('data/cache/interviews.pkl')
 
+def prepare_crowd_labeling(morality_text):
+    interviews = prepare_data([], extend_dataset=True)
+    interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
+    interviews[morality_text] = interviews[morality_text].str.replace('\n', '</br>').apply(lambda t: re.sub(r'M[24567]:', '', t))
+    interviews.to_csv('data/crowd/' + morality_text + '.csv', index=False)
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [4]
 
     for c in config:
         if c == 1:
@@ -477,3 +483,6 @@ if __name__ == '__main__':
             compute_morality_summary()
         elif c == 3:
             compute_linguistics()
+        elif c == 4:
+            morality_text = 'Wave 1:Morality Text'
+            prepare_crowd_labeling(morality_text)

@@ -30,7 +30,7 @@ def plot_model_evaluation(models, evaluation_waves):
     scores = []
     for model in models:
         score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-        score['Model'] = {'lda_bin':'LDA', 'lda_sum_bin':'$LDA_{Σ}$', 'sbert_bin':'SBERT', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'NLI', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'GPT', 'chatgpt_sum_bin':'$GPT_{Σ}$'}.get(model, model)
+        score['Model'] = {'lda_bin':'LDA', 'lda_sum_bin':'$LDA_{Σ}$', 'sbert_bin':'SBERT', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'NLI', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin_notags':'$GPT_{4NT}$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_bin':'$GPT_{4}$', 'chatgpt_sum_bin':'$GPT_{4Σ}$'}.get(model, model)
         scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
     display(scores.set_index('Model'))
@@ -44,13 +44,9 @@ def plot_model_evaluation(models, evaluation_waves):
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    # tick = f1s[MORALITY_ORIGIN].sum(axis=1).max()
-    # plt.axvline(x=tick, linestyle=':', linewidth=1.5, color='grey')
     plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
     plt.xlabel('Weighted F1 Score')
     plt.ylabel('')
-    # plt.xticks([coders_agreement, tick], [str(round(coders_agreement, 2)).replace('0.', '.'), str(round(tick, 2)).replace('0.', '.')])
-    # plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
     plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')
     plt.show()
@@ -135,6 +131,7 @@ if __name__ == '__main__':
     
     for c in config:
         if c == 1:
+            # models = ['chatgpt_bin_3.5', 'chatgpt_sum_bin', 'chatgpt_bin_notags', 'chatgpt_bin']
             models = ['chatgpt_sum_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_bin', 'lda_sum_bin', 'lda_bin']
             evaluation_waves = ['Wave 1']
             plot_model_evaluation(models, evaluation_waves)

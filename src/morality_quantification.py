@@ -7,7 +7,6 @@ import pandas as pd
 from sklearn.preprocessing import minmax_scale
 import spacy
 import torch
-from textstat.textstat import textstat
 from torch.nn.functional import cosine_similarity
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
@@ -15,8 +14,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
-from src.helpers import chatgpt_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, UNCERTAINT_TERMS
-from src.parser import wave_parser
+from src.helpers import chatgpt_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED
 
 
 #Compute morality source of interviews
@@ -110,55 +108,6 @@ def compute_morality_source(models, excerpt):
 
         data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
-def compute_linguistics(models):
-    #Compute for all models
-    for model in models:
-
-        data = pd.read_pickle('data/cache/morality_model-' + model + '.pkl')
-        
-        #Locate morality text in interviews
-        morality_text = 'Morality Text'
-        data[morality_text] = ''
-        data.loc[data['Wave'] == 1, morality_text] = data.loc[data['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
-        data.loc[data['Wave'] == 2, morality_text] = data.loc[data['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
-        data.loc[data['Wave'] == 3, morality_text] = data.loc[data['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
-        data[morality_text] = data[morality_text].replace('', np.nan)
-        data = data.dropna(subset=[morality_text]).reset_index(drop=True)
-
-        #Count words in morality text
-        nlp = spacy.load('en_core_web_lg')
-        count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
-        data['Verbosity'] = data[morality_text].map(count)
-        data = data[data['Verbosity'] < data['Verbosity'].quantile(.95)].reset_index(drop=True)
-        
-        #Count uncertain terms in morality text
-        pattern = r'\b(' + '|'.join(re.escape(term) for term in UNCERTAINT_TERMS) + r')\b'
-        count = lambda section : 0 if pd.isna(section) else len(re.findall(pattern, section.lower()))
-        data['Uncertainty'] = data[morality_text].map(count)
-
-        #Measure readability in morality text
-        measure = lambda section : 0 if pd.isna(section) else textstat.flesch_reading_ease(section)
-        data['Complexity'] = data[morality_text].map(measure)
-
-        #Measure sentiment in morality text
-        model_params = {'device':0} if torch.cuda.is_available() else {}
-        sentiment_pipeline = pipeline('sentiment-analysis', model='distilbert/distilbert-base-uncased-finetuned-sst-2-english', **model_params)
-        cumpute_score = lambda r : (r['score'] + 1)/2 if r['label'] == 'POSITIVE' else (-r['score'] + 1)/2 if r['label'] == 'NEGATIVE' else .5
-        data['Sentiment'] = pd.Series(sentiment_pipeline(data[morality_text].tolist(), truncation=True)).map(cumpute_score)
-
-        #Normalize values
-        data['Uncertainty'] = minmax_scale(data['Uncertainty'].astype(int) / data['Verbosity'].astype(int))
-        data['Verbosity'] = minmax_scale(np.log(data['Verbosity'].astype(int)))
-        data['Complexity'] = minmax_scale((data['Complexity']).astype(float))
-        data['Sentiment'] = minmax_scale(data['Sentiment'].astype(float))
-
-        #Save full morality dialogue
-        data.loc[data['Wave'] == 1, morality_text] = data.loc[data['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
-        data.loc[data['Wave'] == 2, morality_text] = data.loc[data['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
-        data.loc[data['Wave'] == 3, morality_text] = data.loc[data['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
-
-        data.to_pickle('data/cache/morality_model-' + model + '.pkl')
-
 #Compute synthetic dataset
 def compute_synthetic_data(n=25):
     #OpenAI API
@@ -209,7 +158,7 @@ def quantize_morality(model):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [3]
     excerpt = 'summary'
     models = ['lda', 'lg', 'sbert', 'chatgpt_bin', 'chatgpt_quant', 'entail_ml', 'entail_ml_explained']
 
@@ -217,10 +166,8 @@ if __name__ == '__main__':
         if c == 1:
             compute_morality_source(models, excerpt=excerpt)
         elif c == 2:
-            compute_linguistics(models)
-        elif c == 3:
             compute_synthetic_data()
             compute_synthetic_morality()
-        elif c == 4:
+        elif c == 3:
             model = 'sbert'
             binarize_morality(model=model)

@@ -1,12 +1,18 @@
 import os
 import re
 
+import numpy as np
 import openai
 import pandas as pd
+from sklearn.preprocessing import minmax_scale
+import spacy
+import textstat
+import torch
+from transformers import pipeline
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING
+from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS
 
 
 #Convert encoding of files in a folder
@@ -300,10 +306,10 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x - 1 if x in range(1, 5) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
                 survey['GPA'] = survey['GPA'].apply(lambda x: x if x in range(1, 11) else None)
-                survey['GPA'] = survey['GPA'].map(lambda x: 6 if x >= 6 else x)
+                survey['GPA'] = survey['GPA'].map(lambda x: 6.0 if x >= 6 else x)
                 survey['Moral Schemas'] = survey['Moral Schemas'].map(lambda x: MORAL_SCHEMAS.get(x, None))
                 survey['Parent Education'] = survey[['Father Education', 'Mother Education']].apply(lambda x: max(x.iloc[0], x.iloc[1]) if (x.iloc[0] <= max(EDUCATION_RANGE.keys())) and (x.iloc[1] <= max(EDUCATION_RANGE.keys())) else min(x.iloc[0], x.iloc[1]), axis=1)
-                survey['Parent Education'] = survey['Parent Education'].map(lambda x: 5 if x <= 5 else x)
+                survey['Parent Education'] = survey['Parent Education'].map(lambda x: 5.0 if x <= 5 else x)
                 survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x if x in CHURCH_ATTENDANCE_RANGE.keys() else None)
                 survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
                 survey['Religion'] = survey['Religion'].map(lambda x: RELIGION['Wave 1'].get(x, None))
@@ -332,7 +338,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Region'] = survey['Region'].map(lambda x: REGION.get(x, None))
             elif wave == 4:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 1 - x if x in range(0, 2) else None)
-                survey['Drink'] = survey['Drink'].apply(lambda x: 0 if x in range(7, 9) else 7 - x if x in range (1, 7) else None)
+                survey['Drink'] = survey['Drink'].apply(lambda x: 0.0 if x in range(7, 9) else 7 - x if x in range (1, 7) else None)
                 survey['Volunteer'] = survey['Volunteer'].apply(lambda x: x if x in range(0, 2) else None)
                 survey['Help'] = survey['Help'].apply(lambda x: 4 - x if x in range(1, 5) else None)
 
@@ -362,16 +368,16 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     network = pd.read_stata(file)[NETWORK_ATTRIBUTES.keys()].rename(columns=NETWORK_ATTRIBUTES)
     network = network.map(lambda x: None if x in ['DON\'T KNOW', 'LEGITIMATE SKIP'] else x)
-    network = network.map(lambda x: 4 if x in [4,5] else x)
+    network = network.map(lambda x: 4.0 if x in [4,5] else x)
     interviews = interviews.merge(network, on='Survey Id', how='left')
     return interviews
 
 #Merge all different types of data
 def prepare_data(models, extend_dataset):
+    interviews = pd.read_pickle('data/cache/interviews.pkl')
+    interviews[MORALITY_ORIGIN] = ''
 
-    interviews = pd.read_pickle('data/cache/morality_model-'+models[0]+'.pkl')
-    interviews[[mo + '_' + models[0] for mo in MORALITY_ORIGIN]] = interviews[MORALITY_ORIGIN]
-    for model in models[1:]:
+    for model in models:
         interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))
 
     interviews = merge_codings(interviews)
@@ -385,13 +391,15 @@ def prepare_data(models, extend_dataset):
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
-    columns += [wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Number of Friends']]
-
     columns += [wave + ':' + covariate for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for covariate in ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment']]
 
     columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2', 'Wave 3', 'Wave 4'] for action in ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']]
 
+    columns += [wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Number of Friends']]
+
     columns += [wave + ':' + 'Morality Text' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
+    
+    columns += [wave + ':' + 'Morality Summary' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
     interviews = interviews[columns]
     return interviews
@@ -409,15 +417,63 @@ def compute_morality_summary():
     interviews['Morality Summary'] = interviews['Morality_Full_Text'].apply(full_pipeline)
     interviews.to_pickle('data/cache/interviews.pkl')
 
+def compute_linguistics():
+    interviews = pd.read_pickle('data/cache/interviews.pkl')
+        
+    #Locate morality text in interviews
+    morality_text = 'Morality Text'
+    interviews[morality_text] = ''
+    interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
+    interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
+    interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
+    interviews[morality_text] = interviews[morality_text].replace('', np.nan)
+    interviews = interviews.dropna(subset=[morality_text]).reset_index(drop=True)
+
+    #Count words in morality text
+    nlp = spacy.load('en_core_web_lg')
+    count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
+    interviews['Verbosity'] = interviews[morality_text].map(count)
+    interviews = interviews[interviews['Verbosity'] < interviews['Verbosity'].quantile(.95)].reset_index(drop=True)
+    
+    #Count uncertain terms in morality text
+    pattern = r'\b(' + '|'.join(re.escape(term) for term in UNCERTAINT_TERMS) + r')\b'
+    count = lambda section : 0 if pd.isna(section) else len(re.findall(pattern, section.lower()))
+    interviews['Uncertainty'] = interviews[morality_text].map(count)
+
+    #Measure readability in morality text
+    measure = lambda section : 0 if pd.isna(section) else textstat.flesch_reading_ease(section)
+    interviews['Complexity'] = interviews[morality_text].map(measure)
+
+    #Measure sentiment in morality text
+    model_params = {'device':0} if torch.cuda.is_available() else {}
+    sentiment_pipeline = pipeline('sentiment-analysis', model='distilbert/distilbert-base-uncased-finetuned-sst-2-english', **model_params)
+    cumpute_score = lambda r : (r['score'] + 1)/2 if r['label'] == 'POSITIVE' else (-r['score'] + 1)/2 if r['label'] == 'NEGATIVE' else .5
+    interviews['Sentiment'] = pd.Series(sentiment_pipeline(interviews[morality_text].tolist(), truncation=True)).map(cumpute_score)
+
+    #Normalize values
+    interviews['Uncertainty'] = minmax_scale(interviews['Uncertainty'].astype(int) / interviews['Verbosity'].astype(int))
+    interviews['Verbosity'] = minmax_scale(np.log(interviews['Verbosity'].astype(int)))
+    interviews['Complexity'] = minmax_scale((interviews['Complexity']).astype(float))
+    interviews['Sentiment'] = minmax_scale(interviews['Sentiment'].astype(float))
+
+    #Save full morality dialogue
+    interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
+    interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
+    interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
+
+    interviews.to_pickle('data/cache/interviews.pkl')
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [1]
 
     for c in config:
         if c == 1:
-            compute_morality_summary()
-        elif c == 2:
             models = ['chatgpt_bin', 'chatgpt_quant', 'chatgpt_sum_bin', 'chatgpt_sum_quant', 'nli_bin', 'nli_quant', 'nli_sum_bin', 'nli_sum_quant']
             extend_dataset = True
             interviews = prepare_data(models, extend_dataset=extend_dataset)
             interviews.sort_values(by='Survey Id').to_clipboard(index=False)
+        elif c == 2:
+            compute_morality_summary()
+        elif c == 3:
+            compute_linguistics()

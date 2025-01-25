@@ -465,7 +465,7 @@ def compute_linguistics():
 
 def prepare_crowd_labeling(morality_text):
     interviews = prepare_data([], extend_dataset=True)
-    interviews[morality_text] = interviews[morality_text].str.replace('\n', '<br>').replace('', pd.NA).apply(lambda t: re.sub(r'M[24567]:', '', t) if pd.notna(t) else t)
+    interviews[morality_text] = interviews[morality_text].str.replace('\n', '<br>').replace('', pd.NA).apply(lambda t: re.sub(r'M[24567]:', ' ', t) if pd.notna(t) else t)
     interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
     interviews.to_csv('data/crowd/' + morality_text + '.csv', index=False)
 

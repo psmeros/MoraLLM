@@ -313,15 +313,23 @@ MORALITY_ESTIMATORS = ['Model', 'Coders']
 
 UNCERTAINT_TERMS = ['hypothetically speaking', 'possibly', 'potentially', 'must', 'equivocal', 'it looks like', 'is likely to', 'unclear', 'could be', 'it is conceivable', 'reportedly', 'could', 'allegedly', 'seemingly', 'tends to', 'conceivably', 'apparently', 'likely', 'probably', 'there is a chance', 'will', 'unsure', 'there is a possibility', 'supposedly', 'feasibly', 'suggests that', 'it is feasible', 'is unlikely to', 'may', 'arguably', 'might', 'is probable', 'perhaps', 'might be', 'vague', 'it is possible', 'maybe', 'presumably', 'uncertain', 'ambiguous', 'it appears', 'hypothetically', 'would', 'is improbable', 'doubtful', 'imaginably', 'it seems', 'can', 'ostensibly', 'should']
 
-SURVEY_MCQ = """
-<br><b>Check if the respondent (R:) refers to any of the following:
+survey_mcq = lambda id, text: str(id) + """. Select the appropriate checkbox below, if the respondent of the interview transcript (R:) refers to the following (select all that apply):<br>
+<b>Intuition</b> - Gut feelings, instincts, or "just knowing" something.<br>
+<b>Consequences</b> - Thinking about the results or impact of their choices.<br>
+<b>Social influences</b> - Mentioning social influences such as parents or friends.<br>
+<b>Religious reasons</b> - Citing faith, religious beliefs, or guidance from religious figures.<br>
+<hr>
+""" + text + """
+<hr>
+Select if the respondent (R:) refers to the following (select all that apply):
 [[MultipleAnswer]]
 [[Randomize]]
 
-Intuition
-Consequences of actions
-Social influences
-Religious reasons</b>
+<b>Intuition</b>
+<b>Consequences</b>
+<b>Social Influences</b>
+<b>Religious Reasons</b>
+<b>None of the Above</b> 
 """
 
 format_pvalue = lambda x: '-' if x is None else (('{:.2f}'.format(x[0]).replace('0.', '.') if abs(x[0]) < 1 else '{:.2f}'.format(x[0])) + ('' if x[1] == None else '***' if float(x[1])<.001 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '†' if float(x[1])<.1 else ''))

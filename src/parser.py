@@ -12,7 +12,7 @@ from transformers import pipeline
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, SURVEY_MCQ, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS
+from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, survey_mcq, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS
 
 
 #Convert encoding of files in a folder
@@ -465,10 +465,10 @@ def compute_linguistics():
 
 def prepare_crowd_labeling(morality_text):
     interviews = prepare_data([], extend_dataset=True)
-    interviews[morality_text] = interviews[morality_text].str.replace('\n', '<br>').replace('', pd.NA).apply(lambda t: re.sub(r'M[24567]:', ' ', t) if pd.notna(t) else t)
+    interviews[morality_text] = interviews[morality_text].replace('', pd.NA).replace(r'M[24567]:', '', regex=True).replace(r'I:', '<b>I:\t</b>', regex=True).replace(r'R:', '<b>R:\t</b>', regex=True).replace(r'\n', '<br>', regex=True)
     interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
 
-    interviews = interviews.apply(lambda i: str(i['Survey Id']) + '. <b>Read the following interview</b><br>' + i[morality_text] + SURVEY_MCQ, axis=1)
+    interviews = interviews.apply(lambda i: survey_mcq(i['Survey Id'], i[morality_text]), axis=1)
     with open('data/crowd/' + morality_text + '.txt', 'w') as f:
         for i in range(len(interviews)):
             f.write(interviews.iloc[i] + '\n\n')

@@ -463,11 +463,39 @@ def compute_linguistics():
 
     interviews.to_pickle('data/cache/interviews.pkl')
 
+#Prepare data for crowd labeling
 def prepare_crowd_labeling(morality_text):
     interviews = prepare_data([], extend_dataset=True)
     interviews[morality_text] = interviews[morality_text].replace('', pd.NA)
     interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
-    interviews[morality_text] = interviews[morality_text].replace(r'M[24567]:', '', regex=True).replace(r'I:', '<b>I: </b>', regex=True).replace(r'R:', '<b>R: </b>', regex=True).replace(r'\n', '<br>', regex=True)
+    
+    def clean_transcript(transcript):
+
+        transcript = re.sub(r'M[24567]:', '', transcript)
+
+        lines = transcript.split('\n')
+        cleaned_lines = []
+        prev_speaker = None
+        
+        for line in lines:
+            match = re.match(r'^(R:|I:)(.*)', line)
+            if match:
+                speaker, content = match.groups()
+                if speaker == prev_speaker:
+                    cleaned_lines[-1] += ' ' + content.strip()
+                else:
+                    cleaned_lines.append(line.strip())
+                    prev_speaker = speaker
+        
+        transcript = '\n'.join(cleaned_lines)
+
+        transcript = re.sub(r'I:', '<b>I: </b>', transcript)
+        transcript = re.sub(r'R:', '<b>R: </b>', transcript)
+        transcript = re.sub(r'\n', '<br>', transcript)
+
+        return transcript
+    
+    interviews[morality_text] = interviews[morality_text].apply(clean_transcript)
     interviews.to_clipboard(index=False, header=False)
 
 if __name__ == '__main__':

@@ -498,9 +498,28 @@ def prepare_crowd_labeling(morality_text):
     interviews[morality_text] = interviews[morality_text].apply(clean_transcript)
     interviews.to_clipboard(index=False, header=False)
 
+#Parse crowd labeling data
+def parse_crowd_labeling(file):
+    data = pd.read_csv(file, skiprows=[1,2])
+    data = data[data['Finished']]
+
+    # Crowd Labeling Statistics
+    lazy_annotators = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].isna().any(axis=1)]['workerId'].tolist()
+    print(str(round((len(lazy_annotators)/len(data))*100)) + '%', 'lazy annotators:', lazy_annotators)
+    data = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].notna().all(axis=1)]
+    print('Average Duration:', round(data['Duration (in seconds)'].mean()/60, 1), 'minutes')
+
+    #Transform the data to a long format
+    data = pd.concat([pd.DataFrame(data[[id + '_Interview Question_' + str(q) for q in range(1,5)] + [id + '_Survey ID ']].values, columns=MORALITY_ORIGIN + ['Survey ID']) for id in [col.split('_')[0] for col in data.columns if 'Survey ID' in col]])
+    data = data.dropna(subset=['Survey ID']).reset_index(drop=True)
+    data = data.groupby('Survey ID').count().join(data.groupby('Survey ID').size().rename('Annotations')).reset_index()
+    data['Survey ID'] = data['Survey ID'].astype(int)
+
+    data.to_pickle('data/interviews/crowd/crowd_labeling.pkl')
+
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [5]
 
     for c in config:
         if c == 1:
@@ -515,3 +534,6 @@ if __name__ == '__main__':
         elif c == 4:
             morality_text = 'Wave 1:Morality Text'
             prepare_crowd_labeling(morality_text)
+        elif c == 5:
+            file = 'data/interviews/crowd/crowd_labeling.csv'
+            parse_crowd_labeling(file)

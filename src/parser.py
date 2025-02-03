@@ -507,7 +507,7 @@ def parse_crowd_labeling(file):
     lazy_annotators = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].isna().any(axis=1)]['workerId'].tolist()
     print(str(round((len(lazy_annotators)/len(data))*100)) + '%', 'lazy annotators:', lazy_annotators)
     data = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].notna().all(axis=1)]
-    print('Average Duration:', round(data['Duration (in seconds)'].mean()/60, 1), 'minutes')
+    print('Median Duration:', round(data['Duration (in seconds)'].median()/60, 1), 'minutes')
 
     #Transform the data to a long format
     data = pd.concat([pd.DataFrame(data[[id + '_Interview Question_' + str(q) for q in range(1,5)] + [id + '_Survey ID ']].values, columns=MORALITY_ORIGIN + ['Survey ID']) for id in [col.split('_')[0] for col in data.columns if 'Survey ID' in col]])

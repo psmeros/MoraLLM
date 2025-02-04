@@ -40,11 +40,11 @@ def plot_model_evaluation(models, evaluation_waves):
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    sns.barplot(data=scores, y='Model', hue='Model', x='score', palette='Paired')
+    sns.barplot(data=scores, y='Model', hue='Model', x='score', palette='flare')
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
+    # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
     plt.xlabel('Weighted F1 Score')
     plt.ylabel('')
     plt.title('Model Evaluation')

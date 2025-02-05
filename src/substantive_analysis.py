@@ -370,12 +370,12 @@ if __name__ == '__main__':
                           'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
                           'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator != 'Moral Schemas' else ['Moral Schemas'],
-                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
+                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Volunteer', 'Help'],
                           'Dummy' : True,
                           'Intercept': True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
-                          'Controls': ['Number of Friends', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
+                          'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]

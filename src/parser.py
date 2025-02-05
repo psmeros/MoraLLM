@@ -368,7 +368,9 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     network = pd.read_stata(file)[NETWORK_ATTRIBUTES.keys()].rename(columns=NETWORK_ATTRIBUTES)
     network = network.map(lambda x: None if x in ['DON\'T KNOW', 'LEGITIMATE SKIP'] else x)
-    network = network.map(lambda x: 4.0 if x in [4,5] else x)
+    network = network.T.groupby(network.columns, dropna=False).sum(min_count=1).T
+    network['Wave 2:Number of friends'] = network['Wave 1:Number of friends']
+    network['Wave 3:Number of friends'] = network['Wave 1:Number of friends']
     interviews = interviews.merge(network, on='Survey Id', how='left')
     return interviews
 
@@ -395,7 +397,7 @@ def prepare_data(models, extend_dataset):
 
     columns += [wave + ':' + action for wave in ['Wave 1', 'Wave 2', 'Wave 3', 'Wave 4'] for action in ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help']]
 
-    columns += [wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Number of Friends']]
+    columns += [wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]
 
     columns += [wave + ':' + 'Morality Text' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
     
@@ -519,7 +521,7 @@ def parse_crowd_labeling(file):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [1]
 
     for c in config:
         if c == 1:

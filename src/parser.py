@@ -512,16 +512,17 @@ def parse_crowd_labeling(file):
     print('Median Duration:', round(data['Duration (in seconds)'].median()/60, 1), 'minutes')
 
     #Transform the data to a long format
-    data = pd.concat([pd.DataFrame(data[[id + '_Interview Question_' + str(q) for q in range(1,5)] + [id + '_Survey ID ']].values, columns=MORALITY_ORIGIN + ['Survey ID']) for id in [col.split('_')[0] for col in data.columns if 'Survey ID' in col]])
+    data = pd.concat([pd.DataFrame(data[[id + '_Interview Question_' + str(q) for q in range(1,5)] + [id + '_Survey ID']].values, columns=MORALITY_ORIGIN + ['Survey ID']) for id in [col.split('_')[0] for col in data.columns if 'Survey ID' in col]])
     data = data.dropna(subset=['Survey ID']).reset_index(drop=True)
     data = data.groupby('Survey ID').count().join(data.groupby('Survey ID').size().rename('Annotations')).reset_index()
     data['Survey ID'] = data['Survey ID'].astype(int)
 
+    data['Annotations'].hist()
     data.to_pickle('data/interviews/crowd/crowd_labeling.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [5]
 
     for c in config:
         if c == 1:

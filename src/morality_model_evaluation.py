@@ -17,11 +17,14 @@ def plot_model_evaluation(models, evaluation_waves):
     #Prepare data
     interviews = prepare_data(models, extend_dataset=True, return_codings=True)
 
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold'] + CODERS]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold'] + CODERS]) for wave in evaluation_waves]).dropna()
-    data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
+    data = pd.concat([pd.DataFrame(interviews[['Survey Id']+[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold'] + CODERS]].values, columns=['Survey Id']+[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold'] + CODERS]) for wave in evaluation_waves]).dropna()
+    data = data.merge(pd.read_pickle('data/cache/crowd.pkl'), on='Survey Id').drop(columns=['Survey Id']).astype(int)
     print('Evaluation data size', len(data))
 
     scores = []
+    score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
+    score['Model'] = 'Crowdworkers'
+    scores.append(round(score, 2))
     score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
     score['Model'] = 'Coders'
     scores.append(round(score, 2))

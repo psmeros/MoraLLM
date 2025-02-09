@@ -530,7 +530,10 @@ def parse_crowd_labeling(file):
     data['Annotations'] = data['Annotations'].fillna(0)
     data['Annotations'].value_counts().sort_index().plot(kind='bar')
 
-    data.to_pickle('data/interviews/crowd/crowd_labeling.pkl')
+    data.loc[data['Annotations'] < 1, MORALITY_ORIGIN] = 0
+    data[MORALITY_ORIGIN] = data.apply(lambda d: pd.Series([int(d[mo] > d['Annotations']/2) for mo in MORALITY_ORIGIN]), axis=1).fillna(0)
+    data = data.rename(columns={mo: mo + '_crowd' for mo in MORALITY_ORIGIN}).drop('Annotations', axis=1)
+    data.to_pickle('data/cache/crowd.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters

@@ -507,7 +507,7 @@ def parse_crowd_labeling(file):
 
     # Crowd Labeling Statistics
     lazy_annotators = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].isna().any(axis=1)]['workerId'].tolist()
-    print(str(round((len(lazy_annotators)/len(data))*100)) + '%', 'lazy annotators:', lazy_annotators)
+    [print(a) for a in lazy_annotators]
     data = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].notna().all(axis=1)]
     print('Median Duration:', round(data['Duration (in seconds)'].median()/60, 1), 'minutes')
 
@@ -517,7 +517,15 @@ def parse_crowd_labeling(file):
     data = data.groupby('Survey ID').count().join(data.groupby('Survey ID').size().rename('Annotations')).reset_index()
     data['Survey ID'] = data['Survey ID'].astype(int)
 
-    data['Annotations'].hist()
+    data = data.rename(columns={'Survey ID': 'Survey Id'})
+    interviews = prepare_data([], extend_dataset=True)
+    morality_text = 'Wave 1:Morality Text'
+    interviews[morality_text] = interviews[morality_text].replace('', pd.NA)
+    interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
+    data = data.merge(interviews['Survey Id'], on='Survey Id', how='right')
+    data['Annotations'] = data['Annotations'].fillna(0)
+    data['Annotations'].value_counts().sort_index().plot(kind='bar')
+
     data.to_pickle('data/interviews/crowd/crowd_labeling.pkl')
 
 if __name__ == '__main__':

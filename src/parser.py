@@ -271,18 +271,19 @@ def merge_codings(interviews, return_codings = False, codings_folder = 'data/int
     codings = codings.reset_index()
 
     if return_codings:
-        interviews = codings
-    else:
-        codings = pd.concat([codings[['Wave', 'Interview Code']], codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN), axis=1)], axis=1)
-        
-        gold = pd.read_csv(gold_file)
-        gold = codings.merge(gold, on=['Wave', 'Interview Code'], suffixes=('', '_gold'), how = 'left')
-        gold[[mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.concat([gold[mo + '_gold'].fillna(gold[mo]) for mo in MORALITY_ORIGIN], axis=1)
-        gold = gold.drop(MORALITY_ORIGIN, axis=1)
-        interviews = interviews.merge(gold, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
-        #Hybrid morality estimation
-        if len(MORALITY_ESTIMATORS) == 3:
-            interviews[[mo + '_' + MORALITY_ESTIMATORS[2] for mo in MORALITY_ORIGIN]] = interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values * interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values
+        codings[codings.columns[2:]] = codings[codings.columns[2:]].astype(int)
+        interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
+
+    codings = pd.concat([codings[['Wave', 'Interview Code']], codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN), axis=1)], axis=1)
+    
+    gold = pd.read_csv(gold_file)
+    gold = codings.merge(gold, on=['Wave', 'Interview Code'], suffixes=('', '_gold'), how = 'left')
+    gold[[mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.concat([gold[mo + '_gold'].fillna(gold[mo]) for mo in MORALITY_ORIGIN], axis=1)
+    gold = gold.drop(MORALITY_ORIGIN, axis=1)
+    interviews = interviews.merge(gold, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
+    #Hybrid morality estimation
+    if len(MORALITY_ESTIMATORS) == 3:
+        interviews[[mo + '_' + MORALITY_ESTIMATORS[2] for mo in MORALITY_ORIGIN]] = interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values * interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values
     
     return interviews
 
@@ -375,14 +376,14 @@ def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     return interviews
 
 #Merge all different types of data
-def prepare_data(models, extend_dataset):
+def prepare_data(models, extend_dataset, return_codings = False):
     interviews = pd.read_pickle('data/cache/interviews.pkl')
     interviews[MORALITY_ORIGIN] = ''
 
     for model in models:
         interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))
 
-    interviews = merge_codings(interviews)
+    interviews = merge_codings(interviews, return_codings=return_codings)
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
     interviews = merge_network(interviews)
@@ -402,6 +403,9 @@ def prepare_data(models, extend_dataset):
     columns += [wave + ':' + 'Morality Text' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
     
     columns += [wave + ':' + 'Morality Summary' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
+
+    if return_codings:
+        columns += [wave + ':' + mo + '_' + coder for coder in CODERS for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
 
     interviews = interviews[columns]
     return interviews

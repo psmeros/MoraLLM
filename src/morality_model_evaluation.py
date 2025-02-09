@@ -15,19 +15,16 @@ from src.parser import merge_codings, prepare_data
 def plot_model_evaluation(models, evaluation_waves):
 
     #Prepare data
-    interviews = prepare_data(models, extend_dataset=True)
+    interviews = prepare_data(models, extend_dataset=True, return_codings=True)
 
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in evaluation_waves]).dropna()
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold'] + CODERS]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold'] + CODERS]) for wave in evaluation_waves]).dropna()
     data[[mo + '_gold' for mo in MORALITY_ORIGIN]] = data[[mo + '_gold' for mo in MORALITY_ORIGIN]].astype(int)
     print('Evaluation data size', len(data))
 
-    #Compute coders agreement
-    codings = merge_codings(None, return_codings=True)
-    coder_A_labels = pd.DataFrame(codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    coder_B_labels = pd.DataFrame(codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).astype(int).fillna(0)
-    coders_agreement = (pd.Series({mo:f1_score(coder_A_labels[mo], coder_B_labels[mo], average='weighted') for mo in MORALITY_ORIGIN})).mean()
-
     scores = []
+    score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
+    score['Model'] = 'Coders'
+    scores.append(round(score, 2))
     for model in models:
         score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
         score['Model'] = {'lda_bin':'LDA', 'lda_sum_bin':'$LDA_{Σ}$', 'sbert_bin':'SBERT', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'NLI', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin_notags':'$GPT_{4NT}$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_bin':'$GPT_{4}$', 'chatgpt_sum_bin':'$GPT_{4Σ}$'}.get(model, model)
@@ -42,6 +39,7 @@ def plot_model_evaluation(models, evaluation_waves):
     plt.figure(figsize=(10, 5))
     sns.barplot(data=scores, y='Model', hue='Model', x='score', palette='flare')
     ax = plt.gca()
+    ax.set_xlim(0, 1)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')

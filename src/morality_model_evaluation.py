@@ -12,7 +12,7 @@ from src.parser import merge_codings, prepare_data
 
 
 #Plot mean-squared error for all models
-def plot_model_evaluation(models, evaluation_waves):
+def plot_model_evaluation(models, evaluation_waves, human_evaluation):
 
     #Prepare data
     interviews = prepare_data(models, extend_dataset=True, return_codings=True)
@@ -22,15 +22,16 @@ def plot_model_evaluation(models, evaluation_waves):
     print('Evaluation data size', len(data))
 
     scores = []
-    score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
-    score['Model'] = 'Crowdworkers'
-    scores.append(round(score, 2))
-    score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
-    score['Model'] = 'Coders'
-    scores.append(round(score, 2))
+    if human_evaluation:
+        score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
+        score['Model'] = 'Crowdworkers'
+        scores.append(round(score, 2))
+        score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
+        score['Model'] = 'Coders'
+        scores.append(round(score, 2))
     for model in models:
         score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-        score['Model'] = {'lda_bin':'LDA', 'lda_sum_bin':'$LDA_{Σ}$', 'sbert_bin':'SBERT', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'NLI', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin_notags':'$GPT_{4NT}$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_bin':'$GPT_{4}$', 'chatgpt_sum_bin':'$GPT_{4Σ}$'}.get(model, model)
+        score['Model'] = {'lda_bin':'LDA', 'lda_sum_bin':'$LDA_{Σ}$', 'sbert_bin':'SBERT', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'NLI', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin_notags':'$GPT_{4NT}$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_bin':'$GPT_{4}$', 'chatgpt_sum_bin':'$GPT_{4Σ}$', 'chatgpt_bin_nodistinction':'$GPT_{4ND}$', 'chatgpt_bin_interviewers':'$GPT_{4I}$'}.get(model, model)
         scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
     display(scores.set_index('Model'))
@@ -133,9 +134,11 @@ if __name__ == '__main__':
     for c in config:
         if c == 1:
             # models = ['chatgpt_bin_3.5', 'chatgpt_sum_bin', 'chatgpt_bin_notags', 'chatgpt_bin']
+            # models = ['chatgpt_bin_interviewers', 'chatgpt_bin_nodistinction', 'chatgpt_bin_notags', 'chatgpt_bin']
             models = ['chatgpt_sum_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_bin', 'lda_sum_bin', 'lda_bin']
             evaluation_waves = ['Wave 1']
-            plot_model_evaluation(models, evaluation_waves)
+            human_evaluation = True
+            plot_model_evaluation(models, evaluation_waves, human_evaluation=human_evaluation)
         elif c == 2:
             plot_coders_agreement()
         elif c == 3:

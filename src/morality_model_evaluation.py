@@ -12,7 +12,7 @@ from src.parser import merge_codings, prepare_data
 
 
 #Plot mean-squared error for all models
-def plot_model_evaluation(models, evaluation_waves, human_evaluation):
+def plot_model_evaluation(models, evaluation_waves, human_evaluation, palette):
 
     #Prepare data
     interviews = prepare_data(models, extend_dataset=True, return_codings=True)
@@ -31,7 +31,7 @@ def plot_model_evaluation(models, evaluation_waves, human_evaluation):
         scores.append(round(score, 2))
     for model in models:
         score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-        score['Model'] = {'lda_bin':'LDA', 'lda_sum_bin':'$LDA_{Σ}$', 'sbert_bin':'SBERT', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'NLI', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin_notags':'$GPT_{4NT}$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_bin':'$GPT_{4}$', 'chatgpt_sum_bin':'$GPT_{4Σ}$', 'chatgpt_bin_nodistinction':'$GPT_{4ND}$', 'chatgpt_bin_interviewers':'$GPT_{4I}$'}.get(model, model)
+        score['Model'] = {'lda_bin':'$LDA_{F}$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT_{F}$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI_{F}$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT4_{F}$', 'chatgpt_resp_bin':'$GPT4_{R}$', 'chatgpt_sum_bin':'$GPT4_{Σ}$', 'chatgpt_bin_notags':'$GPT_{4NT}$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_bin_nodistinction':'$GPT_{4ND}$', 'chatgpt_bin_interviewers':'$GPT_{4I}$'}.get(model, model)
         scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
     display(scores.set_index('Model'))
@@ -41,7 +41,7 @@ def plot_model_evaluation(models, evaluation_waves, human_evaluation):
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    sns.barplot(data=scores, y='Model', hue='Model', x='score', palette='flare')
+    sns.barplot(data=scores, y='Model', hue='Model', x='score', palette=palette)
     ax = plt.gca()
     ax.set_xlim(0, 1)
     ax.spines['top'].set_visible(False)
@@ -135,10 +135,11 @@ if __name__ == '__main__':
         if c == 1:
             # models = ['chatgpt_bin_3.5', 'chatgpt_sum_bin', 'chatgpt_bin_notags', 'chatgpt_bin']
             # models = ['chatgpt_bin_interviewers', 'chatgpt_bin_nodistinction', 'chatgpt_bin_notags', 'chatgpt_bin']
-            models = ['chatgpt_sum_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_bin', 'lda_sum_bin', 'lda_bin']
+            models = ['chatgpt_sum_bin', 'chatgpt_resp_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_resp_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_resp_bin', 'sbert_bin', 'lda_sum_bin', 'lda_resp_bin', 'lda_bin']
+            palette = [c for c in sns.color_palette('Blues', 4) for _ in range(3)] + sns.color_palette('Purples', 5)[4:5]*2
             evaluation_waves = ['Wave 1']
             human_evaluation = True
-            plot_model_evaluation(models, evaluation_waves, human_evaluation=human_evaluation)
+            plot_model_evaluation(models=models, evaluation_waves=evaluation_waves, human_evaluation=human_evaluation, palette=palette)
         elif c == 2:
             plot_coders_agreement()
         elif c == 3:

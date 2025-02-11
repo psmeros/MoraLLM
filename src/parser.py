@@ -219,6 +219,30 @@ def wave_parser(waves_folder='data/interviews/waves'):
     
     return waves
 
+#Clean and normalize morality tags
+def clean_morality_tags(transcript):
+
+    transcript = re.sub(r'M[24567]:', '', transcript)
+
+    lines = transcript.split('\n')
+    cleaned_lines = []
+    prev_speaker = None
+    
+    for line in lines:
+        match = re.match(r'^(R:|I:)(.*)', line)
+        if match:
+            speaker, content = match.groups()
+            if speaker == prev_speaker:
+                cleaned_lines[-1] += ' ' + content.strip()
+            else:
+                cleaned_lines.append(line.strip())
+                prev_speaker = speaker
+    
+    transcript = '\n'.join(cleaned_lines)
+
+    return transcript
+
+
 #Merge matched interviews from different waves
 def merge_matches(interviews, extend_dataset, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/interviews/alignments/crosswave.csv'):
     matches = pd.read_csv(matches_file)[wave_list]
@@ -474,34 +498,8 @@ def prepare_crowd_labeling(morality_text):
     interviews = prepare_data([], extend_dataset=True)
     interviews[morality_text] = interviews[morality_text].replace('', pd.NA)
     interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
-    
-    def clean_transcript(transcript):
-
-        transcript = re.sub(r'M[24567]:', '', transcript)
-
-        lines = transcript.split('\n')
-        cleaned_lines = []
-        prev_speaker = None
-        
-        for line in lines:
-            match = re.match(r'^(R:|I:)(.*)', line)
-            if match:
-                speaker, content = match.groups()
-                if speaker == prev_speaker:
-                    cleaned_lines[-1] += ' ' + content.strip()
-                else:
-                    cleaned_lines.append(line.strip())
-                    prev_speaker = speaker
-        
-        transcript = '\n'.join(cleaned_lines)
-
-        transcript = re.sub(r'I:', '<b>I: </b>', transcript)
-        transcript = re.sub(r'R:', '<b>R: </b>', transcript)
-        transcript = re.sub(r'\n', '<br>', transcript)
-
-        return transcript
-    
-    interviews[morality_text] = interviews[morality_text].apply(clean_transcript)
+    interviews[morality_text] = interviews[morality_text].apply(clean_morality_tags)
+    interviews[morality_text] = interviews[morality_text].apply(lambda t: re.sub(r'I:', '<b>I: </b>', t)).apply(lambda t: re.sub(r'R:', '<b>R: </b>', t)).apply(lambda t: re.sub(r'\n', '<br>', t))
     interviews.to_clipboard(index=False, header=False)
 
 #Parse crowd labeling data

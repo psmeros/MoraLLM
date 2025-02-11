@@ -15,6 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
 from src.helpers import chatgpt_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED
+from src.parser import clean_morality_tags
 
 
 #Compute morality source of interviews
@@ -27,6 +28,7 @@ def compute_morality_source(models, excerpt):
         interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
         interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
         interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
+        interviews[morality_text] = interviews[morality_text].apply(clean_morality_tags)
     elif excerpt == 'response':
         interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
         interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
@@ -158,9 +160,9 @@ def quantize_morality(model):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
-    excerpt = 'summary'
-    models = ['lda', 'lg', 'sbert', 'chatgpt_bin', 'chatgpt_quant', 'entail_ml', 'entail_ml_explained']
+    config = [1]
+    excerpt = 'full_QnA'
+    models = ['lda', 'sbert', 'chatgpt_bin', 'entail_ml_explained']
 
     for c in config:
         if c == 1:

@@ -3,6 +3,7 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.utils import resample
 from __init__ import *
 from sklearn.metrics import cohen_kappa_score, f1_score
 from IPython.display import display
@@ -12,28 +13,33 @@ from src.parser import merge_codings, prepare_data
 
 
 #Plot mean-squared error for all models
-def plot_model_evaluation(models, evaluation_waves, human_evaluation, palette):
+def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluation, palette):
     #Prepare data
     interviews = prepare_data(models, extend_dataset=True)
-    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd'] + CODERS]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd'] + CODERS]) for wave in evaluation_waves]).dropna()
-    print('Evaluation data size', len(data))
+    interviews = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd'] + CODERS]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd'] + CODERS]) for wave in evaluation_waves]).dropna()
+    print('Evaluation data size', len(interviews))
 
     scores = []
-    if human_evaluation:
-        score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
-        score['Model'] = 'Crowdworkers'
-        scores.append(round(score, 2))
-        score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
-        score['Model'] = 'Coders'
-        scores.append(round(score, 2))
-    for model in models:
-        score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-        score['Model'] = {'lda_bin':'$LDA_{F}$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT_{F}$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI_{F}$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT4_{F}$', 'chatgpt_resp_bin':'$GPT4_{R}$', 'chatgpt_sum_bin':'$GPT4_{Σ}$', 'chatgpt_bin_notags':'$GPT4_{NT}$', 'chatgpt_bin_3.5':'$GPT3.5_{F}$', 'chatgpt_bin_nodistinction':'$GPT4_{ND}$', 'chatgpt_bin_interviewers':'$GPT4_{I}$'}.get(model, model)
-        scores.append(round(score, 2))
+    #Bootstrapping
+    for _ in range(n_bootstraps):
+        indices = resample(range(len(interviews)), replace=True)
+        data = interviews.iloc[indices]
+
+        if human_evaluation:
+            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
+            score['Model'] = 'Crowdworkers'
+            scores.append(round(score, 2))
+            score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
+            score['Model'] = 'Coders'
+            scores.append(round(score, 2))
+        for model in models:
+            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
+            score['Model'] = {'lda_bin':'$LDA_{F}$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT_{F}$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI_{F}$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT4_{F}$', 'chatgpt_resp_bin':'$GPT4_{R}$', 'chatgpt_sum_bin':'$GPT4_{Σ}$', 'chatgpt_bin_notags':'$GPT4_{NT}$', 'chatgpt_bin_3.5':'$GPT3.5_{F}$', 'chatgpt_bin_nodistinction':'$GPT4_{ND}$', 'chatgpt_bin_interviewers':'$GPT4_{I}$'}.get(model, model)
+            scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
-    display(scores.set_index('Model'))
+    display(scores.set_index('Model').groupby('Model', sort=False).mean().round(2))
     scores['score'] = (scores[MORALITY_ORIGIN]).mean(axis=1).round(2)
-    display(scores.set_index('Model')[['score']])
+    display(scores.set_index('Model').groupby('Model', sort=False).mean().round(2)[['score']])
     
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
@@ -137,7 +143,8 @@ if __name__ == '__main__':
             palette = [c for c in sns.color_palette('Blues', 4) for _ in range(3)] + sns.color_palette('Purples', 5)[4:5]*2
             evaluation_waves = ['Wave 1']
             human_evaluation = True
-            plot_model_evaluation(models=models, evaluation_waves=evaluation_waves, human_evaluation=human_evaluation, palette=palette)
+            n_bootstraps = 10
+            plot_model_evaluation(models=models, evaluation_waves=evaluation_waves, n_bootstraps=n_bootstraps, human_evaluation=human_evaluation, palette=palette)
         elif c == 2:
             plot_coders_agreement()
         elif c == 3:

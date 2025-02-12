@@ -21,8 +21,8 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
 
     scores = []
     #Bootstrapping
-    for _ in range(n_bootstraps):
-        indices = resample(range(len(interviews)), replace=True)
+    for i in range(n_bootstraps):
+        indices = resample(range(len(interviews)), replace=True, random_state=42 + i)
         data = interviews.iloc[indices]
 
         if human_evaluation:
@@ -44,9 +44,8 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    sns.barplot(data=scores, y='Model', hue='Model', x='score', palette=palette)
+    sns.boxplot(data=scores, y='Model', hue='Model', x='score', palette=palette)
     ax = plt.gca()
-    ax.set_xlim(0, 1)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')

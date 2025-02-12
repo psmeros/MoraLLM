@@ -257,7 +257,7 @@ def merge_matches(interviews, extend_dataset, wave_list = ['Wave 1', 'Wave 2', '
     return matches
 
 #Merge codings from two coders for wave 1 and wave 3 of interviews
-def merge_codings(interviews, return_codings = False, codings_folder = 'data/interviews/codings', gold_file = 'data/interviews/alignments/gold_standard.csv'):
+def merge_codings(interviews, codings_folder = 'data/interviews/codings', gold_file = 'data/interviews/alignments/gold_standard.csv'):
     #Parse codings
     codings_wave_1 = []
     codings_wave_3 = []
@@ -294,12 +294,10 @@ def merge_codings(interviews, return_codings = False, codings_folder = 'data/int
     codings = pd.concat([codings_wave_1, codings_wave_3])
     codings = codings.reset_index()
 
-    if return_codings:
-        codings[codings.columns[2:]] = codings[codings.columns[2:]].astype(int)
-        interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
+    codings[codings.columns[2:]] = codings[codings.columns[2:]].astype(int)
+    interviews = interviews.merge(codings, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
 
-    codings = pd.concat([codings[['Wave', 'Interview Code']], codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN), axis=1)], axis=1)
-    
+    codings = pd.concat([codings[['Wave', 'Interview Code']], codings.apply(lambda c: pd.Series([int(c[mo + '_' + CODERS[0]] & c[mo + '_' + CODERS[1]]) for mo in MORALITY_ORIGIN], index=MORALITY_ORIGIN), axis=1)], axis=1)    
     gold = pd.read_csv(gold_file)
     gold = codings.merge(gold, on=['Wave', 'Interview Code'], suffixes=('', '_gold'), how = 'left')
     gold[[mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.concat([gold[mo + '_gold'].fillna(gold[mo]) for mo in MORALITY_ORIGIN], axis=1)
@@ -400,21 +398,26 @@ def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     return interviews
 
 #Merge all different types of data
-def prepare_data(models, extend_dataset, return_codings = False):
+def prepare_data(models, extend_dataset):
     interviews = pd.read_pickle('data/cache/interviews.pkl')
     interviews[MORALITY_ORIGIN] = ''
 
     for model in models:
         interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))
 
-    interviews = merge_codings(interviews, return_codings=return_codings)
+    interviews = merge_codings(interviews)
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
     interviews = merge_network(interviews)
+    interviews = interviews.merge(pd.read_pickle('data/cache/crowd.pkl'), on='Survey Id', how='left')
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
-    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in ['gold'] + models for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_gold' for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_' + coder for coder in CODERS for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_crowd' for wave in ['Wave 1'] for mo in MORALITY_ORIGIN]
+
+    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in models for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
@@ -427,9 +430,6 @@ def prepare_data(models, extend_dataset, return_codings = False):
     columns += [wave + ':' + 'Morality Text' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
     
     columns += [wave + ':' + 'Morality Summary' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
-
-    if return_codings:
-        columns += [wave + ':' + mo + '_' + coder for coder in CODERS for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
 
     interviews = interviews[columns]
     return interviews
@@ -530,18 +530,19 @@ def parse_crowd_labeling(file):
 
     data.loc[data['Annotations'] < 1, MORALITY_ORIGIN] = 0
     data[MORALITY_ORIGIN] = data.apply(lambda d: pd.Series([int(d[mo] > d['Annotations']/2) for mo in MORALITY_ORIGIN]), axis=1).fillna(0)
-    data = data.rename(columns={mo: mo + '_crowd' for mo in MORALITY_ORIGIN}).drop('Annotations', axis=1)
+    data = data.rename(columns={mo: 'Wave 1:' + mo + '_crowd' for mo in MORALITY_ORIGIN}).drop('Annotations', axis=1)
     data.to_pickle('data/cache/crowd.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [1]
 
     for c in config:
         if c == 1:
-            models = ['chatgpt_bin', 'chatgpt_quant', 'chatgpt_sum_bin', 'chatgpt_sum_quant', 'nli_bin', 'nli_quant', 'nli_sum_bin', 'nli_sum_quant']
+            models = ['chatgpt_bin', 'nli_bin']
             extend_dataset = True
             interviews = prepare_data(models, extend_dataset=extend_dataset)
+            interviews = interviews.rename(columns={wave + ':' + mo + '_' + k : wave + ':' + mo + '_' + v for k,v in {'lda_bin':'LDA_F', 'lda_sum_bin':'LDA_Σ', 'lda_resp_bin':'LDA_R', 'sbert_bin':'SBERT_F', 'sbert_resp_bin':'SBERT_R', 'sbert_sum_bin':'SBERT_Σ', 'nli_bin':'NLI_F', 'nli_resp_bin':'NLI_R', 'nli_sum_bin':'NLI_Σ', 'chatgpt_bin':'GPT4_F', 'chatgpt_resp_bin':'GPT4_R', 'chatgpt_sum_bin':'GPT4_Σ', 'chatgpt_bin_notags':'GPT4_NT', 'chatgpt_bin_3.5':'GPT3.5_F', 'chatgpt_bin_nodistinction':'GPT4_ND', 'chatgpt_bin_interviewers':'GPT4_I'}.items() for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN})
             interviews.sort_values(by='Survey Id').to_clipboard(index=False)
         elif c == 2:
             compute_morality_summary()

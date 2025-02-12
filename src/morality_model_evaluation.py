@@ -13,12 +13,9 @@ from src.parser import merge_codings, prepare_data
 
 #Plot mean-squared error for all models
 def plot_model_evaluation(models, evaluation_waves, human_evaluation, palette):
-
     #Prepare data
-    interviews = prepare_data(models, extend_dataset=True, return_codings=True)
-
-    data = pd.concat([pd.DataFrame(interviews[['Survey Id']+[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold'] + CODERS]].values, columns=['Survey Id']+[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold'] + CODERS]) for wave in evaluation_waves]).dropna()
-    data = data.merge(pd.read_pickle('data/cache/crowd.pkl'), on='Survey Id').drop(columns=['Survey Id']).astype(int)
+    interviews = prepare_data(models, extend_dataset=True)
+    data = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd'] + CODERS]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd'] + CODERS]) for wave in evaluation_waves]).dropna()
     print('Evaluation data size', len(data))
 
     scores = []

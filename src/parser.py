@@ -516,26 +516,18 @@ def parse_crowd_labeling(file):
     #Transform the data to a long format
     data = pd.concat([pd.DataFrame(data[[id + '_Interview Question_' + str(q) for q in range(1,5)] + [id + '_Survey ID']].values, columns=MORALITY_ORIGIN + ['Survey ID']) for id in [col.split('_')[0] for col in data.columns if 'Survey ID' in col]])
     data = data.dropna(subset=['Survey ID']).reset_index(drop=True)
+    data = data.groupby('Survey ID').head(5).reset_index(drop=True)
+
     data = data.groupby('Survey ID').count().join(data.groupby('Survey ID').size().rename('Annotations')).reset_index()
     data['Survey ID'] = data['Survey ID'].astype(int)
 
-    data = data.rename(columns={'Survey ID': 'Survey Id'})
-    interviews = prepare_data([], extend_dataset=True)
-    morality_text = 'Wave 1:Morality Text'
-    interviews[morality_text] = interviews[morality_text].replace('', pd.NA)
-    interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
-    data = data.merge(interviews['Survey Id'], on='Survey Id', how='right')
-    data['Annotations'] = data['Annotations'].fillna(0)
-    data['Annotations'].value_counts().sort_index().plot(kind='bar')
-
-    data.loc[data['Annotations'] < 1, MORALITY_ORIGIN] = 0
     data[MORALITY_ORIGIN] = data.apply(lambda d: pd.Series([int(d[mo] > d['Annotations']/2) for mo in MORALITY_ORIGIN]), axis=1).fillna(0)
-    data = data.rename(columns={mo: 'Wave 1:' + mo + '_crowd' for mo in MORALITY_ORIGIN}).drop('Annotations', axis=1)
+    data = data.rename(columns={mo: 'Wave 1:' + mo + '_crowd' for mo in MORALITY_ORIGIN} | {'Survey ID': 'Survey Id'}).drop('Annotations', axis=1)
     data.to_pickle('data/cache/crowd.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [5]
 
     for c in config:
         if c == 1:

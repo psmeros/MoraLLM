@@ -349,6 +349,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x-1 if x-1 in CHURCH_ATTENDANCE_RANGE.keys() else None)
                 survey['Religion'] = survey['Religion'].map(lambda x: RELIGION['Wave 2'].get(x, None))
                 survey['Region'] = survey['Region'].map(lambda x: REGION.get(x, None))
+                survey['Number of friends'] = survey['Number of friends'].apply(lambda x: x if x in range(6) else None)
             elif wave == 3:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 7 - x if x in range(1, 8) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 7 - x if x in range(1, 8) else None)
@@ -359,6 +360,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
                 survey['Religion'] = survey['Religion'].map(lambda x: RELIGION['Wave 3'].get(x, None))
                 survey['Region'] = survey['Region'].map(lambda x: REGION.get(x, None))
+                survey['Number of friends'] = survey['Number of friends'].apply(lambda x: x if x in range(6) else None)
             elif wave == 4:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 1 - x if x in range(0, 2) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 0.0 if x in range(7, 9) else 7 - x if x in range (1, 7) else None)
@@ -392,8 +394,6 @@ def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     network = pd.read_stata(file)[NETWORK_ATTRIBUTES.keys()].rename(columns=NETWORK_ATTRIBUTES)
     network = network.map(lambda x: None if x in ['DON\'T KNOW', 'LEGITIMATE SKIP'] else x)
     network = network.T.groupby(network.columns, dropna=False).sum(min_count=1).T
-    network['Wave 2:Number of friends'] = network['Wave 1:Number of friends']
-    network['Wave 3:Number of friends'] = network['Wave 1:Number of friends']
     interviews = interviews.merge(network, on='Survey Id', how='left')
     return interviews
 

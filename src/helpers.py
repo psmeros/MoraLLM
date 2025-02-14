@@ -250,6 +250,7 @@ SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
 
 NETWORK_ATTRIBUTES = {'ids': 'Survey Id',
                       'frnds1': 'Wave 1:Number of friends',
+                      'frnds2': 'Wave 1:Number of friends',
                       'y187y_01': 'Wave 1:Regular volunteers',
                       'y187y_02': 'Wave 1:Regular volunteers',
                       'y187y_03': 'Wave 1:Regular volunteers',

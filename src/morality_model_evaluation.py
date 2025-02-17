@@ -26,14 +26,14 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
         data = interviews.iloc[indices]
 
         if human_evaluation:
-            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
+            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd']) for mo in MORALITY_ORIGIN}])
             score['Model'] = 'Crowdworkers'
             scores.append(round(score, 2))
-            score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
+            score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder]) for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
             score['Model'] = 'Coders'
             scores.append(round(score, 2))
         for model in models:
-            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
+            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model]) for mo in MORALITY_ORIGIN}])
             score['Model'] = {'wc_bin':'$WC_{F}$', 'wc_sum_bin':'$WC_{Σ}$', 'wc_resp_bin':'$WC_{R}$', 'lda_bin':'$LDA_{F}$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT_{F}$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI_{F}$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT4_{F}$', 'chatgpt_resp_bin':'$GPT4_{R}$', 'chatgpt_sum_bin':'$GPT4_{Σ}$', 'chatgpt_bin_notags':'$GPT4_{NT}$', 'chatgpt_bin_3.5':'$GPT3.5_{F}$', 'chatgpt_bin_nodistinction':'$GPT4_{ND}$', 'chatgpt_bin_interviewers':'$GPT4_{I}$'}.get(model, model)
             scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
@@ -49,7 +49,7 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
-    plt.xlabel('Weighted F1 Score')
+    plt.xlabel('F1 Score')
     plt.ylabel('')
     plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')

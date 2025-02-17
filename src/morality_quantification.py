@@ -96,17 +96,9 @@ def compute_morality_source(models, excerpt):
 
         #Seeded LDA model
         elif model == 'lda':
-            vectorizer = CountVectorizer(stop_words='english')
-            X = vectorizer.fit_transform(data[morality_text]).toarray()
-            vocab = vectorizer.get_feature_names_out()
-
-            for mo in MORALITY_ORIGIN:
-                    if mo in vocab:
-                        X[:, vocab.tolist().index(mo)] += 10
-
-            # Train LDA
+            vectorizer = CountVectorizer(stop_words='english', vocabulary=[w for v in MORALITY_VOCAB.values() for w in v])
             lda = LatentDirichletAllocation(n_components=4, max_iter=100, random_state=42)
-            data[MORALITY_ORIGIN] = lda.fit_transform(X)
+            data[MORALITY_ORIGIN] = lda.fit_transform(vectorizer.fit_transform(data[morality_text]))
 
         #Word count model
         elif model == 'wc':

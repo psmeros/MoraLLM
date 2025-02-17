@@ -392,9 +392,10 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
 #Merge network variables
 def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     network = pd.read_stata(file)[NETWORK_ATTRIBUTES.keys()].rename(columns=NETWORK_ATTRIBUTES)
-    network = network.map(lambda x: None if x in ['DON\'T KNOW', 'LEGITIMATE SKIP'] else 0 if x == 'NO' else 1 if x == 'YES' else x)
+    network = network.map(lambda x: None if str(x).strip() in ['DON\'T KNOW', 'LEGITIMATE SKIP'] else 0 if str(x).strip() == 'NO' else 1 if str(x).strip() == 'YES' else x)
     network = network.T.groupby(network.columns, dropna=False).sum(min_count=1).T
     interviews = interviews.merge(network, on='Survey Id', how='left')
+    interviews[[wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]] = pd.concat([interviews[[wave + ':' + network for network in ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]].apply(lambda n: n[[wave + ':' + network for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]].div(n[wave + ':Number of friends']) if (not pd.isna(n[wave + ':Number of friends'])) and (n[wave + ':Number of friends'] > 0) else [0]*3 if (not pd.isna(n[wave + ':Number of friends'])) and (n[wave + ':Number of friends'] > 0) else [pd.NA]*3, axis=1) for wave in ['Wave 1', 'Wave 2', 'Wave 3']], axis=1)
     return interviews
 
 #Merge all different types of data

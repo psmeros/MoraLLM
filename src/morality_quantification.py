@@ -97,16 +97,18 @@ def compute_morality_source(models, excerpts):
 
             #Seeded LDA model
             elif model == 'lda':
-                vectorizer = CountVectorizer(stop_words='english', vocabulary=[w for v in MORALITY_VOCAB.values() for w in v])
-                lda = LatentDirichletAllocation(n_components=4, max_iter=100, random_state=42)
-                data[MORALITY_ORIGIN] = lda.fit_transform(vectorizer.fit_transform(data[morality_text]))
+                nlp_model = spacy.load('en_core_web_lg')
+                text = data[morality_text].apply(lambda t: ' '.join([w.lemma_ for w in nlp_model(t) if w.lemma_ in [w for v in MORALITY_VOCAB.values() for w in v]]))
+                vectorizer = CountVectorizer(vocabulary=[w for v in MORALITY_VOCAB.values() for w in v])
+                lda = LatentDirichletAllocation(n_components=4, max_iter=1000, random_state=42)
+                data[MORALITY_ORIGIN] = lda.fit_transform(vectorizer.fit_transform(text))
 
             #Word count model
             elif model == 'wc':
                 nlp_model = spacy.load('en_core_web_lg')
                 data[MORALITY_ORIGIN] = data[morality_text].apply(lambda t: pd.Series([sum(1 for w in nlp_model(t) if w.lemma_ in MORALITY_VOCAB[mo]) for mo in MORALITY_ORIGIN]) > 0).astype(int)
 
-            data.to_pickle('data/cache/morality_model-' + model + '.pkl')
+            data.to_pickle('data/cache/morality_model-' + model + ('_resp' if excerpt == 'response' else '_sum' if excerpt == 'summary' else '') + '.pkl')
 
 #Compute synthetic dataset
 def compute_synthetic_data(n=25):

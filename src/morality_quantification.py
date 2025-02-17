@@ -102,7 +102,8 @@ def compute_morality_source(models, excerpt):
 
         #Word count model
         elif model == 'wc':
-            data[MORALITY_ORIGIN] = data[morality_text].apply(lambda t: pd.Series([sum(1 for w in t.lower().split() if w in MORALITY_VOCAB[mo]) for mo in MORALITY_ORIGIN]) > (len(t.split()) * .001)).astype(int)
+            nlp_model = spacy.load('en_core_web_lg')
+            data[MORALITY_ORIGIN] = data[morality_text].apply(lambda t: pd.Series([sum(1 for w in nlp_model(t) if w.lemma_ in [token.lemma_ for w in MORALITY_VOCAB[mo] for token in nlp_model(w)]) for mo in MORALITY_ORIGIN]) > (len(t.split()) * .001)).astype(int)
 
         data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 

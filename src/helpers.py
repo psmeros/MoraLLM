@@ -169,7 +169,7 @@ MORALITY_ORIGIN_EXPLAINED = {**dict.fromkeys(['intuition'], 'Intuitive'),
                              **dict.fromkeys(['social'], 'Social'),
                              **dict.fromkeys(['religion'], 'Theistic')}
 
-MORALITY_VOCAB = {mo:vocab for mo, vocab in zip(MORALITY_ORIGIN, [['intuition', 'intuitive', 'gut', 'guts', 'feeling', 'feelings', 'feel', 'instinct', 'instincts'], ['consequences', 'consequence', 'outcome', 'outcomes', 'affect', 'affects', 'impact', 'future', 'cost', 'costs', 'benefit', 'benefits', 'harm', 'harms', 'help', 'helps', 'maximize', 'maximizes', 'minimize', 'minimizes'], ['parents', 'mother', 'father', 'brother', 'sister', 'mom', 'dad', 'friends', 'school', 'teacher', 'society', 'social'], ['god', 'devil', 'faith', 'prayer', 'pray', 'church', 'islam', 'bible', 'religion', 'religious', 'belief', 'beliefs', 'commandment', 'commandments', 'heaven', 'hell']])}
+MORALITY_VOCAB = {mo:vocab for mo, vocab in zip(MORALITY_ORIGIN, [['intuition', 'intuitive', 'gut', 'feeling', 'instinct'], ['consequence', 'outcome', 'affect', 'impact', 'future', 'cost', 'benefit', 'harm', 'help', 'maximize', 'minimize'], ['parents', 'mother', 'father', 'brother', 'sister', 'mom', 'dad', 'friends', 'school', 'teacher', 'society', 'social'], ['god', 'devil', 'faith', 'prayer', 'pray', 'church', 'islam', 'bible', 'religion', 'religious', 'belief', 'commandment', 'heaven', 'hell']])}
 
 CODERS = ['Leke', 'Tomas']
 

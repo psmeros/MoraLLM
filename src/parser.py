@@ -527,14 +527,14 @@ def parse_crowd_labeling(file):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [1]
 
     for c in config:
         if c == 1:
-            models = ['chatgpt_bin', 'nli_bin']
+            models = ['chatgpt_bin', 'nli_bin', 'sbert_bin', 'lda_bin', 'wc_bin']
             extend_dataset = True
             interviews = prepare_data(models, extend_dataset=extend_dataset)
-            interviews = interviews.rename(columns={wave + ':' + mo + '_' + k : wave + ':' + mo + '_' + v for k,v in {'lda_bin':'LDA_F', 'lda_sum_bin':'LDA_Σ', 'lda_resp_bin':'LDA_R', 'sbert_bin':'SBERT_F', 'sbert_resp_bin':'SBERT_R', 'sbert_sum_bin':'SBERT_Σ', 'nli_bin':'NLI_F', 'nli_resp_bin':'NLI_R', 'nli_sum_bin':'NLI_Σ', 'chatgpt_bin':'GPT4_F', 'chatgpt_resp_bin':'GPT4_R', 'chatgpt_sum_bin':'GPT4_Σ', 'chatgpt_bin_notags':'GPT4_NT', 'chatgpt_bin_3.5':'GPT3.5_F', 'chatgpt_bin_nodistinction':'GPT4_ND', 'chatgpt_bin_interviewers':'GPT4_I'}.items() for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN})
+            interviews = interviews.rename(columns={wave + ':' + mo + '_' + k : wave + ':' + mo + '_' + v for k,v in {'wc_bin':'WC_F', 'wc_sum_bin':'WC_Σ', 'wc_resp_bin':'WC_R', 'lda_bin':'LDA_F', 'lda_sum_bin':'LDA_Σ', 'lda_resp_bin':'LDA_R', 'sbert_bin':'SBERT_F', 'sbert_resp_bin':'SBERT_R', 'sbert_sum_bin':'SBERT_Σ', 'nli_bin':'NLI_F', 'nli_resp_bin':'NLI_R', 'nli_sum_bin':'NLI_Σ', 'chatgpt_bin':'GPT4_F', 'chatgpt_resp_bin':'GPT4_R', 'chatgpt_sum_bin':'GPT4_Σ', 'chatgpt_bin_notags':'GPT4_NT', 'chatgpt_bin_3.5':'GPT3.5_F', 'chatgpt_bin_nodistinction':'GPT4_ND', 'chatgpt_bin_interviewers':'GPT4_I'}.items() for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN})
             interviews.sort_values(by='Survey Id').to_clipboard(index=False)
         elif c == 2:
             compute_morality_summary()

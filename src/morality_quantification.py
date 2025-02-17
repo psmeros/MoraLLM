@@ -14,7 +14,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
-from src.helpers import chatgpt_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED
+from src.helpers import MORALITY_VOCAB, chatgpt_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED
 from src.parser import clean_morality_tags
 
 
@@ -108,6 +108,10 @@ def compute_morality_source(models, excerpt):
             lda = LatentDirichletAllocation(n_components=4, max_iter=100, random_state=42)
             data[MORALITY_ORIGIN] = lda.fit_transform(X)
 
+        #Word count model
+        elif model == 'wc':
+            data[MORALITY_ORIGIN] = data[morality_text].apply(lambda t: pd.Series([sum(1 for w in t.lower().split() if w in MORALITY_VOCAB[mo]) for mo in MORALITY_ORIGIN]) > (len(t.split()) * .01)).astype(int)
+
         data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
 #Compute synthetic dataset
@@ -162,7 +166,7 @@ if __name__ == '__main__':
     #Hyperparameters
     config = [1]
     excerpt = 'full_QnA'
-    models = ['lda', 'sbert', 'chatgpt_bin', 'entail_ml_explained']
+    models = ['wc', 'lda', 'sbert', 'chatgpt_bin', 'entail_ml_explained']
 
     for c in config:
         if c == 1:

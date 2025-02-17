@@ -269,9 +269,16 @@ NETWORK_ATTRIBUTES = {'ids': 'Survey Id',
                       'frndvol_w2': 'Wave 2:Regular volunteers',
                       'frnddrgs_w2': 'Wave 2:Use drugs',
                       'frndrelblf_w2': 'Wave 2:Similar beliefs',
+                      'sfrndvol_w2': 'Wave 2:Regular volunteers',
+                      'sfrnddrgs_w2': 'Wave 2:Use drugs',
+                      'sfrndrelblf_w2': 'Wave 2:Similar beliefs',
                       'frndvol_w3': 'Wave 3:Regular volunteers',
                       'frnddrgs_w3': 'Wave 3:Use drugs',
-                      'frndrelblf_w3': 'Wave 3:Similar beliefs'}
+                      'frndrelblf_w3': 'Wave 3:Similar beliefs',
+                      'sfrndrelblf_w2': 'Wave 2:Similar beliefs',
+                      'sfrndvol_w3': 'Wave 3:Regular volunteers',
+                      'sfrnddrgs_w3': 'Wave 3:Use drugs',
+                      'sfrndrelblf_w3': 'Wave 3:Similar beliefs'}
 
 #Income: Low < 70K < High
 INCOME_RANGE = {**dict.fromkeys(range(1, 8), 'Low'), **dict.fromkeys(range(8, 12), 'High')}

@@ -264,6 +264,22 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             
             #Prepare Data
             data = interviews.copy()
+
+            #Compute Descriptive Statistics for Controls
+            if conf['Controls']:
+                stats = pd.concat([pd.DataFrame(data[[from_wave + ':' + c for c in ['Interview Code']+conf['Controls']]].values) for from_wave in conf['From_Wave']])
+                stats.columns = ['Interview Code'] + conf['Controls']
+                stats['Wave'] = [from_wave for from_wave in conf['From_Wave'] for _ in range(len(data))]
+                stats = stats.dropna(subset='Interview Code').drop('Interview Code', axis=1)
+                stats = pd.concat([stats.groupby([col, 'Wave'], dropna=False).size().unstack().assign(Variable=col).reset_index(names='Value') for col in stats.columns[:-1]]).reset_index(drop=True)
+                stats = stats.set_index(['Variable', 'Value'])
+                stats.columns.name = None
+                stats = stats.sort_index(level=0, key=lambda x: x.map({key:i for i, key in enumerate(conf['Controls'])}))
+                stats.index = stats.index.map(lambda x: (x[0], ('<NA>' if pd.isna(x[1]) else x[1])))
+                stats = stats.fillna(0).astype(int)
+                stats = pd.concat([stats, pd.DataFrame({from_wave: data[from_wave + ':Interview Code'].notna().sum() for from_wave in conf['From_Wave']}, index=[('N', '')])])
+                print(stats.to_latex()) if to_latex else display(stats)
+
             data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
             data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
             data['Wave'] = pd.concat([pd.Series([float(from_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave in conf['From_Wave']])
@@ -273,13 +289,6 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Binary Representation for Probit Model
             if conf['Model']  == 'Probit':
                 data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]] = data[(conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]].map(lambda p: int(p > .5) if not pd.isna(p) else pd.NA)
-            
-            #Compute Descriptive Statistics for Controls
-            if conf['Controls']:
-                stats = pd.DataFrame(data[conf['Controls']].apply(lambda c: c.astype(str).value_counts(dropna=False)).T.stack().reset_index().values, columns=['Variable', 'Value', 'Count'])
-                stats = stats.sort_index(key=lambda x: x.map({key:i for i, key in enumerate(conf['Controls'])})).set_index('Variable')
-                stats['Count'] = stats['Count'].astype(int)
-                print(stats.to_latex()) if to_latex else display(stats)
 
             #Add Reference Controls
             for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values']):

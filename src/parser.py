@@ -349,6 +349,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Church Attendance'] = survey['Church Attendance'].apply(lambda x: x-1 if x-1 in CHURCH_ATTENDANCE_RANGE.keys() else None)
                 survey['Religion'] = survey['Religion'].map(lambda x: RELIGION['Wave 2'].get(x, None))
                 survey['Region'] = survey['Region'].map(lambda x: REGION.get(x, None))
+                survey['Number of friends'] = survey['Number of friends'].apply(lambda x: x if x in range(6) else None)
             elif wave == 3:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 7 - x if x in range(1, 8) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 7 - x if x in range(1, 8) else None)
@@ -359,6 +360,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
                 survey['Household Income'] = survey['Household Income'].apply(lambda i: i if i in INCOME_RANGE.keys() else None)
                 survey['Religion'] = survey['Religion'].map(lambda x: RELIGION['Wave 3'].get(x, None))
                 survey['Region'] = survey['Region'].map(lambda x: REGION.get(x, None))
+                survey['Number of friends'] = survey['Number of friends'].apply(lambda x: x if x in range(6) else None)
             elif wave == 4:
                 survey['Pot'] = survey['Pot'].apply(lambda x: 1 - x if x in range(0, 2) else None)
                 survey['Drink'] = survey['Drink'].apply(lambda x: 0.0 if x in range(7, 9) else 7 - x if x in range (1, 7) else None)
@@ -392,8 +394,6 @@ def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     network = pd.read_stata(file)[NETWORK_ATTRIBUTES.keys()].rename(columns=NETWORK_ATTRIBUTES)
     network = network.map(lambda x: None if x in ['DON\'T KNOW', 'LEGITIMATE SKIP'] else x)
     network = network.T.groupby(network.columns, dropna=False).sum(min_count=1).T
-    network['Wave 2:Number of friends'] = network['Wave 1:Number of friends']
-    network['Wave 3:Number of friends'] = network['Wave 1:Number of friends']
     interviews = interviews.merge(network, on='Survey Id', how='left')
     return interviews
 
@@ -516,26 +516,18 @@ def parse_crowd_labeling(file):
     #Transform the data to a long format
     data = pd.concat([pd.DataFrame(data[[id + '_Interview Question_' + str(q) for q in range(1,5)] + [id + '_Survey ID']].values, columns=MORALITY_ORIGIN + ['Survey ID']) for id in [col.split('_')[0] for col in data.columns if 'Survey ID' in col]])
     data = data.dropna(subset=['Survey ID']).reset_index(drop=True)
+    data = data.groupby('Survey ID').head(5).reset_index(drop=True)
+
     data = data.groupby('Survey ID').count().join(data.groupby('Survey ID').size().rename('Annotations')).reset_index()
     data['Survey ID'] = data['Survey ID'].astype(int)
 
-    data = data.rename(columns={'Survey ID': 'Survey Id'})
-    interviews = prepare_data([], extend_dataset=True)
-    morality_text = 'Wave 1:Morality Text'
-    interviews[morality_text] = interviews[morality_text].replace('', pd.NA)
-    interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
-    data = data.merge(interviews['Survey Id'], on='Survey Id', how='right')
-    data['Annotations'] = data['Annotations'].fillna(0)
-    data['Annotations'].value_counts().sort_index().plot(kind='bar')
-
-    data.loc[data['Annotations'] < 1, MORALITY_ORIGIN] = 0
     data[MORALITY_ORIGIN] = data.apply(lambda d: pd.Series([int(d[mo] > d['Annotations']/2) for mo in MORALITY_ORIGIN]), axis=1).fillna(0)
-    data = data.rename(columns={mo: 'Wave 1:' + mo + '_crowd' for mo in MORALITY_ORIGIN}).drop('Annotations', axis=1)
+    data = data.rename(columns={mo: 'Wave 1:' + mo + '_crowd' for mo in MORALITY_ORIGIN} | {'Survey ID': 'Survey Id'}).drop('Annotations', axis=1)
     data.to_pickle('data/cache/crowd.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [5]
 
     for c in config:
         if c == 1:

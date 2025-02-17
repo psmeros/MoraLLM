@@ -169,7 +169,7 @@ MORALITY_ORIGIN_EXPLAINED = {**dict.fromkeys(['intuition'], 'Intuitive'),
                              **dict.fromkeys(['social'], 'Social'),
                              **dict.fromkeys(['religion'], 'Theistic')}
 
-MORALITY_VOCAB = {mo:vocab for mo, vocab in zip(MORALITY_ORIGIN, [['intuition', 'intuitive', 'gut', 'feeling', 'instinct'], ['consequence', 'outcome', 'affect', 'impact', 'future', 'cost', 'benefit', 'harm', 'help', 'maximize', 'minimize'], ['parents', 'mother', 'father', 'brother', 'sister', 'mom', 'dad', 'friends', 'school', 'teacher', 'society', 'social'], ['god', 'devil', 'faith', 'prayer', 'pray', 'church', 'islam', 'bible', 'religion', 'religious', 'belief', 'commandment', 'heaven', 'hell']])}
+MORALITY_VOCAB = {mo:vocab for mo, vocab in zip(MORALITY_ORIGIN, [['intuition', 'intuitive', 'gut', 'feel', 'instinct'], ['consequence', 'outcome', 'affect', 'impact', 'future', 'cost', 'benefit', 'harm', 'help', 'maximize', 'minimize'], ['parent', 'mother', 'father', 'brother', 'sister', 'mom', 'dad', 'friend', 'school', 'teacher', 'society', 'social'], ['god', 'devil', 'faith', 'prayer', 'pray', 'church', 'islam', 'bible', 'religion', 'religious', 'belief', 'commandment', 'heaven', 'hell']])}
 
 CODERS = ['Leke', 'Tomas']
 

@@ -104,7 +104,7 @@ def compute_morality_source(models, excerpts):
             #Word count model
             elif model == 'wc':
                 nlp_model = spacy.load('en_core_web_lg')
-                data[MORALITY_ORIGIN] = data[morality_text].apply(lambda t: pd.Series([sum(1 for w in nlp_model(t) if w.lemma_ in MORALITY_VOCAB[mo]) for mo in MORALITY_ORIGIN]) > (len(t.split()) * .001)).astype(int)
+                data[MORALITY_ORIGIN] = data[morality_text].apply(lambda t: pd.Series([sum(1 for w in nlp_model(t) if w.lemma_ in MORALITY_VOCAB[mo]) for mo in MORALITY_ORIGIN]) > 0).astype(int)
 
             data.to_pickle('data/cache/morality_model-' + model + '.pkl')
 
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     for c in config:
         if c == 1:
             excerpts = ['full_QnA', 'response', 'summary']
-            models = ['wc', 'lda', 'sbert', 'chatgpt_bin', 'entail_ml_explained']
+            models = ['wc']
             compute_morality_source(models, excerpts)
         elif c == 2:
             compute_synthetic_data()

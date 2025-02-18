@@ -280,11 +280,11 @@ NETWORK_ATTRIBUTES = {'ids': 'Survey Id',
                       'sfrnddrgs_w3': 'Wave 3:Use drugs',
                       'sfrndrelblf_w3': 'Wave 3:Similar beliefs'}
 
-#Income: Low < 70K < High
-INCOME_RANGE = {**dict.fromkeys(range(1, 8), 'Low'), **dict.fromkeys(range(8, 12), 'High')}
+#Income: Dichotomy at 50k
+INCOME_RANGE = {**dict.fromkeys(range(1, 5), 'Low'), **dict.fromkeys(range(5, 12), 'High')}
 
-#Education: Basic < College < Higher < PhD < Advanced
-EDUCATION_RANGE = {**dict.fromkeys(range(0, 3), 'Primary'), **dict.fromkeys(range(3, 8), 'Secondary'), **dict.fromkeys(range(8, 15), 'Tertiary')}
+#Education: Dichotomy at College
+EDUCATION_RANGE = {**dict.fromkeys(range(0, 8), 'Less Than College'), **dict.fromkeys(range(8, 15), 'College or More')}
 
 #Church Attendance: Irregular vs Regular
 CHURCH_ATTENDANCE_RANGE = {**dict.fromkeys(range(0, 5), 'Irregular'), **dict.fromkeys(range(5, 7), 'Regular')}

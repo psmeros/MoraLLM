@@ -271,6 +271,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 stats.columns = ['Interview Code'] + conf['Controls']
                 stats['Wave'] = [from_wave for from_wave in conf['From_Wave'] for _ in range(len(data))]
                 stats = stats.dropna(subset='Interview Code').drop('Interview Code', axis=1)
+                # stats.map(lambda x: np.nan if pd.isna(x) else x).describe().T[['count', 'mean', 'std', 'min', 'max']]
                 stats = pd.concat([stats.groupby([col, 'Wave'], dropna=False).size().unstack().assign(Variable=col).reset_index(names='Value') for col in stats.columns[:-1]]).reset_index(drop=True)
                 stats = stats.set_index(['Variable', 'Value'])
                 stats.columns.name = None
@@ -302,6 +303,9 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                     conf['Predictors'] = conf['Predictors'][:conf['Predictors'].index(attribute_name)] + list(dummies.columns) + conf['Predictors'][conf['Predictors'].index(attribute_name) + 1:]
 
             data = data.apply(pd.to_numeric).reset_index(drop=True)
+
+            # stats = data[conf['Controls']].describe(include = 'all')#.T[['count', 'mean', 'std', 'min', 'max']]
+            # data[conf['Controls']].isnull().sum()
 
             #Compute Results
             if conf['Model'] in ['Probit', 'OLS']:
@@ -379,13 +383,13 @@ if __name__ == '__main__':
                           'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
                           'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4'],
                           'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator != 'Moral Schemas' else ['Moral Schemas'],
-                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Volunteer', 'Help'],
+                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
                           'Intercept': True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
                           'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
-                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South', 'College or More', 'High']}}
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
                          {'Descrition': 'Explaining Current Behavior: ' + estimator,
@@ -424,5 +428,5 @@ if __name__ == '__main__':
                           'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
                     for estimator in MORALITY_ESTIMATORS]
-            confs = [confs[1],confs[6]]
+            confs = [confs[1]]
             compute_behavioral_regressions(interviews, confs, to_latex)

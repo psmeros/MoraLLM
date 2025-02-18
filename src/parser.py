@@ -382,6 +382,14 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     #Missing data
     interviews['Wave 3:Age'] = interviews['Wave 3:Age'].fillna(interviews['Wave 1:Age'] + int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
     interviews['Wave 1:Age'] = interviews['Wave 1:Age'].fillna(interviews['Wave 3:Age'] - int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
+    interviews['Wave 1:Parent Education'] = interviews['Wave 1:Parent Education'].fillna(int(interviews['Wave 1:Parent Education'].mean()))
+    interviews['Wave 1:Parent Education'] = interviews['Wave 1:Parent Education'].map(EDUCATION_RANGE)
+    interviews['Wave 1:GPA'] = pd.Series(minmax_scale(interviews['Wave 1:GPA'], feature_range=(0, 4)))
+    interviews['Wave 1:GPA'] = interviews['Wave 1:GPA'].fillna(interviews['Wave 1:GPA'].mean())
+    interviews['Wave 1:Household Income'] = interviews['Wave 1:Household Income'].fillna(int(interviews['Wave 1:Household Income'].mean()))
+    interviews['Wave 1:Household Income'] = interviews['Wave 1:Household Income'].map(INCOME_RANGE)
+    interviews['Wave 3:Household Income'] = interviews['Wave 3:Household Income'].fillna(int(interviews['Wave 3:Household Income'].mean()))
+    interviews['Wave 3:Household Income'] = interviews['Wave 3:Household Income'].map(INCOME_RANGE)
     interviews[['Wave 2:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]]
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
     interviews[['Wave 2:' + mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.NA
@@ -402,6 +410,7 @@ def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
 def prepare_data(models, extend_dataset):
     interviews = pd.read_pickle('data/cache/interviews.pkl')
     interviews[MORALITY_ORIGIN] = ''
+    interviews['Morality Text'] = interviews['Morality Text'].apply(clean_morality_tags)
 
     for model in models:
         interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))

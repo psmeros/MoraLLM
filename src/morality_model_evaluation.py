@@ -26,30 +26,31 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
         data = interviews.iloc[indices]
 
         if human_evaluation:
-            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd']) for mo in MORALITY_ORIGIN}])
+            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
             score['Model'] = 'Crowdworkers'
             scores.append(round(score, 2))
-            score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder]) for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
-            score['Model'] = 'Coders'
+            score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
+            score['Model'] = 'Experts'
             scores.append(round(score, 2))
         for model in models:
-            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model]) for mo in MORALITY_ORIGIN}])
-            score['Model'] = {'wc_bin':'$WC_{F}$', 'wc_sum_bin':'$WC_{Σ}$', 'wc_resp_bin':'$WC_{R}$', 'lda_bin':'$LDA_{F}$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT_{F}$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI_{F}$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT4_{F}$', 'chatgpt_resp_bin':'$GPT4_{R}$', 'chatgpt_sum_bin':'$GPT4_{Σ}$', 'chatgpt_bin_notags':'$GPT4_{NT}$', 'chatgpt_bin_3.5':'$GPT3.5_{F}$', 'chatgpt_bin_nodistinction':'$GPT4_{ND}$', 'chatgpt_bin_interviewers':'$GPT4_{I}$'}.get(model, model)
+            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
+            score['Model'] = {'wc_bin':'$Dictionary$', 'wc_sum_bin':'$WC_{Σ}$', 'wc_resp_bin':'$WC_{R}$', 'lda_bin':'$LDA$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT4$', 'chatgpt_resp_bin':'$GPT4_{R}$', 'chatgpt_sum_bin':'$GPT4_{Σ}$', 'chatgpt_bin_notags':'$GPT4_{NT}$', 'chatgpt_bin_3.5':'$GPT3.5_{F}$', 'chatgpt_bin_nodistinction':'$GPT4_{ND}$', 'chatgpt_bin_interviewers':'$GPT4_{I}$'}.get(model, model)
             scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
     display(scores.set_index('Model').groupby('Model', sort=False).mean().round(2))
+    scores.set_index('Model').groupby('Model', sort=False).mean().round(2).to_clipboard()
     scores['score'] = (scores[MORALITY_ORIGIN]).mean(axis=1).round(2)
     display(scores.set_index('Model').groupby('Model', sort=False).mean().round(2)[['score']])
     
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    sns.boxplot(data=scores, y='Model', hue='Model', x='score', palette=palette)
+    sns.barplot(data=scores, y='Model', hue='Model', x='score', palette=palette)
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
-    plt.xlabel('F1 Score')
+    plt.xlabel('Weighted F1 Score')
     plt.ylabel('')
     plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')
@@ -138,8 +139,10 @@ if __name__ == '__main__':
             # models = ['chatgpt_bin_3.5', 'chatgpt_sum_bin', 'chatgpt_bin_notags', 'chatgpt_bin']
             # models = ['chatgpt_bin_interviewers', 'chatgpt_bin_nodistinction', 'chatgpt_bin_notags', 'chatgpt_bin']
             # palette = sns.color_palette('Blues', len(models))
-            models = ['chatgpt_sum_bin', 'chatgpt_resp_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_resp_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_resp_bin', 'sbert_bin', 'lda_sum_bin', 'lda_resp_bin', 'lda_bin', 'wc_sum_bin', 'wc_resp_bin', 'wc_bin']
-            palette = [c for c in sns.color_palette('Blues', 5) for _ in range(3)] + sns.color_palette('Purples', 5)[4:5]*2
+            # models = ['chatgpt_sum_bin', 'chatgpt_resp_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_resp_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_resp_bin', 'sbert_bin', 'lda_sum_bin', 'lda_resp_bin', 'lda_bin', 'wc_sum_bin', 'wc_resp_bin', 'wc_bin']
+            # palette = [c for c in sns.color_palette('Blues', 5) for _ in range(3)] + sns.color_palette('Purples', 5)[4:5]*2
+            models = ['chatgpt_bin', 'nli_bin', 'sbert_bin', 'lda_bin', 'wc_bin']
+            palette = [c for c in sns.color_palette('Blues', 5) for _ in range(1)] + sns.color_palette('Purples', 5)[4:5]*2
             evaluation_waves = ['Wave 1']
             human_evaluation = True
             n_bootstraps = 10

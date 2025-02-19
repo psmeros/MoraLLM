@@ -353,6 +353,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         if conf['Model'] == 'Probit':
             results = pd.concat([results.drop(index=['N', 'AIC']), results.loc[['N', 'AIC']]])
         print(results.to_latex()) if to_latex else display(results)
+        results.to_clipboard(excel=True, index=True, header=True)
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -360,7 +361,7 @@ if __name__ == '__main__':
     extend_dataset = True
     to_latex = False
     model = 'chatgpt_bin'
-    interviews = prepare_data(['chatgpt_quant', 'chatgpt_bin', 'nli_sum_quant', 'nli_sum_bin'], extend_dataset)
+    interviews = prepare_data([model], extend_dataset)
     interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 
     for c in config:
@@ -389,7 +390,7 @@ if __name__ == '__main__':
                           'Previous Behavior': True,
                           'Model': 'Probit',
                           'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
-                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South', 'College or More', 'High']}}
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South', 'College or More']}}
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
                          {'Descrition': 'Explaining Current Behavior: ' + estimator,

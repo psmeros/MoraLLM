@@ -387,9 +387,9 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     interviews['Wave 1:GPA'] = pd.Series(minmax_scale(interviews['Wave 1:GPA'], feature_range=(0, 4)))
     interviews['Wave 1:GPA'] = interviews['Wave 1:GPA'].fillna(interviews['Wave 1:GPA'].mean())
     interviews['Wave 1:Household Income'] = interviews['Wave 1:Household Income'].fillna(int(interviews['Wave 1:Household Income'].mean()))
-    interviews['Wave 1:Household Income'] = interviews['Wave 1:Household Income'].map(INCOME_RANGE)
+    # interviews['Wave 1:Household Income'] = interviews['Wave 1:Household Income'].map(INCOME_RANGE)
     interviews['Wave 3:Household Income'] = interviews['Wave 3:Household Income'].fillna(int(interviews['Wave 3:Household Income'].mean()))
-    interviews['Wave 3:Household Income'] = interviews['Wave 3:Household Income'].map(INCOME_RANGE)
+    # interviews['Wave 3:Household Income'] = interviews['Wave 3:Household Income'].map(INCOME_RANGE)
     interviews[['Wave 2:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]]
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
     interviews[['Wave 2:' + mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.NA

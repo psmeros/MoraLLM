@@ -29,9 +29,9 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
             score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
             score['Model'] = 'Crowdworkers'
             scores.append(round(score, 2))
-            score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
-            score['Model'] = 'Experts'
-            scores.append(round(score, 2))
+            # score = pd.DataFrame(pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + coder], average='weighted') for mo in MORALITY_ORIGIN} for coder in CODERS]).mean()).T
+            # score['Model'] = 'Experts'
+            # scores.append(round(score, 2))
         for model in models:
             score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
             score['Model'] = {'wc_bin':'$Dictionary$', 'wc_sum_bin':'$WC_{Σ}$', 'wc_resp_bin':'$WC_{R}$', 'lda_bin':'$LDA$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT4$', 'chatgpt_resp_bin':'$GPT4_{R}$', 'chatgpt_sum_bin':'$GPT4_{Σ}$', 'chatgpt_bin_notags':'$GPT4_{NT}$', 'chatgpt_bin_3.5':'$GPT3.5_{F}$', 'chatgpt_bin_nodistinction':'$GPT4_{ND}$', 'chatgpt_bin_interviewers':'$GPT4_{I}$'}.get(model, model)
@@ -52,7 +52,7 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
     # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
     plt.xlabel('Weighted F1 Score')
     plt.ylabel('')
-    plt.title('Model Evaluation')
+    # plt.title('Model Evaluation')
     plt.savefig('data/plots/fig-model_comparison.png', bbox_inches='tight')
     plt.show()
 

@@ -297,6 +297,23 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 stats.columns = pd.MultiIndex.from_tuples([(wave, stat) for wave in conf['From_Wave'] for stat in stats.columns[:6]])
                 print(stats.to_latex()) if to_latex else display(stats)
                 stats.to_clipboard()
+            
+            #Compute Descriptive Statistics for Predictions
+            if conf['Predictions']:
+                stats = []
+                for wave in conf['From_Wave']:
+                    slice = data[data['Wave'] == int(wave.split()[1])]
+                    stat = slice[[p + '_pred' for p in conf['Predictions']]].describe(include = 'all').T[['count', 'mean', 'std', 'min', 'max']]
+                    stat = stat.map(lambda x: x if not pd.isna(x) else -1)
+                    stat[['count', 'mean', 'std', 'min', 'max']] = stat.apply(lambda s: pd.Series([s.iloc[0], round(s.iloc[1], 2), round(s.iloc[2], 2), s.iloc[3], s.iloc[4]]), axis=1).astype(pd.Series([int, float, float, int, int]))
+                    stat = stat.map(lambda x: x if not x == -1 else '-')
+                    stat['<NA>'] = slice[[p + '_pred' for p in conf['Predictions']]].isnull().sum()
+                    stats.append(stat)
+                stats = pd.concat(stats, axis=1)
+                stats.index = conf['Predictions']
+                stats.columns = pd.MultiIndex.from_tuples([(wave, stat) for wave in conf['To_Wave'] for stat in stats.columns[:6]])
+                print(stats.to_latex()) if to_latex else display(stats)
+                stats.to_clipboard()
 
             #Drop NA and Reference Dummies
             data = data[~data[[c for c in data.columns if c.endswith(' = nan')]].astype(bool).any(axis=1)]
@@ -352,7 +369,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         if conf['Model'] == 'Probit':
             results = pd.concat([results.drop(index=['N', 'AIC']), results.loc[['N', 'AIC']]])
         print(results.to_latex()) if to_latex else display(results)
-        # results.to_clipboard(excel=True, index=True, header=True)
+        # results.to_clipboard()
 
 if __name__ == '__main__':
     #Hyperparameters

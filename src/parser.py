@@ -382,14 +382,18 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     #Missing data
     interviews['Wave 3:Age'] = interviews['Wave 3:Age'].fillna(interviews['Wave 1:Age'] + int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
     interviews['Wave 1:Age'] = interviews['Wave 1:Age'].fillna(interviews['Wave 3:Age'] - int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
+    # print('Parent Education - Mean Imputation - Wave 1:', round(len(interviews[interviews['Wave 1:Parent Education'].isna() & interviews['Wave 1:Interview Code'].notna()])/len(interviews[interviews['Wave 1:Interview Code'].notna()]), 2) * 100, '%')
+    # print('GPA - Mean Imputation - Wave 1:', round(len(interviews[interviews['Wave 1:GPA'].isna() & interviews['Wave 1:Interview Code'].notna()])/len(interviews[interviews['Wave 1:Interview Code'].notna()]), 2) * 100, '%')
+    # print('Parent Education/GPA/Household Income - Previous Wave Imputation - Wave 2: 100%')
+    # print('Parent Education/GPA - Previous Wave Imputation - Wave 3:  100%')
+    # print('Household Income - Mean Imputation - Wave 1:', round(len(interviews[interviews['Wave 1:Household Income'].isna() & interviews['Wave 1:Interview Code'].notna()])/len(interviews[interviews['Wave 1:Interview Code'].notna()]), 2) * 100, '%')
+    # print('Household Income - Mean Imputation - Wave 3:', round(len(interviews[interviews['Wave 3:Household Income'].isna() & interviews['Wave 3:Interview Code'].notna()])/len(interviews[interviews['Wave 3:Interview Code'].notna()]), 2) * 100, '%')
     interviews['Wave 1:Parent Education'] = interviews['Wave 1:Parent Education'].fillna(int(interviews['Wave 1:Parent Education'].mean()))
     interviews['Wave 1:Parent Education'] = interviews['Wave 1:Parent Education'].map(EDUCATION_RANGE)
     interviews['Wave 1:GPA'] = pd.Series(minmax_scale(interviews['Wave 1:GPA'], feature_range=(0, 4)))
     interviews['Wave 1:GPA'] = interviews['Wave 1:GPA'].fillna(interviews['Wave 1:GPA'].mean())
     interviews['Wave 1:Household Income'] = interviews['Wave 1:Household Income'].fillna(int(interviews['Wave 1:Household Income'].mean()))
-    # interviews['Wave 1:Household Income'] = interviews['Wave 1:Household Income'].map(INCOME_RANGE)
     interviews['Wave 3:Household Income'] = interviews['Wave 3:Household Income'].fillna(int(interviews['Wave 3:Household Income'].mean()))
-    # interviews['Wave 3:Household Income'] = interviews['Wave 3:Household Income'].map(INCOME_RANGE)
     interviews[['Wave 2:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]]
     interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
     interviews[['Wave 2:' + mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.NA

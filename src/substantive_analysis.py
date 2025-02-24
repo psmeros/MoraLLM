@@ -276,7 +276,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
             #Add Reference Controls
             for attribute_name in conf['References']['Attribute Names']:
-                dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ', dummy_na=True).astype(int)                
+                dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').astype(int)                
                 data = pd.concat([data, dummies], axis=1).drop(attribute_name, axis=1)
                 c = 'Controls' if attribute_name in conf['Controls'] else 'Predictors' if attribute_name in conf['Predictors'] else None
                 conf[c] = conf[c][:conf[c].index(attribute_name)] + list(dummies.columns) + conf[c][conf[c].index(attribute_name) + 1:]
@@ -291,10 +291,9 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                     slice = data[data['Wave'] == int(wave.split()[1])]
                     stat = slice[conf['Controls']].describe(include = 'all').T[['count', 'mean', 'std', 'min', 'max']]
                     stat[['count', 'mean', 'std', 'min', 'max']] = stat.apply(lambda s: pd.Series([s.iloc[0], round(s.iloc[1], 2), round(s.iloc[2], 2), s.iloc[3], s.iloc[4]]), axis=1).astype(pd.Series([int, float, float, int, int]))
-                    stat['<NA>'] = slice[conf['Controls']].isnull().sum()
                     stats.append(stat)
                 stats = pd.concat(stats, axis=1)
-                stats.columns = pd.MultiIndex.from_tuples([(wave, stat) for wave in conf['From_Wave'] for stat in stats.columns[:6]])
+                stats.columns = pd.MultiIndex.from_tuples([(wave, stat) for wave in conf['From_Wave'] for stat in stats.columns[:5]])
                 print(stats.to_latex()) if to_latex else display(stats)
                 stats.to_clipboard()
             
@@ -316,10 +315,8 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 stats.to_clipboard()
 
             #Drop NA and Reference Dummies
-            data = data[~data[[c for c in data.columns if c.endswith(' = nan')]].astype(bool).any(axis=1)]
-            data = data.drop([c for c in data.columns if c.endswith(' = nan')], axis=1)
-            conf['Controls'] = [c for c in conf['Controls'] if not c.endswith(' = nan') and (' = ' not in c or c.split(' = ')[1] not in conf['References']['Attribute Values'])]
-            conf['Predictors'] = [p for p in conf['Predictors'] if not p.endswith(' = nan') and (' = ' not in p or p.split(' = ')[1] not in conf['References']['Attribute Values'])]
+            conf['Controls'] = [c for c in conf['Controls'] if c not in [attribute_name + ' = ' + attribute_value for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values'])]]
+            conf['Predictors'] = [c for c in conf['Predictors'] if c not in [attribute_name + ' = ' + attribute_value for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values'])]]
             data = data.drop([attribute_name + ' = ' + attribute_value for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values'])], axis=1)
             data = data.reset_index(drop=True)
 

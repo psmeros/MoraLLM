@@ -4,7 +4,9 @@ import re
 import numpy as np
 import openai
 import pandas as pd
-from sklearn.preprocessing import minmax_scale
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+from sklearn.preprocessing import LabelEncoder, minmax_scale
 import spacy
 import textstat
 import torch
@@ -379,26 +381,6 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     interviews = interviews.drop(['Survey Id_x', 'Survey Id_y'], axis=1).dropna(subset=['Survey Id']).drop_duplicates(subset=['Survey Id'], keep='first').reset_index(drop=True)
     interviews['Survey Id'] = interviews['Survey Id'].astype(int)
 
-    #Missing data
-    interviews['Wave 3:Age'] = interviews['Wave 3:Age'].fillna(interviews['Wave 1:Age'] + int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
-    interviews['Wave 1:Age'] = interviews['Wave 1:Age'].fillna(interviews['Wave 3:Age'] - int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
-    # print('Parent Education - Mean Imputation - Wave 1:', round(len(interviews[interviews['Wave 1:Parent Education'].isna() & interviews['Wave 1:Interview Code'].notna()])/len(interviews[interviews['Wave 1:Interview Code'].notna()]), 2) * 100, '%')
-    # print('GPA - Mean Imputation - Wave 1:', round(len(interviews[interviews['Wave 1:GPA'].isna() & interviews['Wave 1:Interview Code'].notna()])/len(interviews[interviews['Wave 1:Interview Code'].notna()]), 2) * 100, '%')
-    # print('Parent Education/GPA/Household Income - Previous Wave Imputation - Wave 2: 100%')
-    # print('Parent Education/GPA - Previous Wave Imputation - Wave 3:  100%')
-    # print('Household Income - Mean Imputation - Wave 1:', round(len(interviews[interviews['Wave 1:Household Income'].isna() & interviews['Wave 1:Interview Code'].notna()])/len(interviews[interviews['Wave 1:Interview Code'].notna()]), 2) * 100, '%')
-    # print('Household Income - Mean Imputation - Wave 3:', round(len(interviews[interviews['Wave 3:Household Income'].isna() & interviews['Wave 3:Interview Code'].notna()])/len(interviews[interviews['Wave 3:Interview Code'].notna()]), 2) * 100, '%')
-    interviews['Wave 1:Parent Education'] = interviews['Wave 1:Parent Education'].fillna(int(interviews['Wave 1:Parent Education'].mean()))
-    interviews['Wave 1:Parent Education'] = interviews['Wave 1:Parent Education'].map(EDUCATION_RANGE)
-    interviews['Wave 1:GPA'] = pd.Series(minmax_scale(interviews['Wave 1:GPA'], feature_range=(0, 4)))
-    interviews['Wave 1:GPA'] = interviews['Wave 1:GPA'].fillna(interviews['Wave 1:GPA'].mean())
-    interviews['Wave 1:Household Income'] = interviews['Wave 1:Household Income'].fillna(int(interviews['Wave 1:Household Income'].mean()))
-    interviews['Wave 3:Household Income'] = interviews['Wave 3:Household Income'].fillna(int(interviews['Wave 3:Household Income'].mean()))
-    interviews[['Wave 2:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]]
-    interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
-    interviews[['Wave 2:' + mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.NA
-    interviews[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
-
     return interviews
 
 #Merge network variables
@@ -410,6 +392,56 @@ def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     interviews[[wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]] = pd.concat([interviews[[wave + ':' + network for network in ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]].apply(lambda n: n[[wave + ':' + network for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]].div(n[wave + ':Number of friends']) if (not pd.isna(n[wave + ':Number of friends'])) and (n[wave + ':Number of friends'] > 0) else [0]*3 if (not pd.isna(n[wave + ':Number of friends'])) and (n[wave + ':Number of friends'] > 0) else [pd.NA]*3, axis=1) for wave in ['Wave 1', 'Wave 2', 'Wave 3']], axis=1)
     return interviews
 
+#Fill missing data
+def fill_missing_data(interviews):
+    encoder = {control : LabelEncoder() for control in ['Gender', 'Race', 'Religion', 'Region']}
+    iterative_imputer = IterativeImputer(max_iter=20, random_state=42)
+    #Wave filling
+    interviews['Wave 3:Age'] = interviews['Wave 3:Age'].fillna(interviews['Wave 1:Age'] + int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
+    interviews['Wave 1:Age'] = interviews['Wave 1:Age'].fillna(interviews['Wave 3:Age'] - int((interviews['Wave 3:Age'] - interviews['Wave 1:Age']).mean()))
+
+    #Encoding - Imputation - Decoding of Wave 1
+    interviews_wave_1 = interviews.loc[interviews['Wave 1:Interview Code'].notna(), ['Wave 1:' + control for control in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Religion', 'Region'] + ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]]
+    na = interviews_wave_1.isna()
+    interviews_wave_1[['Wave 1:' + control for control in ['Gender', 'Race', 'Religion', 'Region']]] = pd.DataFrame([encoder[control].fit_transform(interviews_wave_1['Wave 1:' + control]) for control in ['Gender', 'Race', 'Religion', 'Region']]).T.values
+    interviews_wave_1 = interviews_wave_1.where(~na, np.nan)
+    interviews_wave_1 = interviews_wave_1.fillna(pd.DataFrame(iterative_imputer.fit_transform(interviews_wave_1).astype(int), columns=interviews_wave_1.columns))
+    interviews_wave_1 = interviews_wave_1.fillna(interviews_wave_1.mean().astype(int)).astype(int)
+    interviews_wave_1[['Wave 1:' + control for control in ['Gender', 'Race', 'Religion', 'Region']]] = pd.DataFrame([encoder[control].inverse_transform(interviews_wave_1['Wave 1:' + control]) for control in ['Gender', 'Race', 'Religion', 'Region']]).T.values
+    interviews.loc[interviews['Wave 1:Interview Code'].notna(), ['Wave 1:' + control for control in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Religion', 'Region'] + ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]] = interviews_wave_1
+
+    #Fill stable-over-time variables
+    interviews[['Wave 2:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA', 'Household Income']]]
+    interviews[['Wave 3:' + demographic for demographic in['Parent Education', 'GPA']]] = interviews[['Wave 1:' + demographic for demographic in['Parent Education', 'GPA']]]
+
+    #Encoding - Imputation - Decoding of Wave 2
+    interviews_wave_2 = interviews.loc[interviews['Wave 2:Interview Code'].notna(), ['Wave 2:' + control for control in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Religion', 'Region'] + ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]]
+    na = interviews_wave_2.isna()
+    interviews_wave_2[['Wave 2:' + control for control in ['Gender', 'Race', 'Religion', 'Region']]] = pd.DataFrame([encoder[control].fit_transform(interviews_wave_2['Wave 2:' + control]) for control in ['Gender', 'Race', 'Religion', 'Region']]).T.values
+    interviews_wave_2 = interviews_wave_2.where(~na, np.nan)
+    interviews_wave_2 = interviews_wave_2.fillna(pd.DataFrame(iterative_imputer.fit_transform(interviews_wave_2).astype(int), columns=interviews_wave_2.columns))
+    interviews_wave_2 = interviews_wave_2.fillna(interviews_wave_2.mean().astype(int)).astype(int)
+    interviews_wave_2[['Wave 2:' + control for control in ['Gender', 'Race', 'Religion', 'Region']]] = pd.DataFrame([encoder[control].inverse_transform(interviews_wave_2['Wave 2:' + control]) for control in ['Gender', 'Race', 'Religion', 'Region']]).T.values
+    interviews.loc[interviews['Wave 2:Interview Code'].notna(), ['Wave 2:' + control for control in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Religion', 'Region'] + ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]] = interviews_wave_2
+
+    #Encoding - Imputation - Decoding of Wave 3
+    interviews_wave_3 = interviews.loc[interviews['Wave 3:Interview Code'].notna(), ['Wave 3:' + control for control in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Religion', 'Region'] + ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]]
+    na = interviews_wave_3.isna()
+    interviews_wave_3[['Wave 3:' + control for control in ['Gender', 'Race', 'Religion', 'Region']]] = pd.DataFrame([encoder[control].fit_transform(interviews_wave_3['Wave 3:' + control]) for control in ['Gender', 'Race', 'Religion', 'Region']]).T.values
+    interviews_wave_3 = interviews_wave_3.where(~na, np.nan)
+    interviews_wave_3 = interviews_wave_3.fillna(pd.DataFrame(iterative_imputer.fit_transform(interviews_wave_3).astype(int), columns=interviews_wave_3.columns))
+    interviews_wave_3 = interviews_wave_3.fillna(interviews_wave_3.mean().astype(int)).astype(int)
+    interviews_wave_3[['Wave 3:' + control for control in ['Gender', 'Race', 'Religion', 'Region']]] = pd.DataFrame([encoder[control].inverse_transform(interviews_wave_3['Wave 3:' + control]) for control in ['Gender', 'Race', 'Religion', 'Region']]).T.values
+    interviews.loc[interviews['Wave 3:Interview Code'].notna(), ['Wave 3:' + control for control in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Religion', 'Region'] + ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]] = interviews_wave_3
+
+    interviews['Wave 1:Parent Education'] = interviews['Wave 1:Parent Education'].map(EDUCATION_RANGE)
+    interviews['Wave 2:Parent Education'] = interviews['Wave 2:Parent Education'].map(EDUCATION_RANGE)
+    interviews['Wave 3:Parent Education'] = interviews['Wave 3:Parent Education'].map(EDUCATION_RANGE)
+
+    interviews[['Wave 2:' + mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.NA
+    interviews[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
+    return interviews
+    
 #Merge all different types of data
 def prepare_data(models, extend_dataset):
     interviews = pd.read_pickle('data/cache/interviews.pkl')
@@ -423,6 +455,7 @@ def prepare_data(models, extend_dataset):
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
     interviews = merge_network(interviews)
+    interviews = fill_missing_data(interviews)
     interviews = interviews.merge(pd.read_pickle('data/cache/crowd.pkl'), on='Survey Id', how='left')
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]

@@ -1,5 +1,6 @@
 import os
 import re
+import time
 
 import numpy as np
 import openai
@@ -9,6 +10,7 @@ from sklearn.preprocessing import minmax_scale
 import spacy
 import torch
 from torch.nn.functional import cosine_similarity
+from tqdm import tqdm
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
 from sklearn.decomposition import LatentDirichletAllocation
@@ -78,13 +80,51 @@ def compute_morality_source(models, excerpts):
 
             elif model == 'deepseek':
                 #Call DeepSeek API
-                api_key = os.getenv('DEEPSEEK_API_KEY')
-                classifier = lambda text: [requests.post('https://api.deepseek.com/v1/chat/completions', headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}, json={'model': 'deepseek-chat','messages': [{'role': 'system', 'content': chatgpt_prompt(mo, 'bin')}, {'role': 'user', 'content': text}], 'temperature': 1.3, 'max_tokens': 32, 'seed':42}).json() for mo in MORALITY_ORIGIN]
-                aggregator = lambda r: pd.Series({mo:(lambda n: float(n) if n.strip().isdigit() else 0)(r[i]['choices'][0]['message']['content']) for i, mo in enumerate(MORALITY_ORIGIN)})
-                full_pipeline = lambda text: aggregator(classifier(text))
+                def call_deepseek(text: str, mo: str, timeout: int = 15, max_retries: int = 3, backoff_factor: float = 1.0):
+                    api_key = os.getenv('DEEPSEEK_API_KEY')
+                    url = 'https://api.deepseek.com/v1/chat/completions'
+                    headers = {'Authorization': f'Bearer {api_key}','Content-Type': 'application/json'}
+                    data = {'model': 'deepseek-chat','messages': [{'role': 'system', 'content': chatgpt_prompt(mo, 'bin')}, {'role': 'user', 'content': text}], 'temperature':1.3, 'max_tokens':32, 'seed':42}
+
+                    for attempt in range(max_retries):
+                        try:
+                            response = requests.post(url, json=data, headers=headers, timeout=timeout)
+                            response.raise_for_status()
+                            
+                            #Parse response
+                            try:
+                                response = response.json()
+                                parced_response = response['choices'][0]['message']['content'].strip()
+                                parced_response = 0 if '0' in parced_response else 1 if '1' in parced_response else -1
+                            except:
+                                print('Could not parse response', response)
+                                parced_response = -1
+                            return parced_response
+                        
+                        except requests.exceptions.RequestException as e:
+                            print(f"Attempt {attempt + 1} failed: {str(e)}")
+                            
+                            # Handle rate limiting
+                            if isinstance(e, requests.exceptions.HTTPError):
+                                if e.response.status_code == 429:
+                                    retry_after = e.response.headers.get('Retry-After', backoff_factor * (2 ** attempt))
+                                    print(f"Rate limited. Retrying after {retry_after} seconds")
+                                    time.sleep(float(retry_after))
+                                    continue
+                                    
+                            # Exponential backoff
+                            sleep_time = backoff_factor * (2 ** attempt)
+                            print(f"Retrying in {sleep_time} seconds...")
+                            time.sleep(sleep_time)
+
+                    print('Request failed after max retries')
+                    return -1
+                
+                full_pipeline = lambda text: pd.Series({mo:call_deepseek(text, mo) for mo in MORALITY_ORIGIN})
+                tqdm.pandas()
 
                 #Classify morality origin and join results
-                morality_origin = data[morality_text].apply(full_pipeline)
+                morality_origin = data[morality_text].progress_apply(full_pipeline)
                 data = data.join(morality_origin)
 
             #SBERT model

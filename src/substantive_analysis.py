@@ -333,7 +333,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                     groups = X['Q("Survey Id")']
                     X = X.drop('Q("Survey Id")', axis=1)
                     model = Probit if conf['Model'] == 'Probit' else OLS if conf['Model'] == 'OLS' else None
-                    fit_params = {'method':'bfgs', 'cov_type':'cluster', 'cov_kwds':{'groups': groups}, 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
+                    fit_params = {'method':'bfgs', 'disp':False} if conf['Model'] == 'Probit' else {'cov':'cluster', 'cov_kwds':{'groups': groups}} if conf['Model'] == 'OLS' else {}
                     model = model(y, X).fit(maxiter=10000, **fit_params)
                     result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
                     if conf['Previous Behavior']:
@@ -373,7 +373,7 @@ if __name__ == '__main__':
     config = [5]
     extend_dataset = True
     to_latex = False
-    model = 'chatgpt_bin'
+    model = 'deepseek_bin'
     interviews = prepare_data([model], extend_dataset)
     interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 
@@ -403,7 +403,7 @@ if __name__ == '__main__':
                           'Previous Behavior': True,
                           'Model': 'Probit',
                           'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
-                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South', 'College or More']}}
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Catholic', 'White', 'Male', 'Not South', 'College or More']}}
                     for estimator in ['Moral Schemas', model, 'gold']] + [
                         #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
                          {'Descrition': 'Explaining Current Behavior: ' + estimator,

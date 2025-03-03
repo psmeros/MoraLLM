@@ -390,6 +390,7 @@ def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
     network = network.T.groupby(network.columns, dropna=False).sum(min_count=1).T
     interviews = interviews.merge(network, on='Survey Id', how='left')
     interviews[[wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]] = pd.concat([interviews[[wave + ':' + network for network in ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]].apply(lambda n: n[[wave + ':' + network for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]].div(n[wave + ':Number of friends']) if (not pd.isna(n[wave + ':Number of friends'])) and (n[wave + ':Number of friends'] > 0) else [0]*3 if (not pd.isna(n[wave + ':Number of friends'])) and (n[wave + ':Number of friends'] > 0) else [pd.NA]*3, axis=1) for wave in ['Wave 1', 'Wave 2', 'Wave 3']], axis=1)
+    interviews[[wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]] = interviews[[wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]].map(lambda x: round(x, 2) if not pd.isna(x) else x)
     return interviews
 
 #Fill missing data

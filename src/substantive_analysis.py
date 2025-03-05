@@ -351,11 +351,11 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Results
             elif conf['Model'] in ['Pearson']:
                 #Compute Correlations
-                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=['chatgpt_bin', 'nli_sum_bin'])
-                for estimator in ['chatgpt_bin', 'nli_sum_bin']:
-                    slice = data[[mo + '_' + estimator for mo in MORALITY_ORIGIN]].dropna().reset_index(drop=True)
+                results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=list(set([c.split('_')[1] for c in conf['Predictors']])))
+                for estimator in list(set([c.split('_')[1] for c in conf['Predictors']])):
+                    slice = data[[mo + '_' + estimator + '_bin' for mo in MORALITY_ORIGIN]].dropna().reset_index(drop=True)
                     for i in results.index[:-1]:
-                        results.loc[i, estimator] = format_pvalue(pearsonr(slice[i.split(' - ')[0] + '_' + estimator], slice[i.split(' - ')[1] + '_' + estimator]))
+                        results.loc[i, estimator] = format_pvalue(pearsonr(slice[i.split(' - ')[0] + '_' + estimator + '_bin'], slice[i.split(' - ')[1] + '_' + estimator + '_bin']))
                     results.loc['N', estimator] = len(slice)
 
             extended_results.append(results)
@@ -392,11 +392,11 @@ if __name__ == '__main__':
             plot_morality_distinction(interviews)
         elif c == 5:
             confs = [
-                        #Predicting Future Behavior: Moral Schemas + Model + Coders [0:3]
-                         {'Descrition': 'Predicting Future Behavior: ' + estimator,
+                        #Predicting Future Behavior [0]
+                         {'Descrition': 'Predicting Future Behavior: ' + model,
                           'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
                           'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator != 'Moral Schemas' else ['Moral Schemas'],
+                          'Predictors': [mo + '_' + model for mo in MORALITY_ORIGIN] if model != 'Moral Schemas' else ['Moral Schemas'],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
                           'Intercept': True,
@@ -404,43 +404,30 @@ if __name__ == '__main__':
                           'Model': 'Probit',
                           'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
                           'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Catholic', 'White', 'Male', 'Not South', 'College or More']}}
-                    for estimator in ['Moral Schemas', model, 'gold']] + [
-                        #Explaining Current Behavior: Moral Schemas + Model + Coders [3:6]
-                         {'Descrition': 'Explaining Current Behavior: ' + estimator,
-                          'From_Wave': ['Wave 1', 'Wave 3'],
-                          'To_Wave': ['Wave 1', 'Wave 3'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN] if estimator != 'Moral Schemas' else ['Moral Schemas'],
-                          'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
-                          'Dummy' : True,
-                          'Intercept': True,
-                          'Previous Behavior': False,
-                          'Model': 'Probit',
-                          'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
-                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
-                    for estimator in ['Moral Schemas', model, 'gold']] + [
-                        #Computing Pairwise Correlations [6:7]
-                         {'Descrition': 'Computing Pairwise Correlations',
+                    ] + [
+                        #Computing Pairwise Correlations [1]
+                         {'Descrition': 'Computing Pairwise Correlations: ' + model,
                           'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'], 
                           'To_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
-                          'Predictors': [mo + '_' + estimator for mo in MORALITY_ORIGIN for estimator in ['chatgpt_bin', 'nli_sum_bin']],
+                          'Predictors': [mo + '_' + model for mo in MORALITY_ORIGIN],
                           'Predictions': [],
                           'Previous Behavior': False,
                           'Model': 'Pearson',
                           'Controls': [],
                           'References': {'Attribute Names': [], 'Attribute Values': []}}
                     ] + [
-                        #Estimating Morality Sources from Social Categories (OLS) [7:9]
-                         {'Descrition': 'Estimating Morality Sources from Social Categories (OLS): ' + estimator,
-                          'From_Wave': ['Wave 1', 'Wave 3'], 
-                          'To_Wave': ['Wave 1', 'Wave 3'],
-                          'Predictors': ['Age', 'Household Income', 'Church Attendance', 'Parent Education'],
-                          'Predictions': [mo + '_' + estimator for mo in MORALITY_ORIGIN],
+                        #Estimating Morality Sources from Social Categories (OLS) [2]
+                         {'Descrition': 'Estimating Morality Sources from Social Categories (OLS): ' + model,
+                          'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'], 
+                          'To_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
+                          'Predictors': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment'],
+                          'Predictions': [mo + '_' + model for mo in MORALITY_ORIGIN],
                           'Dummy' : True,
                           'Intercept': True,
                           'Previous Behavior': False,
                           'Model': 'OLS',
-                          'Controls': ['Verbosity', 'Uncertainty', 'Complexity', 'Sentiment', 'Religion', 'Race', 'Gender', 'Region'],
-                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region'], 'Attribute Values': ['Not Religious', 'White', 'Male', 'Not South']}}
-                    for estimator in MORALITY_ESTIMATORS]
-            confs = [confs[1]]
+                          'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Catholic', 'White', 'Male', 'Not South', 'College or More']}}
+                    ]
+            confs = [confs[2]]
             compute_behavioral_regressions(interviews, confs, to_latex)

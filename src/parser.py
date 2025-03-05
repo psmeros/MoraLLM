@@ -304,11 +304,7 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings', gold_f
     gold = codings.merge(gold, on=['Wave', 'Interview Code'], suffixes=('', '_gold'), how = 'left')
     gold[[mo + '_gold' for mo in MORALITY_ORIGIN]] = pd.concat([gold[mo + '_gold'].fillna(gold[mo]) for mo in MORALITY_ORIGIN], axis=1)
     gold = gold.drop(MORALITY_ORIGIN, axis=1)
-    interviews = interviews.merge(gold, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')
-    #Hybrid morality estimation
-    if len(MORALITY_ESTIMATORS) == 3:
-        interviews[[mo + '_' + MORALITY_ESTIMATORS[2] for mo in MORALITY_ORIGIN]] = interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values * interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values
-    
+    interviews = interviews.merge(gold, on=['Wave', 'Interview Code'], how = 'left', validate = '1:1')    
     return interviews
 
 #Merge interviews and surveys

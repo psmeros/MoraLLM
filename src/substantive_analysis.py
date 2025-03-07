@@ -83,7 +83,7 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     data[CODED_WAVES[0] + ':Household Income'] = data[CODED_WAVES[0] + ':Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].map(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, None))
     data[CODED_WAVES[0] + ':Parent Education'] = data[CODED_WAVES[0] + ':Parent Education'].map(lambda x: EDUCATION_RANGE.get(x, None))
-    data = data.dropna(subset=[wave + ':Interview Code' for wave in CODED_WAVES])
+    data = data.dropna(subset=[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for wave in CODED_WAVES for mo in MORALITY_ORIGIN])
 
     shifts, _ = compute_morality_shifts(data)
 
@@ -138,40 +138,65 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     plt.savefig('data/plots/fig-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
-def plot_morality_development(interviews, model, attributes):
-    #Prepare data
+def plot_morality_development(interviews, model):
     data = interviews.copy()
+
+    #Compute morality shifts across waves
     shifts = []
     slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].notna().all(axis=1)]
     for from_wave, to_wave in zip(['Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3']):
         shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-        shift[[attribute['name'] for attribute in attributes]] = slice[[from_wave + ':' + attribute['name'] for attribute in attributes]].values
-        shift = shift.melt(id_vars=[attribute['name'] for attribute in attributes], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+        shift[DEMOGRAPHICS] = slice[[from_wave + ':' + d for d in DEMOGRAPHICS]].values
+        shift ['Count'] = .5
+        shift = shift.melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
         shifts.append(shift)
 
     slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].isna().any(axis=1)]
     for from_wave, to_wave in zip(['Wave 1', 'Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3', 'Wave 3']):
         shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-        shift[[attribute['name'] for attribute in attributes]] = slice[[from_wave + ':' + attribute['name'] for attribute in attributes]].values
-        shift = shift.dropna().melt(id_vars=[attribute['name'] for attribute in attributes], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+        shift[DEMOGRAPHICS] = slice[[from_wave + ':' + d for d in DEMOGRAPHICS]].values
+        shift ['Count'] = 1
+        shift = shift.dropna().melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
         shifts.append(shift)
 
+    #Prepare data
     shifts = pd.concat(shifts).reset_index(drop=True)
     shifts['Value'] = shifts['Value'] * 100
+    shifts['Race'] = shifts['Race'].map(lambda r: {'White': 'White', 'Black': 'Other', 'Other': 'Other'}.get(r, None))
+    shifts['Household Income'] = shifts['Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
+    for demographic in DEMOGRAPHICS:
+        shifts[demographic] = shifts[demographic].map(lambda x: x + ' (N = ' + str(int(shifts[shifts[demographic] == x]['Count'].sum()/len(MORALITY_ORIGIN))) + ')')
 
-    #Plot
+    #Plot overall morality shifts
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
     g = sns.catplot(data=shifts, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
-    g.figure.suptitle('Crosswave Morality Development', x=.5)
+    g.figure.suptitle('Morality Development over Waves', x=.5)
     g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
     g.set(xlim=(-12, 12))
     g.set_ylabels('')
     g.set_xlabels('')
     ax = plt.gca()
     ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
+    plt.savefig('data/plots/fig-morality_shift_overall.png', bbox_inches='tight')
     plt.show()
+
+    #Plot morality shifts by demographic
+    plt.figure(figsize=(20, 10))
+    _, axes = plt.subplots(2, 2, figsize=(20, 10))
+    for i, demographic in enumerate(DEMOGRAPHICS):
+        sns.barplot(data=shifts, x='Value', y='Morality', hue=demographic, order=MORALITY_ORIGIN, dodge=0.3, ax=axes[i//2,i%2], errorbar=None, palette='Set1')
+        axes[i//2,i%2].axvline(x=0, color='grey', linestyle='--', linewidth=1.5)
+        axes[i//2,i%2].set_xlim(-12, 12)
+        axes[i//2,i%2].set_xlabel('')
+        axes[i//2,i%2].set_ylabel('')
+        axes[i//2,i%2].xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+        axes[i//2,i%2].spines['top'].set_visible(False)
+        axes[i//2,i%2].spines['right'].set_visible(False)
+        axes[i//2,i%2].legend(title=demographic, frameon=False, loc='upper center', bbox_to_anchor=(0.5, 1.35), ncol=3)
+    plt.tight_layout()
+    plt.suptitle('Morality Development over Waves')
+    plt.savefig('data/plots/fig-morality_shift_overall_by_demographic.png', bbox_inches='tight')
 
 #Compute crosswave consistency
 def compute_consistency(interviews, plot_type, consistency_threshold):
@@ -396,8 +421,7 @@ if __name__ == '__main__':
         if c == 1:
             compute_distribution(interviews)
         elif c == 2:
-            attributes = DEMOGRAPHICS
-            plot_morality_development(interviews, model, attributes)
+            plot_morality_development(interviews, model)
         elif c == 3:
             consistency_threshold = .1
             plot_type = 'spider'

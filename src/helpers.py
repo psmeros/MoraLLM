@@ -284,7 +284,7 @@ NETWORK_ATTRIBUTES = {'ids': 'Survey Id',
 INCOME_RANGE = {**dict.fromkeys(range(1, 5), 'Low'), **dict.fromkeys(range(5, 12), 'High')}
 
 #Education: Dichotomy at College
-EDUCATION_RANGE = {**dict.fromkeys(range(0, 8), 'Less Than College'), **dict.fromkeys(range(8, 15), 'College or More')}
+EDUCATION_RANGE = {**dict.fromkeys(range(0, 8), '< College'), **dict.fromkeys(range(8, 15), '≥ College')}
 
 #Church Attendance: Irregular vs Regular
 CHURCH_ATTENDANCE_RANGE = {**dict.fromkeys(range(0, 5), 'Irregular'), **dict.fromkeys(range(5, 7), 'Regular')}
@@ -330,10 +330,7 @@ RELIGION = {'Wave 1':{1:'Evangelical Protestant',
 #Region map
 REGION = {0:'Not South', 1:'South'}
 
-DEMOGRAPHICS = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
-                {'name' : 'Race', 'values' : ['White', 'Other']},
-                {'name' : 'Household Income', 'values' : ['High', 'Low']},
-                {'name' : 'Parent Education', 'values' : ['Less Than College', 'College or More']}]
+DEMOGRAPHICS = ['Gender', 'Race', 'Household Income', 'Parent Education']
 
 CODED_WAVES = ['Wave 1', 'Wave 3']
 MORALITY_ESTIMATORS = ['Model', 'Coders']

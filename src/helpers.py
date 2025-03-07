@@ -333,9 +333,7 @@ REGION = {0:'Not South', 1:'South'}
 DEMOGRAPHICS = [{'name' : 'Gender', 'values' : ['Male', 'Female']},
                 {'name' : 'Race', 'values' : ['White', 'Other']},
                 {'name' : 'Household Income', 'values' : ['High', 'Low']},
-                {'name' : 'Parent Education', 'values' : ['Tertiary', 'Secondary']},
-                {'name' : 'Adolescence', 'values' : ['Early', 'Late']},
-                {'name' : 'Church Attendance', 'values' : ['Regular', 'Irregular']}]
+                {'name' : 'Parent Education', 'values' : ['Less Than College', 'College or More']}]
 
 CODED_WAVES = ['Wave 1', 'Wave 3']
 MORALITY_ESTIMATORS = ['Model', 'Coders']

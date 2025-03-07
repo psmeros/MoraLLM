@@ -79,26 +79,6 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
 
     #Prepare data
     data = interviews.copy()
-    data = pd.DataFrame(data[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values - data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-    data['Value'] = data['Value'] * 100
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(10, 10))
-    g = sns.catplot(data=data, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
-    g.figure.suptitle('Crosswave Morality Development', x=.5)
-    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
-    g.set(xlim=(-10, 10))
-    g.set_ylabels('')
-    g.set_xlabels('')
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
-    plt.show()
-
-    #Prepare data
-    data = interviews.copy()
     data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].map(lambda x: ADOLESCENCE_RANGE.get(x, None))
     data[CODED_WAVES[0] + ':Household Income'] = data[CODED_WAVES[0] + ':Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
     data[CODED_WAVES[0] + ':Church Attendance'] = data[CODED_WAVES[0] + ':Church Attendance'].map(lambda x: CHURCH_ATTENDANCE_RANGE.get(x, None))
@@ -156,6 +136,41 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     g.set_titles('{col_name}')
     plt.subplots_adjust(wspace=.3)
     plt.savefig('data/plots/fig-morality_shift_by_attribute.png', bbox_inches='tight')
+    plt.show()
+
+def plot_morality_development(interviews, model, attributes):
+    #Prepare data
+    data = interviews.copy()
+    shifts = []
+    slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].notna().all(axis=1)]
+    for from_wave, to_wave in zip(['Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3']):
+        shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+        shift[[attribute['name'] for attribute in attributes]] = slice[[from_wave + ':' + attribute['name'] for attribute in attributes]].values
+        shift = shift.melt(id_vars=[attribute['name'] for attribute in attributes], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+        shifts.append(shift)
+
+    slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].isna().any(axis=1)]
+    for from_wave, to_wave in zip(['Wave 1', 'Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3', 'Wave 3']):
+        shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+        shift[[attribute['name'] for attribute in attributes]] = slice[[from_wave + ':' + attribute['name'] for attribute in attributes]].values
+        shift = shift.dropna().melt(id_vars=[attribute['name'] for attribute in attributes], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+        shifts.append(shift)
+
+    shifts = pd.concat(shifts).reset_index(drop=True)
+    shifts['Value'] = shifts['Value'] * 100
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=shifts, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Crosswave Morality Development', x=.5)
+    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
+    g.set(xlim=(-12, 12))
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/fig-morality_diff_distro.png', bbox_inches='tight')
     plt.show()
 
 #Compute crosswave consistency
@@ -370,10 +385,10 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [2]
     extend_dataset = True
     to_latex = False
-    model = 'deepseek_bin'
+    model = 'nli_quant'
     interviews = prepare_data([model], extend_dataset)
     interviews[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN for wave in CODED_WAVES]] = interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for wave in CODED_WAVES]]
 
@@ -381,9 +396,8 @@ if __name__ == '__main__':
         if c == 1:
             compute_distribution(interviews)
         elif c == 2:
-            shift_threshold = 0
             attributes = DEMOGRAPHICS
-            plot_morality_shifts(interviews, attributes, shift_threshold)
+            plot_morality_development(interviews, model, attributes)
         elif c == 3:
             consistency_threshold = .1
             plot_type = 'spider'

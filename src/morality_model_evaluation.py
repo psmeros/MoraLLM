@@ -8,7 +8,7 @@ from __init__ import *
 from sklearn.metrics import cohen_kappa_score, f1_score
 from IPython.display import display
 
-from src.helpers import CODED_WAVES, CODERS, MORALITY_ESTIMATORS, MORALITY_ORIGIN
+from src.helpers import CODERS, MORALITY_ORIGIN
 from src.parser import merge_codings, prepare_data
 
 
@@ -84,30 +84,6 @@ def plot_coders_agreement():
     plt.savefig('data/plots/fig-coders_agreement.png', bbox_inches='tight')
     plt.show()
 
-#Show benefits of quantification by plotting ecdf
-def plot_ecdf(model):
-    #Prepare Data
-    interviews = prepare_data([model], extend_dataset=True)
-    model = pd.DataFrame(interviews[['Wave 1:' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).assign(Estimator='NLI').assign(Estimator='NLI').dropna()
-    crowd = pd.DataFrame(interviews[['Wave 1:' + mo + '_' + 'crowd' for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).assign(Estimator='NLI').assign(Estimator='Crowd').dropna()
-    data = pd.concat([model, crowd])
-    data = data.melt(id_vars=['Estimator'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    plt.figure(figsize=(10, 10))
-    g = sns.displot(data=data, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=5, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
-    g.figure.suptitle('Cumulative Distribution Function', y=1.05)
-    g.set_titles('{col_name}')
-    g.legend.set_title('')
-    g.set_xlabels('')
-    g.set_ylabels('')
-    ax = plt.gca()
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * 100:.0f}%'))
-    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y * 100:.0f}%'))
-    plt.savefig('data/plots/fig-morality_ecdf.png', bbox_inches='tight')
-    plt.show()
-
 #Plot morality distinction on synthetic data
 def plot_morality_distinction():
     #Prepare Data
@@ -147,7 +123,4 @@ if __name__ == '__main__':
         elif c == 2:
             plot_coders_agreement()
         elif c == 3:
-            model = 'nli_quant'
-            plot_ecdf(model)
-        elif c == 4:
             plot_morality_distinction()

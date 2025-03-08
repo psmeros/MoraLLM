@@ -87,19 +87,16 @@ def plot_coders_agreement():
 #Show benefits of quantification by plotting ecdf
 def plot_ecdf(model):
     #Prepare Data
-    interviews = pd.read_pickle('data/cache/morality_model-' + model + '.pkl')
-    interviews = merge_codings(interviews)
-    model = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    model['Estimator'] = 'MoraLLM'
-    coders = pd.DataFrame(interviews[[mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    coders['Estimator'] = 'Annotators'
-    interviews = pd.concat([coders, model])
-    interviews = interviews.melt(id_vars=['Estimator'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    interviews = prepare_data([model], extend_dataset=True)
+    model = pd.DataFrame(interviews[['Wave 1:' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).assign(Estimator='NLI').assign(Estimator='NLI').dropna()
+    crowd = pd.DataFrame(interviews[['Wave 1:' + mo + '_' + 'crowd' for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).assign(Estimator='NLI').assign(Estimator='Crowd').dropna()
+    data = pd.concat([model, crowd])
+    data = data.melt(id_vars=['Estimator'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    g = sns.displot(data=interviews, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=5, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
+    g = sns.displot(data=data, x='Value', hue='Morality', col='Estimator', kind='ecdf', linewidth=5, aspect=.85, palette=sns.color_palette('Set2')[:len(MORALITY_ORIGIN)])
     g.figure.suptitle('Cumulative Distribution Function', y=1.05)
     g.set_titles('{col_name}')
     g.legend.set_title('')
@@ -132,7 +129,7 @@ def plot_morality_distinction():
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1]
+    config = [3]
     
     for c in config:
         if c == 1:
@@ -150,7 +147,7 @@ if __name__ == '__main__':
         elif c == 2:
             plot_coders_agreement()
         elif c == 3:
-            model = 'entail_ml'
+            model = 'nli_quant'
             plot_ecdf(model)
         elif c == 4:
             plot_morality_distinction()

@@ -138,6 +138,51 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     plt.savefig('data/plots/fig-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
+#Compute morality evolution across waves
+def plot_morality_evolution(interviews, model):
+    #Prepare data
+    data = interviews.copy()
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN] + [wave + ':' + d for d in DEMOGRAPHICS]].values, columns=MORALITY_ORIGIN + DEMOGRAPHICS).assign(Wave=int(wave.split()[1])) for wave in ['Wave 1', 'Wave 2', 'Wave 3']]).dropna().reset_index(drop=True)
+    data = data.melt(id_vars=['Wave']+DEMOGRAPHICS, value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    data['Value'] = data['Value'] * 100
+
+    data['Race'] = data['Race'].map(lambda r: {'White': 'White', 'Black': 'Other', 'Other': 'Other'}.get(r, None))
+    data['Household Income'] = data['Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
+    for demographic in DEMOGRAPHICS:
+        data[demographic] = data[demographic].map(lambda x: x + ' (N = ' + str(int(len(data[data[demographic] == x])/len(MORALITY_ORIGIN)/len(['Wave 1', 'Wave 2', 'Wave 3']))) + ')')
+
+    #Plot overall morality evolution
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    ax = sns.pointplot(data=data, x='Wave', y='Value', hue='Morality', hue_order=MORALITY_ORIGIN, seed=42, palette='Set2')
+    ax.figure.suptitle('Morality Evolution over Waves', x=.5, y=1.05)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.legend(title='Morality', frameon=False, loc='upper center', bbox_to_anchor=(0.5, 1.17), ncol=2)
+    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/fig-morality_evolution_overall.png', bbox_inches='tight')
+    plt.show()
+
+    #Plot morality evolution by demographic
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3)
+    plt.figure(figsize=(20, 10))
+    _, axes = plt.subplots(len(MORALITY_ORIGIN), len(DEMOGRAPHICS), figsize=(40, 10 * len(MORALITY_ORIGIN)))
+    for i, morality in enumerate(MORALITY_ORIGIN):
+        for j, demographic in enumerate(DEMOGRAPHICS):
+            sns.pointplot(data=data[data['Morality'] == morality], x='Wave', y='Value', hue=demographic, dodge=0.05, ax=axes[i, j], palette='Set1')
+            axes[i, j].yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+            axes[i, j].set_ylim(20, 80)
+            axes[i, j].spines['top'].set_visible(False)
+            axes[i, j].spines['right'].set_visible(False)
+            axes[i, j].legend(title=demographic, frameon=False, loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=3) if i == 0 else axes[i, j].legend().set_visible(False)
+            axes[i, j].set_ylabel(morality if j == 0 else '')
+            axes[i, j].set_xlabel('Wave' if i == (len(MORALITY_ORIGIN)-1) else '')
+    plt.tight_layout()
+    plt.suptitle('Morality Evolution over Waves', y=1.02)
+    plt.savefig('data/plots/fig-morality_evolution_by_demographic.png', bbox_inches='tight')
+
+
+#Compute morality shifts across waves
 def plot_morality_development(interviews, model):
     data = interviews.copy()
 
@@ -171,7 +216,7 @@ def plot_morality_development(interviews, model):
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
     g = sns.catplot(data=shifts, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
-    g.figure.suptitle('Morality Development over Waves', x=.5)
+    g.figure.suptitle('Morality Shift over Waves', x=.5)
     g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
     g.set(xlim=(-12, 12))
     g.set_ylabels('')
@@ -195,8 +240,8 @@ def plot_morality_development(interviews, model):
         axes[i//2,i%2].spines['right'].set_visible(False)
         axes[i//2,i%2].legend(title=demographic, frameon=False, loc='upper center', bbox_to_anchor=(0.5, 1.35), ncol=3)
     plt.tight_layout()
-    plt.suptitle('Morality Development over Waves')
-    plt.savefig('data/plots/fig-morality_shift_overall_by_demographic.png', bbox_inches='tight')
+    plt.suptitle('Morality Shift over Waves')
+    plt.savefig('data/plots/fig-morality_shift_by_demographic.png', bbox_inches='tight')
 
 #Compute crosswave consistency
 def compute_consistency(interviews, plot_type, consistency_threshold):
@@ -253,14 +298,11 @@ def compute_consistency(interviews, plot_type, consistency_threshold):
         plt.show()
 
 #Plot Intuitive-Consequentialist and Social-Theistic Morality Distinction
-def plot_morality_distinction(interviews):
+def plot_morality_distinction(interviews, model):
 
     #Prepare Data
     data = interviews.copy()
-    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
-
-    #Normalize Data
-    data = pd.DataFrame(minmax_scale(data), columns=MORALITY_ORIGIN)
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in ['Wave 1', 'Wave 2', 'Wave 3']]).reset_index(drop=True)
     data = data * 100
 
     #Compute Distinction
@@ -270,7 +312,7 @@ def plot_morality_distinction(interviews):
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 10))
     g = sns.jointplot(data=data, x=0, y=1, kind='hex', color='rosybrown')
-    g.figure.suptitle('Morality Sources Distinction', y=1.03)
+    g.figure.suptitle('Morality Distinction', y=1.03)
     ax = plt.gca()
     ax.xaxis.set_ticks([0, 50, 100])
     ax.yaxis.set_ticks([0, 50, 100])
@@ -410,7 +452,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [2,4]
     extend_dataset = True
     to_latex = False
     model = 'nli_quant'
@@ -422,12 +464,13 @@ if __name__ == '__main__':
             compute_distribution(interviews)
         elif c == 2:
             plot_morality_development(interviews, model)
+            plot_morality_evolution(interviews, model)
         elif c == 3:
             consistency_threshold = .1
             plot_type = 'spider'
             compute_consistency(interviews, plot_type, consistency_threshold)
         elif c == 4:
-            plot_morality_distinction(interviews)
+            plot_morality_distinction(interviews, model)
         elif c == 5:
             confs = [
                         #Predicting Future Behavior [0]

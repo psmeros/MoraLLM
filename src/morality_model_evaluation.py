@@ -13,7 +13,7 @@ from src.parser import merge_codings, prepare_data
 
 
 #Plot mean-squared error for all models
-def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluation, palette):
+def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluation):
     #Prepare data
     interviews = prepare_data(models, extend_dataset=True)
     interviews = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd'] + CODERS]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd'] + CODERS]) for wave in evaluation_waves]).dropna()
@@ -34,7 +34,7 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
             # scores.append(round(score, 2))
         for model in models:
             score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-            score['Model'] = {'wc_bin':'$Dictionary$', 'wc_sum_bin':'$WC_{Σ}$', 'wc_resp_bin':'$WC_{R}$', 'lda_bin':'$LDA$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT4$', 'chatgpt_resp_bin':'$GPT4_{R}$', 'chatgpt_sum_bin':'$GPT4_{Σ}$', 'chatgpt_bin_notags':'$GPT4_{NT}$', 'chatgpt_bin_3.5':'$GPT3.5_{F}$', 'chatgpt_bin_nodistinction':'$GPT4_{ND}$', 'chatgpt_bin_interviewers':'$GPT4_{I}$', 'deepseek_bin':'$DeepSeek$'}.get(model, model)
+            score['Model'] = {'wc_bin':'$Dictionary$', 'wc_sum_bin':'$Dictionary_{Σ}$', 'wc_resp_bin':'$Dictionary_{R}$', 'lda_bin':'$LDA$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT$', 'sbert_resp_bin':'$SBERT_{R}$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'nli_bin':'$NLI$', 'nli_resp_bin':'$NLI_{R}$', 'nli_sum_bin':'$NLI_{Σ}$', 'chatgpt_bin':'$GPT$', 'chatgpt_resp_bin':'$GPT_{R}$', 'chatgpt_sum_bin':'$GPT_{Σ}$', 'chatgpt_bin_notags':'$GPT_{NT}$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_bin_nodistinction':'$GPT_{ND}$', 'chatgpt_bin_interviewers':'$GPT_{I}$', 'deepseek_bin':'$DeepSeek$', 'deepseek_bin_notags':'$DeepSeek_{NT}$', 'deepseek_bin_nodistinction':'$DeepSeek_{ND}$', 'deepseek_resp_bin':'$DeepSeek_{R}$', 'deepseek_sum_bin':'$DeepSeek_{Σ}$'}.get(model, model)
             scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
     display(scores.set_index('Model').groupby('Model', sort=False).mean().round(2))
@@ -45,8 +45,9 @@ def plot_model_evaluation(models, evaluation_waves, n_bootstraps, human_evaluati
     #Plot model comparison
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
     plt.figure(figsize=(10, 5))
-    sns.barplot(data=scores, y='Model', hue='Model', x='score', palette=palette)
+    sns.barplot(data=scores, y='Model', x='score')
     ax = plt.gca()
+    ax.set_xlim(.4, .85)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     # plt.axvline(x=coders_agreement, linestyle='--', linewidth=1.5, color='grey', label='')
@@ -105,21 +106,18 @@ def plot_morality_distinction():
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [3]
+    config = [1]
     
     for c in config:
         if c == 1:
-            # models = ['chatgpt_bin_3.5', 'chatgpt_sum_bin', 'chatgpt_bin_notags', 'chatgpt_bin']
-            # models = ['chatgpt_bin_interviewers', 'chatgpt_bin_nodistinction', 'chatgpt_bin_notags', 'chatgpt_bin']
-            # palette = sns.color_palette('Blues', len(models))
-            # models = ['chatgpt_sum_bin', 'chatgpt_resp_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_resp_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_resp_bin', 'sbert_bin', 'lda_sum_bin', 'lda_resp_bin', 'lda_bin', 'wc_sum_bin', 'wc_resp_bin', 'wc_bin']
-            # palette = [c for c in sns.color_palette('Blues', 5) for _ in range(3)] + sns.color_palette('Purples', 5)[4:5]*2
+            # models = ['chatgpt_bin_3.5', 'chatgpt_bin']
+            # models = ['chatgpt_bin_nodistinction', 'chatgpt_bin_notags', 'chatgpt_bin', 'deepseek_bin_nodistinction', 'deepseek_bin_notags', 'deepseek_bin']
+            # models = ['deepseek_bin', 'chatgpt_sum_bin', 'chatgpt_resp_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_resp_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_resp_bin', 'sbert_bin', 'lda_sum_bin', 'lda_resp_bin', 'lda_bin', 'wc_sum_bin', 'wc_resp_bin', 'wc_bin']
             models = ['deepseek_bin', 'chatgpt_bin', 'nli_bin', 'sbert_bin', 'lda_bin', 'wc_bin']
-            palette = sns.color_palette('Blues', 6) + sns.color_palette('Purples', 5)[4:5]
             evaluation_waves = ['Wave 1']
             human_evaluation = True
             n_bootstraps = 10
-            plot_model_evaluation(models=models, evaluation_waves=evaluation_waves, n_bootstraps=n_bootstraps, human_evaluation=human_evaluation, palette=palette)
+            plot_model_evaluation(models=models, evaluation_waves=evaluation_waves, n_bootstraps=n_bootstraps, human_evaluation=human_evaluation)
         elif c == 2:
             plot_coders_agreement()
         elif c == 3:

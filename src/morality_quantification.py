@@ -80,7 +80,7 @@ def compute_morality_source(models, excerpts):
 
             elif model == 'deepseek':
                 #Call DeepSeek API
-                def call_deepseek(text: str, mo: str, timeout: int = 15, max_retries: int = 3, backoff_factor: float = 1.0):
+                def call_deepseek(text: str, mo: str, timeout: int = 15, max_retries: int = 10, backoff_factor: float = 1.0):
                     api_key = os.getenv('DEEPSEEK_API_KEY')
                     url = 'https://api.deepseek.com/v1/chat/completions'
                     headers = {'Authorization': f'Bearer {api_key}','Content-Type': 'application/json'}
@@ -92,13 +92,11 @@ def compute_morality_source(models, excerpts):
                             response.raise_for_status()
                             
                             #Parse response
-                            try:
-                                response = response.json()
-                                parced_response = response['choices'][0]['message']['content'].strip()
-                                parced_response = 0 if '0' in parced_response else 1 if '1' in parced_response else -1
-                            except:
-                                print('Could not parse response', response)
-                                parced_response = -1
+                            response = response.json()
+                            parced_response = response['choices'][0]['message']['content'].strip()
+                            parced_response = 0 if '0' in parced_response else 1 if '1' in parced_response else -1
+                            if parced_response == -1:
+                                raise Exception('Response not parsable')
                             return parced_response
                         
                         except requests.exceptions.RequestException as e:

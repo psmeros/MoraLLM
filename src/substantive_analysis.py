@@ -59,17 +59,17 @@ def plot_ecdf(interviews, model):
     plt.show()
 
 #Compute morality evolution across waves
-def plot_morality_evolution(interviews, model):
+def plot_morality_evolution(interviews, model, waves):
     #Prepare data
     data = interviews.copy()
-    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN] + [wave + ':' + d for d in DEMOGRAPHICS]].values, columns=MORALITY_ORIGIN + DEMOGRAPHICS).assign(Wave=int(wave.split()[1])) for wave in ['Wave 1', 'Wave 2', 'Wave 3']]).dropna().reset_index(drop=True)
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN] + [wave + ':' + d for d in DEMOGRAPHICS]].values, columns=MORALITY_ORIGIN + DEMOGRAPHICS).assign(Wave=int(wave.split()[1])) for wave in waves]).dropna().reset_index(drop=True)
     data = data.melt(id_vars=['Wave']+DEMOGRAPHICS, value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
     data['Value'] = data['Value'] * 100
 
     data['Race'] = data['Race'].map(lambda r: {'White': 'White', 'Black': 'Other', 'Other': 'Other'}.get(r, None))
     data['Household Income'] = data['Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
     for demographic in DEMOGRAPHICS:
-        data[demographic] = data[demographic].map(lambda x: x + ' (N = ' + str(int(len(data[data[demographic] == x])/len(MORALITY_ORIGIN)/len(['Wave 1', 'Wave 2', 'Wave 3']))) + ')')
+        data[demographic] = data[demographic].map(lambda x: x + ' (N = ' + str(int(len(data[data[demographic] == x])/len(MORALITY_ORIGIN)/len(waves))) + ')')
 
     #Plot overall morality evolution
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
@@ -103,26 +103,34 @@ def plot_morality_evolution(interviews, model):
     plt.savefig('data/plots/fig-morality_evolution_by_demographic.png', bbox_inches='tight')
 
 #Compute morality shifts across waves
-def plot_morality_shift(interviews, model):
+def plot_morality_shift(interviews, model, waves):
     data = interviews.copy()
 
     #Compute morality shifts across waves
     shifts = []
-    slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].notna().all(axis=1)]
-    for from_wave, to_wave in zip(['Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3']):
-        shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-        shift[DEMOGRAPHICS] = slice[[from_wave + ':' + d for d in DEMOGRAPHICS]].values
-        shift ['Count'] = .5
-        shift = shift.melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-        shifts.append(shift)
+    if len(waves) == 3:
+        slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].notna().all(axis=1)]
+        for from_wave, to_wave in zip(['Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3']):
+            shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+            shift[DEMOGRAPHICS] = slice[[from_wave + ':' + d for d in DEMOGRAPHICS]].values
+            shift ['Count'] = .5
+            shift = shift.melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+            shifts.append(shift)
 
-    slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].isna().any(axis=1)]
-    for from_wave, to_wave in zip(['Wave 1', 'Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3', 'Wave 3']):
-        shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-        shift[DEMOGRAPHICS] = slice[[from_wave + ':' + d for d in DEMOGRAPHICS]].values
+        slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].isna().any(axis=1)]
+        for from_wave, to_wave in zip(['Wave 1', 'Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3', 'Wave 3']):
+            shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+            shift[DEMOGRAPHICS] = slice[[from_wave + ':' + d for d in DEMOGRAPHICS]].values
+            shift ['Count'] = 1
+            shift = shift.dropna().melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+            shifts.append(shift)
+    elif len(waves) == 2:
+        shift = pd.DataFrame(data[[waves[1] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - data[[waves[0] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+        shift[DEMOGRAPHICS] = data[[waves[0] + ':' + d for d in DEMOGRAPHICS]].values
         shift ['Count'] = 1
         shift = shift.dropna().melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
         shifts.append(shift)
+
 
     #Prepare data
     shifts = pd.concat(shifts).reset_index(drop=True)
@@ -138,7 +146,7 @@ def plot_morality_shift(interviews, model):
     g = sns.catplot(data=shifts, x='Value', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
     g.figure.suptitle('Morality Shift over Waves', x=.5)
     g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
-    g.set(xlim=(-12, 12))
+    g.set(xlim=(-25, 25))
     g.set_ylabels('')
     g.set_xlabels('')
     ax = plt.gca()
@@ -152,7 +160,7 @@ def plot_morality_shift(interviews, model):
     for i, demographic in enumerate(DEMOGRAPHICS):
         sns.barplot(data=shifts, x='Value', y='Morality', hue=demographic, order=MORALITY_ORIGIN, dodge=0.3, ax=axes[i//2,i%2], errorbar=None, palette='Set1')
         axes[i//2,i%2].axvline(x=0, color='grey', linestyle='--', linewidth=1.5)
-        axes[i//2,i%2].set_xlim(-12, 12)
+        axes[i//2,i%2].set_xlim(-25, 25)
         axes[i//2,i%2].set_xlabel('')
         axes[i//2,i%2].set_ylabel('')
         axes[i//2,i%2].xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
@@ -164,11 +172,11 @@ def plot_morality_shift(interviews, model):
     plt.savefig('data/plots/fig-morality_shift_by_demographic.png', bbox_inches='tight')
 
 #Plot Intuitive-Consequentialist and Social-Theistic Morality Distinction
-def plot_morality_distinction(interviews, model):
+def plot_morality_distinction(interviews, model, waves):
 
     #Prepare Data
     data = interviews.copy()
-    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in ['Wave 1', 'Wave 2', 'Wave 3']]).reset_index(drop=True)
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in waves]).reset_index(drop=True)
     data = data * 100
 
     #Compute Distinction
@@ -318,10 +326,10 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5]
+    config = [4]
     extend_dataset = True
     to_latex = False
-    model = 'nli_quant'
+    model = 'nli_sum_quant'
     interviews = prepare_data([model], extend_dataset)
 
     for c in config:
@@ -330,11 +338,14 @@ if __name__ == '__main__':
         elif c == 2:
             plot_ecdf(interviews, model)
         elif c == 3:
-            plot_morality_evolution(interviews, model)
+            waves = ['Wave 1', 'Wave 3']
+            plot_morality_evolution(interviews, model, waves)
         elif c == 4:
-            plot_morality_shift(interviews, model)
+            waves = ['Wave 1', 'Wave 3']
+            plot_morality_shift(interviews, model, waves)
         elif c == 5:
-            plot_morality_distinction(interviews, model)
+            waves = ['Wave 1', 'Wave 3']
+            plot_morality_distinction(interviews, model, waves)
         elif c == 6:
             confs = [
                         #Predicting Future Behavior [0]

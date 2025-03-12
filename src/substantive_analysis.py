@@ -64,7 +64,7 @@ def plot_morality_evolution(interviews, model, waves):
     data = interviews.copy()
     data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN] + [wave + ':' + d for d in DEMOGRAPHICS]].values, columns=MORALITY_ORIGIN + DEMOGRAPHICS).assign(Wave=int(wave.split()[1])) for wave in waves]).dropna().reset_index(drop=True)
     data = data.melt(id_vars=['Wave']+DEMOGRAPHICS, value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-    data['Value'] = data['Value'] * 100
+    data['Value'] = pd.to_numeric(data['Value']) * 100
 
     data['Race'] = data['Race'].map(lambda r: {'White': 'White', 'Black': 'Other', 'Other': 'Other'}.get(r, None))
     data['Household Income'] = data['Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
@@ -74,13 +74,15 @@ def plot_morality_evolution(interviews, model, waves):
     #Plot overall morality evolution
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
     plt.figure(figsize=(10, 10))
-    ax = sns.barplot(data=data, y='Wave', x='Value', orient='h', hue='Morality', hue_order=MORALITY_ORIGIN, seed=42, palette='Set2')
-    ax.figure.suptitle('Morality Evolution over Waves', x=.5, y=1.05)
+    ax = sns.lineplot(data=data, x='Wave', y='Value', hue='Morality', hue_order=MORALITY_ORIGIN, seed=42, palette='Set2')
+    ax.set_ylim(20, 100)
+    ax.set_yticks([20, 60, 100])
+    ax.set_xticks([int(w.split()[1]) for w in waves])
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.set_xlim(20, 80)
-    ax.legend(title='Morality', frameon=False, loc='upper center', bbox_to_anchor=(0.5, 1.17), ncol=2)
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    ax.legend(title='', frameon=False, loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=2)
+    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.suptitle('Morality Evolution over Waves', y=1)
     plt.savefig('data/plots/fig-morality_evolution_overall.png', bbox_inches='tight')
     plt.show()
 
@@ -90,14 +92,16 @@ def plot_morality_evolution(interviews, model, waves):
     _, axes = plt.subplots(len(MORALITY_ORIGIN), len(DEMOGRAPHICS), figsize=(40, 10 * len(MORALITY_ORIGIN)))
     for i, morality in enumerate(MORALITY_ORIGIN):
         for j, demographic in enumerate(DEMOGRAPHICS):
-            sns.barplot(data=data[data['Morality'] == morality], y='Wave', x='Value', orient='h', hue=demographic, dodge=0.05, ax=axes[i, j], palette='Set1')
-            axes[i, j].xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-            axes[i, j].set_xlim(20, 80)
+            sns.lineplot(data=data[data['Morality'] == morality], x='Wave', y='Value', hue=demographic, seed=42, ax=axes[i, j], palette='Set1')
+            axes[i, j].yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+            axes[i, j].set_ylim(20, 100)
+            axes[i, j].set_yticks([20, 60, 100])
+            axes[i, j].set_xticks([int(w.split()[1]) for w in waves])
             axes[i, j].spines['top'].set_visible(False)
             axes[i, j].spines['right'].set_visible(False)
             axes[i, j].legend(title=demographic, frameon=False, loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=3) if i == 0 else axes[i, j].legend().set_visible(False)
-            axes[i, j].set_xlabel(morality)
-            axes[i, j].set_ylabel('Wave' if j == 0 else '')
+            axes[i, j].set_xlabel('Wave')
+            axes[i, j].set_ylabel(morality if j == 0 else '')
     plt.tight_layout()
     plt.suptitle('Morality Evolution over Waves', y=1.02)
     plt.savefig('data/plots/fig-morality_evolution_by_demographic.png', bbox_inches='tight')
@@ -196,6 +200,33 @@ def plot_morality_distinction(interviews, model, waves):
     ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     plt.savefig('data/plots/fig-morality_distinction.png', bbox_inches='tight')
     plt.show()
+
+def compute_decisiveness(interviews, model, waves, decisive_threshold = .5):
+    #Prepare Data
+    data = interviews.copy()
+    decisiveness_options = ['Rigidly Decisive', 'Ambivalent', 'Rigidly Indecisive']
+    decisiveness = data.apply(lambda i: pd.Series(((i[waves[0] + ':' + mo + '_' + model] >= decisive_threshold), (i[waves[1] + ':' + mo + '_' + model] >= decisive_threshold)) for mo in MORALITY_ORIGIN), axis=1).set_axis(MORALITY_ORIGIN, axis=1)
+    decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[1] if d[0] and not d[1] else decisiveness_options[2] if not d[0] and not d[1] else '')
+    
+    decisiveness = decisiveness.apply(lambda x: x.value_counts(normalize=True) * 100).T
+    decisiveness = decisiveness.stack().reset_index().rename(columns={'level_0':'Morality', 'level_1':'Decisiveness', 0:'Value'})
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
+    plt.figure(figsize=(10, 10))
+
+    sns.barplot(data=decisiveness, y='Morality', x='Value', hue='Decisiveness', order=MORALITY_ORIGIN, hue_order=decisiveness_options, palette=sns.color_palette('coolwarm', n_colors=len(decisiveness_options)))
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y :.0f}%'))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.title('Crosswave Decisiveness')
+    plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
+    plt.savefig('data/plots/fig-decisiveness.png', bbox_inches='tight')
+    plt.show()
+
 
 #Predict Survey and Oral Behavior based on Morality Origin
 def compute_behavioral_regressions(interviews, confs, to_latex):
@@ -326,7 +357,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [4]
+    config = [7]
     extend_dataset = True
     to_latex = False
     model = 'nli_sum_quant'
@@ -387,3 +418,5 @@ if __name__ == '__main__':
                     ]
             confs = [confs[2]]
             compute_behavioral_regressions(interviews, confs, to_latex)
+        elif c == 7:
+            compute_decisiveness(interviews, model, ['Wave 1', 'Wave 3'])

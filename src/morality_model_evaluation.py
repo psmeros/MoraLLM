@@ -112,7 +112,7 @@ if __name__ == '__main__':
         if c == 1:
             # models = ['chatgpt_bin_3.5', 'chatgpt_bin']
             # models = ['chatgpt_bin_nodistinction', 'chatgpt_bin_notags', 'chatgpt_bin', 'deepseek_bin_nodistinction', 'deepseek_bin_notags', 'deepseek_bin']
-            # models = ['deepseek_bin', 'chatgpt_sum_bin', 'chatgpt_resp_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_resp_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_resp_bin', 'sbert_bin', 'lda_sum_bin', 'lda_resp_bin', 'lda_bin', 'wc_sum_bin', 'wc_resp_bin', 'wc_bin']
+            # models = ['deepseek_sum_bin', 'deepseek_resp_bin', 'deepseek_bin', 'chatgpt_sum_bin', 'chatgpt_resp_bin', 'chatgpt_bin', 'nli_sum_bin', 'nli_resp_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_resp_bin', 'sbert_bin', 'lda_sum_bin', 'lda_resp_bin', 'lda_bin', 'wc_sum_bin', 'wc_resp_bin', 'wc_bin']
             models = ['deepseek_bin', 'chatgpt_bin', 'nli_bin', 'sbert_bin', 'lda_bin', 'wc_bin']
             evaluation_waves = ['Wave 1']
             human_evaluation = True

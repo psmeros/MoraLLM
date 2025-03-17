@@ -102,7 +102,7 @@ def compute_morality_source(models, excerpts):
                                     raise Exception('Response not parsable')
                             return parced_response
                         
-                        except requests.exceptions.RequestException as e:
+                        except Exception as e:
                             print(f"Attempt {attempt + 1} failed: {str(e)}")
                             
                             # Handle rate limiting

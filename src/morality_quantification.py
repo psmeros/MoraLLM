@@ -65,26 +65,24 @@ def compute_morality_source(models, excerpts):
                 morality_origin = classifier(data[morality_text]).apply(aggregator)
                 data = data.join(morality_origin)
 
-            #ChatGPT model
-            elif model in ['chatgpt_bin', 'chatgpt_quant']:
-                response = 'bin' if model == 'chatgpt_bin' else 'quant' if model == 'chatgpt_quant' else ''
-                #Call OpenAI API
-                openai.api_key = os.getenv('OPENAI_API_KEY')
-                classifier = lambda text: [openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': chatgpt_prompt(mo, response)},{'role': 'user','content': text}], temperature=.2, max_tokens=32, frequency_penalty=0, presence_penalty=0, seed=42) for mo in MORALITY_ORIGIN]
-                aggregator = lambda r: pd.Series({mo:(lambda n: float(n) if n.strip().isdigit() else 0)(r[i]['choices'][0]['message']['content']) for i, mo in enumerate(MORALITY_ORIGIN)})
-                full_pipeline = lambda text: aggregator(classifier(text))
+            #LLM models
+            elif model in ['chatgpt_bin', 'deepseek_bin']:
+                #Call API
+                def call_llm(llm: str, prompt: str, text: str, timeout: int = 15, max_retries: int = 10, backoff_factor: float = 1.0):
+                    # Choose model
+                    if llm == 'deepseek_bin':
+                        url = 'https://api.deepseek.com/v1/chat/completions'
+                        model = 'deepseek-chat'
+                        api_key = os.getenv('DEEPSEEK_API_KEY')
+                        temperature = 1.3
+                    elif llm == 'chatgpt_bin':
+                        url = 'https://api.openai.com/v1/chat/completions'
+                        model = 'gpt-4o-mini'
+                        api_key = os.getenv('OPENAI_API_KEY')
+                        temperature = .2
 
-                #Classify morality origin and join results
-                morality_origin = data[morality_text].apply(full_pipeline)
-                data = data.join(morality_origin)
-
-            elif model == 'deepseek':
-                #Call DeepSeek API
-                def call_deepseek(text: str, mo: str, timeout: int = 15, max_retries: int = 10, backoff_factor: float = 1.0):
-                    api_key = os.getenv('DEEPSEEK_API_KEY')
-                    url = 'https://api.deepseek.com/v1/chat/completions'
                     headers = {'Authorization': f'Bearer {api_key}','Content-Type': 'application/json'}
-                    data = {'model': 'deepseek-chat','messages': [{'role': 'system', 'content': chatgpt_prompt(mo, 'bin')}, {'role': 'user', 'content': text}], 'temperature':1.3, 'max_tokens':32, 'seed':42}
+                    data = {'model': model,'messages': [{'role': 'system', 'content': prompt}, {'role': 'user', 'content': text}], 'temperature':temperature, 'max_tokens':32, 'seed':42}
 
                     for attempt in range(max_retries):
                         try:
@@ -118,7 +116,7 @@ def compute_morality_source(models, excerpts):
                     print('Request failed after max retries')
                     return -1
                 
-                full_pipeline = lambda text: pd.Series({mo:call_deepseek(text, mo) for mo in MORALITY_ORIGIN})
+                full_pipeline = lambda text: pd.Series({mo:call_llm(llm=model, prompt=chatgpt_prompt(mo, 'bin'), text=text) for mo in MORALITY_ORIGIN})
                 tqdm.pandas()
 
                 #Classify morality origin and join results

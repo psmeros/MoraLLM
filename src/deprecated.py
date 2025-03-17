@@ -576,33 +576,6 @@ def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases
             print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
             print('\n----------\n')
 
-def compute_decisiveness(interviews):
-    decisive_threshold = {mo + ':' + wave : np.mean(interviews[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0]]) for mo in MORALITY_ORIGIN for wave in CODED_WAVES}
-
-    #Prepare Data
-    decisiveness_options = ['Rigidly Decisive', 'Ambivalent', 'Rigidly Indecisive']
-    decisiveness = interviews.apply(lambda i: pd.Series(((i[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] >= decisive_threshold[mo + ':' + CODED_WAVES[0]]), (i[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0]] >= decisive_threshold[mo + ':' + CODED_WAVES[1]])) for mo in MORALITY_ORIGIN), axis=1).set_axis([mo for mo in MORALITY_ORIGIN], axis=1)
-    decisiveness = decisiveness.map(lambda d: decisiveness_options[0] if d[0] and d[1] else decisiveness_options[1] if not d[0] and d[1] else decisiveness_options[1] if d[0] and not d[1] else decisiveness_options[2] if not d[0] and not d[1] else '')
-    
-    decisiveness = decisiveness.apply(lambda x: x.value_counts(normalize=True) * 100).T
-    decisiveness = decisiveness.stack().reset_index().rename(columns={'level_0':'Morality', 'level_1':'Decisiveness', 0:'Value'})
-
-    #Plot
-    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=3.5)
-    plt.figure(figsize=(10, 10))
-
-    sns.barplot(data=decisiveness, y='Morality', x='Value', hue='Decisiveness', order=MORALITY_ORIGIN, hue_order=decisiveness_options, palette=sns.color_palette('coolwarm', n_colors=len(decisiveness_options)))
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y :.0f}%'))
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    plt.xlabel('')
-    plt.ylabel('')
-    plt.title('Crosswave Morality Rigidity')
-    plt.legend(bbox_to_anchor=(1, 1.03)).set_frame_on(False)
-    plt.savefig('data/plots/fig-decisiveness.png', bbox_inches='tight')
-    plt.show()
-
 def compute_std_diff(interviews, attributes):
     #Prepare Data
     data = interviews.copy()
@@ -857,8 +830,6 @@ if __name__ == '__main__':
             incoherent_cases = [2]
             max_diff_cases = [1]
             print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases)
-        elif c == 12:
-            compute_decisiveness(interviews)
         elif c == 13:
             attributes = DEMOGRAPHICS
             compute_std_diff(interviews, attributes)

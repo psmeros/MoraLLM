@@ -17,7 +17,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
-from src.helpers import MORALITY_VOCAB, chatgpt_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED
+from src.helpers import MORALITY_VOCAB, llm_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED
 from src.parser import clean_morality_tags
 
 
@@ -66,16 +66,16 @@ def compute_morality_source(models, excerpts):
                 data = data.join(morality_origin)
 
             #LLM models
-            elif model in ['chatgpt_bin', 'deepseek_bin']:
+            elif model in ['chatgpt_bin', 'deepseek_bin', 'chatgpt_bin_ao', 'deepseek_bin_ao']:
                 #Call API
                 def call_llm(llm: str, prompt: str, text: str, timeout: int = 15, max_retries: int = 10, backoff_factor: float = 1.0):
                     # Choose model
-                    if llm == 'deepseek_bin':
+                    if llm.startswith('deepseek_bin'):
                         url = 'https://api.deepseek.com/v1/chat/completions'
                         model = 'deepseek-chat'
                         api_key = os.getenv('DEEPSEEK_API_KEY')
                         temperature = 1.3
-                    elif llm == 'chatgpt_bin':
+                    elif llm.startswith('chatgpt_bin'):
                         url = 'https://api.openai.com/v1/chat/completions'
                         model = 'gpt-4o-mini'
                         api_key = os.getenv('OPENAI_API_KEY')
@@ -92,9 +92,14 @@ def compute_morality_source(models, excerpts):
                             #Parse response
                             response = response.json()
                             parced_response = response['choices'][0]['message']['content'].strip()
-                            parced_response = 0 if '0' in parced_response else 1 if '1' in parced_response else -1
-                            if parced_response == -1:
-                                raise Exception('Response not parsable')
+                            if llm.endswith('_ao'):
+                                parced_response = pd.Series({mo:int(r) for mo, r in zip(MORALITY_ORIGIN, parced_response)})
+                                if not parced_response.apply(lambda r: r in [0,1]).all():
+                                    raise Exception('Response not parsable')
+                            else:
+                                parced_response = 0 if '0' in parced_response else 1 if '1' in parced_response else -1
+                                if parced_response == -1:
+                                    raise Exception('Response not parsable')
                             return parced_response
                         
                         except requests.exceptions.RequestException as e:
@@ -114,9 +119,9 @@ def compute_morality_source(models, excerpts):
                             time.sleep(sleep_time)
 
                     print('Request failed after max retries')
-                    return -1
-                
-                full_pipeline = lambda text: pd.Series({mo:call_llm(llm=model, prompt=chatgpt_prompt(mo, 'bin'), text=text) for mo in MORALITY_ORIGIN})
+                    return (pd.Series({mo:-1 for mo in MORALITY_ORIGIN}) if llm.endswith('_ao') else -1)
+                 
+                full_pipeline = lambda text: (call_llm(llm=model, prompt=llm_prompt('all', 'bin_all'), text=text) if model.endswith('_ao') else pd.Series({mo:call_llm(llm=model, prompt=llm_prompt(mo, 'bin'), text=text) for mo in MORALITY_ORIGIN}))
                 tqdm.pandas()
 
                 #Classify morality origin and join results
@@ -214,7 +219,7 @@ if __name__ == '__main__':
     for c in config:
         if c == 1:
             excerpts = ['full_QnA']
-            models = ['deepseek']
+            models = ['deepseek_bin_ao', 'chatgpt_bin_ao']
             compute_morality_source(models, excerpts)
         elif c == 2:
             compute_synthetic_data()

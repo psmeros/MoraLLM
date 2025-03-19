@@ -180,12 +180,12 @@ Your job is to summarize each transcript strictly in one sentence.
 Make sure to include any references of the respondents to intuition, the consequences of their actions, social influences such as parents or friends, or religious reasons.
 If there are more than one references, order them in the summary according to their importance."""
 
-chatgpt_prompt = lambda mo, r: """You are a helpful assistant that classifies interview transcripts.
+llm_prompt = lambda mo, r: """You are a helpful assistant that classifies interview transcripts.
 In these interviews, respondents are asked by the interviewers how they make decisions.
 Interviewers are marked with "I:" and respondents are marked with "R:" in the transcripts.
 Your job is to detect whether respondents refer to """ + \
-('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') + '\n'+ \
-('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly on a Likert scale from 0 to 4, depending on the emphasis the respondents give to ' + ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') if r == 'quant' else '')
+('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else 'four dimensions: i) intuition, ii) the consequences of their actions, iii) social influences such as parents or friends, and iv) religious reasons.' if mo == 'all' else '') + '\n'+ \
+('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly with four digits, each one being 1 if they refer to this dimension and 0 if they do not refer to this dimension.' if r == 'bin_all' else 'Response strictly on a Likert scale from 0 to 4, depending on the emphasis the respondents give to ' + ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') if r == 'quant' else '')
 
 chatgpt_synthetic_prompt = lambda mo: """
 You are a helpful assistant that generates interview summaries.

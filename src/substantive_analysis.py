@@ -353,14 +353,14 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         if conf['Model'] == 'Probit':
             results = pd.concat([results.drop(index=['N', 'AIC']), results.loc[['N', 'AIC']]])
         print(results.to_latex()) if to_latex else display(results)
-        # results.to_clipboard()
+        results.to_clipboard()
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [7]
+    config = [6]
     extend_dataset = True
     to_latex = False
-    model = 'nli_sum_quant'
+    model = 'deepseek_bin'
     interviews = prepare_data([model], extend_dataset)
 
     for c in config:
@@ -389,8 +389,8 @@ if __name__ == '__main__':
                           'Intercept': True,
                           'Previous Behavior': True,
                           'Model': 'Probit',
-                          'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
-                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Catholic', 'White', 'Male', 'Not South', 'College or More']}}
+                          'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA', 'Age'],
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Catholic', 'White', 'Male', 'Not South', '≥ College']}}
                     ] + [
                         #Computing Pairwise Correlations [1]
                          {'Descrition': 'Computing Pairwise Correlations: ' + model,
@@ -414,9 +414,9 @@ if __name__ == '__main__':
                           'Previous Behavior': False,
                           'Model': 'OLS',
                           'Controls': ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs', 'Religion', 'Race', 'Gender', 'Region', 'Parent Education', 'Household Income', 'GPA'],
-                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Catholic', 'White', 'Male', 'Not South', 'College or More']}}
+                          'References': {'Attribute Names': ['Religion', 'Race', 'Gender', 'Region', 'Parent Education'], 'Attribute Values': ['Catholic', 'White', 'Male', 'Not South', '≥ College']}}
                     ]
-            confs = [confs[2]]
+            confs = [confs[0]]
             compute_behavioral_regressions(interviews, confs, to_latex)
         elif c == 7:
             compute_decisiveness(interviews, model, ['Wave 1', 'Wave 3'])

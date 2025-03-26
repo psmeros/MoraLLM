@@ -251,9 +251,9 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             
             #Prepare Data
             data = interviews.copy()
-            data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
-            data.columns = ['Survey Id'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
-            data['Wave'] = pd.concat([pd.Series([float(from_wave.split()[1])] * int(len(data)/len(conf['From_Wave']))) for from_wave in conf['From_Wave']])
+            data[[wave + ':Wave' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]] = pd.Series([wave.split()[1] for wave in ['Wave 1', 'Wave 2', 'Wave 3']])
+            data = pd.concat([pd.DataFrame(data[['Survey Id'] + [from_wave + ':Wave'] + [from_wave + ':' + pr for pr in conf['Predictors']] + [from_wave + ':' + c for c in conf['Controls']] + ([from_wave + ':' + p for p in conf['Predictions']] if conf['Previous Behavior'] else []) + [to_wave + ':' + p for p in conf['Predictions']]].values) for from_wave, to_wave in zip(conf['From_Wave'], conf['To_Wave'])])
+            data.columns = ['Survey Id'] + ['Wave'] + conf['Predictors'] + conf['Controls'] + (conf['Predictions'] if conf['Previous Behavior'] else []) + [p + '_pred' for p in conf['Predictions']]
             data = data.map(lambda x: np.nan if x == None else x)
             data = data[~data[conf['Predictors']].isna().all(axis=1)]
             
@@ -263,7 +263,7 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
 
             #Add Reference Controls
             for attribute_name in conf['References']['Attribute Names']:
-                dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').astype(int)                
+                dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').astype(int)
                 data = pd.concat([data, dummies], axis=1).drop(attribute_name, axis=1)
                 c = 'Controls' if attribute_name in conf['Controls'] else 'Predictors' if attribute_name in conf['Predictors'] else None
                 conf[c] = conf[c][:conf[c].index(attribute_name)] + list(dummies.columns) + conf[c][conf[c].index(attribute_name) + 1:]
@@ -300,6 +300,12 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
                 stats.columns = pd.MultiIndex.from_tuples([(wave, stat) for wave in conf['To_Wave'] for stat in stats.columns[:6]])
                 print(stats.to_latex()) if to_latex else display(stats)
                 stats.to_clipboard()
+            
+            #Compute Dummy for Wave variable
+            if conf['Dummy']:
+                dummies = pd.get_dummies(data['Wave'], prefix='Wave', prefix_sep=' = ').astype(int)
+                dummies = dummies[dummies.columns[1:]]
+                data = pd.concat([data, dummies], axis=1).drop('Wave', axis=1)
 
             #Drop NA and Reference Dummies
             conf['Controls'] = [c for c in conf['Controls'] if c not in [attribute_name + ' = ' + attribute_value for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values'])]]
@@ -310,11 +316,11 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
             #Compute Results
             if conf['Model'] in ['Probit', 'OLS']:
                 #Define Formulas
-                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + Q("Wave")' if conf['Dummy'] and (p not in ['Cheat', 'Cutclass', 'Secret']) else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
+                formulas = ['Q("' + p + '_pred")' + ' ~ ' + ' + '.join(['Q("' + pr + '")' for pr in conf['Predictors']]) + (' + ' + ' + '.join(['Q("' + c + '")' for c in conf['Controls']]) if conf['Controls'] else '') + ('+ Q("' + p + '")' if conf['Previous Behavior'] else '') + ' + Q("Survey Id")' + (' + ' + ' + '.join(['Q("' + w + '")' for w in dummies.columns]) if conf['Dummy'] and (p not in ['Cheat', 'Cutclass', 'Secret']) else '') + (' - 1' if not conf['Intercept'] else '') for p in conf['Predictions']]
                 
                 #Run Regressions
                 results = {}
-                results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + (['Wave'] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else []) + ['N', 'AIC']
+                results_index = (['Intercept'] if conf['Intercept'] else []) + [pr.split('_')[0] for pr in conf['Predictors']] + conf['Controls'] + ([w for w in dummies.columns] if conf['Dummy'] else []) + (['Previous Behavior'] if conf['Previous Behavior'] else []) + ['N', 'AIC']
                 for formula, p in zip(formulas, conf['Predictions']):
                     y, X = patsy.dmatrices(formula, data, return_type='dataframe')
                     groups = X['Q("Survey Id")']

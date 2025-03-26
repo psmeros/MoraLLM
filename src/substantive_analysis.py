@@ -244,11 +244,6 @@ def compute_behavioral_regressions(interviews, confs, to_latex):
         
         extended_results = []
         for conf in extended_confs:
-            #Add Reference for Moral Schemas
-            if conf['Predictors'] == ['Moral Schemas']:
-                conf['References']['Attribute Names'].append('Moral Schemas')
-                conf['References']['Attribute Values'].append('Theistic')
-            
             #Prepare Data
             data = interviews.copy()
             data[[wave + ':Wave' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]] = pd.Series([wave.split()[1] for wave in ['Wave 1', 'Wave 2', 'Wave 3']])
@@ -389,7 +384,7 @@ if __name__ == '__main__':
                          {'Descrition': 'Predicting Future Behavior: ' + model,
                           'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],
                           'To_Wave': ['Wave 2', 'Wave 3', 'Wave 4'],
-                          'Predictors': [mo + '_' + model for mo in MORALITY_ORIGIN] if model != 'Moral Schemas' else ['Moral Schemas'],
+                          'Predictors': [mo + '_' + model for mo in MORALITY_ORIGIN],
                           'Predictions': ['Pot', 'Drink', 'Cheat', 'Cutclass', 'Secret', 'Volunteer', 'Help'],
                           'Dummy' : True,
                           'Intercept': True,

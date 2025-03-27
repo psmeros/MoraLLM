@@ -3,6 +3,7 @@ from itertools import combinations
 
 import matplotlib.ticker as mtick
 import numpy as np
+import openai
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
@@ -19,10 +20,11 @@ from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import minmax_scale, normalize
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, BartModel, BartTokenizer, BertModel, BertTokenizer
+from transformers import pipeline
 from transformers_interpret import ZeroShotClassificationExplainer
 from wordcloud import WordCloud
 
-from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, REFINED_SECTIONS
+from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, REFINED_SECTIONS
 from src.parser import merge_codings, merge_matches, merge_surveys, wave_parser
 
 
@@ -530,52 +532,6 @@ def compare_areas(interviews, by_age):
     plt.savefig('data/plots/deprecated-area_comparison.png', bbox_inches='tight')
     plt.show()
 
-def print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases):
-    #Prepare Data
-    data = interviews.copy()
-    data[CODED_WAVES[0] + ':Race'] = data[CODED_WAVES[0] + ':Race'].apply(lambda x: x if x in ['White'] else 'Other')
-    data[CODED_WAVES[0] + ':Adolescence'] = data[CODED_WAVES[0] + ':Age'].apply(lambda x: 'Early' if x is not pd.NA and x in ['13', '14', '15'] else 'Late' if x is not pd.NA and x in ['16', '17', '18', '19'] else '')
-
-    #Print Demographics Cases
-    for case in demographics_cases:
-        for c in case:
-            slice = data[pd.concat([data[CODED_WAVES[0] + ':' + attribute] == c['demographics'][attribute] for attribute in c['demographics'].keys()], axis=1).all(axis=1)]
-            slice['Diff'] = slice[CODED_WAVES[1] + ':' + c['morality']] - slice[CODED_WAVES[0] + ':' + c['morality']]
-            slice = slice.sort_values(by='Diff', ascending=c['ascending'])
-            print(slice.iloc[c['pos']][CODED_WAVES[0] + ':Morality_Origin'])
-            print(slice.iloc[c['pos']][CODED_WAVES[1] + ':Morality_Origin'])
-            print(str(round(slice.iloc[c['pos']][CODED_WAVES[0] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' → ' + str(round(slice.iloc[c['pos']][CODED_WAVES[1] + ':' + c['morality'] + '_' + MORALITY_ESTIMATORS[0]], 2) * 100) + '%' + ' (' + c['morality'] + ')')
-            print('\n----------\n')
-        print('\n==========\n')
-
-    #Print Incoherent Cases
-    slice = data[pd.DataFrame([data[[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].sum(axis=1) > len(MORALITY_ORIGIN)/2 for wave in CODED_WAVES]).T.apply(lambda w: w[0] | w[1], axis=1)]
-    for ic in incoherent_cases:
-        print(slice.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Household Income', ':Parent Education']]].values)
-        for wave in CODED_WAVES:
-            print(wave)
-            print(slice.iloc[ic][wave + ':Morality_Origin'])
-            print(slice.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
-            print(slice.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
-            print('\n----------\n')
-
-    #Print Max Diff Cases
-    model_diff = pd.DataFrame(data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    coders_diff = pd.DataFrame(data[[CODED_WAVES[0] + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values - interviews[[CODED_WAVES[1] + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-    data['model-coders_diff'] = abs(model_diff - coders_diff).max(axis=1)
-    data['model-coders_diff_morality'] = abs(model_diff - coders_diff).idxmax(axis=1)
-    data = data.sort_values(by='model-coders_diff', ascending=False)
-
-    for ic in max_diff_cases:
-        print(data.iloc[ic][[CODED_WAVES[0] + d for d in [':Age', ':Gender', ':Race', ':Household Income', ':Parent Education']]].values)
-        print(data.iloc[ic]['model-coders_diff_morality'])
-        for wave in CODED_WAVES:
-            print(wave)
-            print(data.iloc[ic][wave + ':Morality_Origin'])
-            print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[0] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
-            print(data.iloc[ic][[wave + ':' + mo + '_' + MORALITY_ESTIMATORS[1] for mo in MORALITY_ORIGIN]].apply(lambda x: str(int(x * 100)) + '%'))
-            print('\n----------\n')
-
 def compute_std_diff(interviews, attributes):
     #Prepare Data
     data = interviews.copy()
@@ -778,6 +734,57 @@ def plot_morality_shifts(interviews, attributes, shift_threshold):
     plt.savefig('data/plots/fig-morality_shift_by_attribute.png', bbox_inches='tight')
     plt.show()
 
+#Compute synthetic dataset
+def compute_synthetic_data(n=25):
+    chatgpt_synthetic_prompt = lambda mo: """
+    You are a helpful assistant that generates interview summaries.
+    These summaries describe in one sentence how people make decisions based on: 1) their intuition, 2) the consequences of their actions, 3) social influences, 4) religious reasons.
+    Examples of such summaries are:
+    The respondent makes decisions based on their gut feelings and the values instilled by their parents, believing that right and wrong are clear to them, and they prioritize following the advice of respected adults over personal happiness or religious guidance.
+    The respondent prioritizes paying off debts and supporting loved ones over material purchases, bases their moral decisions on conscience and the potential consequences of their actions, acknowledges the influence of their parents' advice in decision-making, and expresses a desire to emulate their mother's strength and resilience.
+    The respondent prioritizes using a hypothetical inheritance to pay off their mother's bills and secure their daughter's future, driven by gratitude for their mother's sacrifices, while also expressing a growing reliance on religious beliefs to guide their understanding of right and wrong, influenced by fears of moral consequences and the desire to avoid a negative legacy for their child.
+    Generate pairs of summaries where the first summary gives more importance to  """ + \
+    ('intuition' if mo == 'Intuitive'  else 'the consequences of actions' if mo == 'Consequentialist' else 'social influences' if mo == 'Social' else 'religious reasons' if mo == 'Theistic' else '') + \
+    """ and sometimes mentions also some of the other three factors, 
+    and the second summary gives less importance to """ + \
+    ('intuition' if mo == 'Intuitive'  else 'the consequences of actions' if mo == 'Consequentialist' else 'social influences' if mo == 'Social' else 'religious reasons' if mo == 'Theistic' else '') + '\n' \
+    """ and sometimes mentions also some of the other three factors.
+    Respond strictly with each pair in a new line, separated by the special character '%'."""
+
+    #OpenAI API
+    openai.api_key = os.getenv('OPENAI_API_KEY')
+    synthesizer = lambda: [openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': chatgpt_synthetic_prompt(mo)},{'role': 'user','content': 'Generate strictly ' + str(n) + ' pairs without enumerating'}], temperature=.2, max_tokens=16384, frequency_penalty=0, presence_penalty=0, seed=42) for mo in MORALITY_ORIGIN]
+    aggregator = lambda r: pd.DataFrame(r, index=MORALITY_ORIGIN)['choices'].apply(lambda c: c[0]['message']['content']).str.split('\n').explode().str.split('%').apply(pd.Series).reset_index().dropna().reset_index(drop=True)
+    full_pipeline = lambda: aggregator(synthesizer())
+
+    #Generate synthetic data
+    data = full_pipeline()
+    data.columns = ['Morality', 'Strong Summary', 'Weak Summary']
+    data.to_pickle('data/cache/synthetic_data.pkl')
+
+#Compute synthetic morality origin
+def compute_synthetic_morality():
+    data = pd.read_pickle('data/cache/synthetic_data.pkl')
+
+    #Premise and hypothesis templates
+    hypothesis_template = 'The reasoning in this example is based on {}.'
+    model_params = {'device':0} if torch.cuda.is_available() else {}
+    morality_pipeline = pipeline('zero-shot-classification', model='roberta-large-mnli', **model_params)
+
+    #Trasformation functions
+    classifier = lambda series: pd.Series(morality_pipeline(series.tolist(), list(MORALITY_ORIGIN_EXPLAINED.keys()), hypothesis_template=hypothesis_template, multi_label=True))
+    aggregator = lambda r: pd.DataFrame([{MORALITY_ORIGIN_EXPLAINED[l]:s for l, s in zip(r['labels'], r['scores'])}]).max()
+    
+    #Classify morality origin and join results
+    morality_origin = classifier(data['Strong Summary']).apply(aggregator)
+    data = data.join(morality_origin)
+    morality_origin = classifier(data['Weak Summary']).apply(aggregator)
+    data = data.join(morality_origin, lsuffix='_strong', rsuffix='_weak')
+
+    data['Distinction'] = data.apply(lambda d: d[d['Morality'] + '_strong'] - d[d['Morality'] + '_weak'], axis=1)
+    data = data[['Morality', 'Strong Summary', 'Weak Summary', 'Distinction']]
+    data.to_pickle('data/cache/synthetic_data.pkl')
+
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -821,23 +828,16 @@ if __name__ == '__main__':
             by_age = False
             compare_areas(interviews, by_age=by_age)
         elif c == 11:
-            demographics_cases = [
-                     (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Household Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False}),
-                      ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Female', 'Race' : 'White', 'Household Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Intuitive', 'ascending' : False})),
-                     (({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Household Income' : 'Upper', 'Parent Education' : 'Tertiary'}, 'pos' : 0, 'morality' : 'Social', 'ascending' : True}),
-                      ({'demographics' : {'Adolescence' : 'Late', 'Gender' : 'Male', 'Race' : 'White', 'Household Income' : 'Lower', 'Parent Education' : 'Secondary'}, 'pos' : 3, 'morality' : 'Social', 'ascending' : True}))
-                    ]
-            incoherent_cases = [2]
-            max_diff_cases = [1]
-            print_cases(interviews, demographics_cases, incoherent_cases, max_diff_cases)
-        elif c == 13:
             attributes = DEMOGRAPHICS
             compute_std_diff(interviews, attributes)
-        elif c == 14:
+        elif c == 12:
             consistency_threshold = .1
             plot_type = 'spider'
             compute_consistency(interviews, plot_type, consistency_threshold)            
-        elif c == 15:
+        elif c == 13:
             attributes = DEMOGRAPHICS
             shift_threshold = 0
             plot_morality_shifts(interviews, attributes, shift_threshold)
+        elif c == 14:
+            compute_synthetic_data()
+            compute_synthetic_morality()

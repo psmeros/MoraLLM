@@ -3,7 +3,6 @@ import re
 import time
 
 import numpy as np
-import openai
 import pandas as pd
 import requests
 from sklearn.preprocessing import minmax_scale
@@ -17,7 +16,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 
 from __init__ import *
-from src.helpers import MORALITY_VOCAB, llm_prompt, chatgpt_synthetic_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED
+from src.helpers import MORALITY_VOCAB, llm_prompt, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED
 from src.parser import clean_morality_tags
 
 
@@ -163,54 +162,11 @@ def compute_morality_source(models, excerpts):
 
             data.to_pickle('data/cache/morality_model-' + model + ('_resp' if excerpt == 'response' else '_sum' if excerpt == 'summary' else '') + '.pkl')
 
-#Compute synthetic dataset
-def compute_synthetic_data(n=25):
-    #OpenAI API
-    openai.api_key = os.getenv('OPENAI_API_KEY')
-    synthesizer = lambda: [openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': chatgpt_synthetic_prompt(mo)},{'role': 'user','content': 'Generate strictly ' + str(n) + ' pairs without enumerating'}], temperature=.2, max_tokens=16384, frequency_penalty=0, presence_penalty=0, seed=42) for mo in MORALITY_ORIGIN]
-    aggregator = lambda r: pd.DataFrame(r, index=MORALITY_ORIGIN)['choices'].apply(lambda c: c[0]['message']['content']).str.split('\n').explode().str.split('%').apply(pd.Series).reset_index().dropna().reset_index(drop=True)
-    full_pipeline = lambda: aggregator(synthesizer())
+            #Binarize continuous morality
+            if model in ['sbert', 'lg', 'lda']:
+                data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN].apply(minmax_scale) > .5).astype(int)
+                data.to_pickle('data/cache/morality_model-' + model + ('_resp' if excerpt == 'response' else '_sum' if excerpt == 'summary' else '') + '_bin.pkl')        
 
-    #Generate synthetic data
-    data = full_pipeline()
-    data.columns = ['Morality', 'Strong Summary', 'Weak Summary']
-    data.to_pickle('data/cache/synthetic_data.pkl')
-
-#Compute synthetic morality origin
-def compute_synthetic_morality():
-    data = pd.read_pickle('data/cache/synthetic_data.pkl')
-
-    #Premise and hypothesis templates
-    hypothesis_template = 'The reasoning in this example is based on {}.'
-    model_params = {'device':0} if torch.cuda.is_available() else {}
-    morality_pipeline = pipeline('zero-shot-classification', model='roberta-large-mnli', **model_params)
-
-    #Trasformation functions
-    classifier = lambda series: pd.Series(morality_pipeline(series.tolist(), list(MORALITY_ORIGIN_EXPLAINED.keys()), hypothesis_template=hypothesis_template, multi_label=True))
-    aggregator = lambda r: pd.DataFrame([{MORALITY_ORIGIN_EXPLAINED[l]:s for l, s in zip(r['labels'], r['scores'])}]).max()
-    
-    #Classify morality origin and join results
-    morality_origin = classifier(data['Strong Summary']).apply(aggregator)
-    data = data.join(morality_origin)
-    morality_origin = classifier(data['Weak Summary']).apply(aggregator)
-    data = data.join(morality_origin, lsuffix='_strong', rsuffix='_weak')
-
-    data['Distinction'] = data.apply(lambda d: d[d['Morality'] + '_strong'] - d[d['Morality'] + '_weak'], axis=1)
-    data = data[['Morality', 'Strong Summary', 'Weak Summary', 'Distinction']]
-    data.to_pickle('data/cache/synthetic_data.pkl')
-
-#Binarize continuous morality
-def binarize_morality(models):
-    for model in models:
-        data = pd.read_pickle('data/cache/morality_model-' + model + '_quant.pkl')
-        data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN].apply(minmax_scale) > .5).astype(int)
-        data.to_pickle('data/cache/morality_model-' + model + '_bin.pkl')
-
-#Quantize continuous morality
-def quantize_morality(model):
-    data = pd.read_pickle('data/cache/morality_model-' + model + '_quant.pkl')
-    data[MORALITY_ORIGIN] = pd.DataFrame([pd.qcut(data[mo], q=5, labels=False) * .25 for mo in MORALITY_ORIGIN]).T
-    data.to_pickle('data/cache/morality_model-' + model + '_quant-alt.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -221,9 +177,3 @@ if __name__ == '__main__':
             excerpts = ['full_QnA']
             models = ['deepseek_bin', 'chatgpt_bin']
             compute_morality_source(models, excerpts)
-        elif c == 2:
-            compute_synthetic_data()
-            compute_synthetic_morality()
-        elif c == 3:
-            models = ['lda', 'lda_resp', 'lda_sum']
-            binarize_morality(models)

@@ -187,21 +187,6 @@ Your job is to detect whether respondents refer to """ + \
 ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else 'four dimensions: i) intuition, ii) the consequences of their actions, iii) social influences such as parents or friends, and iv) religious reasons.' if mo == 'all' else '') + '\n'+ \
 ('Response strictly with 1 if they refer and with 0 if they do not refer.' if r == 'bin' else 'Response strictly with four digits, each one being 1 if they refer to this dimension and 0 if they do not refer to this dimension.' if r == 'bin_all' else 'Response strictly on a Likert scale from 0 to 4, depending on the emphasis the respondents give to ' + ('intuition.' if mo == 'Intuitive'  else 'the consequences of their actions.' if mo == 'Consequentialist' else 'social influences such as parents or friends.' if mo == 'Social' else 'religious reasons.' if mo == 'Theistic' else '') if r == 'quant' else '')
 
-chatgpt_synthetic_prompt = lambda mo: """
-You are a helpful assistant that generates interview summaries.
-These summaries describe in one sentence how people make decisions based on: 1) their intuition, 2) the consequences of their actions, 3) social influences, 4) religious reasons.
-Examples of such summaries are:
-The respondent makes decisions based on their gut feelings and the values instilled by their parents, believing that right and wrong are clear to them, and they prioritize following the advice of respected adults over personal happiness or religious guidance.
-The respondent prioritizes paying off debts and supporting loved ones over material purchases, bases their moral decisions on conscience and the potential consequences of their actions, acknowledges the influence of their parents' advice in decision-making, and expresses a desire to emulate their mother's strength and resilience.
-The respondent prioritizes using a hypothetical inheritance to pay off their mother's bills and secure their daughter's future, driven by gratitude for their mother's sacrifices, while also expressing a growing reliance on religious beliefs to guide their understanding of right and wrong, influenced by fears of moral consequences and the desire to avoid a negative legacy for their child.
-Generate pairs of summaries where the first summary gives more importance to  """ + \
-('intuition' if mo == 'Intuitive'  else 'the consequences of actions' if mo == 'Consequentialist' else 'social influences' if mo == 'Social' else 'religious reasons' if mo == 'Theistic' else '') + \
-""" and sometimes mentions also some of the other three factors, 
-and the second summary gives less importance to """ + \
-('intuition' if mo == 'Intuitive'  else 'the consequences of actions' if mo == 'Consequentialist' else 'social influences' if mo == 'Social' else 'religious reasons' if mo == 'Theistic' else '') + '\n' \
-""" and sometimes mentions also some of the other three factors.
-Respond strictly with each pair in a new line, separated by the special character '%'."""
-
 SURVEY_ATTRIBUTES = {'Wave 1':{'IDS':'Survey Id',
                                'PINCOME':'Household Income',
                                'PDADEDUC':'Father Education',

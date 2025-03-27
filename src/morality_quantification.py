@@ -71,9 +71,9 @@ def compute_morality_source(models, excerpts):
                 def call_llm(llm: str, prompt: str, text: str, timeout: int = 15, max_retries: int = 10, backoff_factor: float = 1.0):
                     # Choose model
                     if llm.startswith('deepseek_bin'):
-                        url = 'https://api.deepseek.com/v1/chat/completions'
-                        model = 'deepseek-chat'
-                        api_key = os.getenv('DEEPSEEK_API_KEY')
+                        url = 'https://openrouter.ai/api/v1/chat/completions'
+                        model = 'deepseek/deepseek-chat'
+                        api_key = os.getenv('OPENROUTER_API_KEY')
                         temperature = 1.3
                     elif llm.startswith('chatgpt_bin'):
                         url = 'https://api.openai.com/v1/chat/completions'

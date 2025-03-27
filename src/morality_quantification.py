@@ -219,7 +219,7 @@ if __name__ == '__main__':
     for c in config:
         if c == 1:
             excerpts = ['full_QnA']
-            models = ['deepseek_bin_ao', 'chatgpt_bin_ao']
+            models = ['deepseek_bin', 'chatgpt_bin']
             compute_morality_source(models, excerpts)
         elif c == 2:
             compute_synthetic_data()

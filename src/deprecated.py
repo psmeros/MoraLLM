@@ -7,6 +7,7 @@ import openai
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
+from sklearn.metrics import cohen_kappa_score
 import spacy
 import torch
 from matplotlib import pyplot as plt
@@ -785,6 +786,52 @@ def compute_synthetic_morality():
     data = data[['Morality', 'Strong Summary', 'Weak Summary', 'Distinction']]
     data.to_pickle('data/cache/synthetic_data.pkl')
 
+#Plot morality distinction on synthetic data
+def plot_morality_distinction():
+    #Prepare Data
+    data = pd.read_pickle('data/cache/synthetic_data.pkl')
+    data['Distinction'] = data['Distinction'] * 100
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.catplot(data=data, x='Distinction', y='Morality', hue='Morality', orient='h', order=MORALITY_ORIGIN, hue_order=MORALITY_ORIGIN, kind='point', err_kws={'linewidth': 3}, markersize=10, legend=False, seed=42, aspect=2, palette='Set2')
+    g.figure.suptitle('Strong-Weak Morality Distinction', x=0.5)
+    g.map(plt.axvline, x=0, color='grey', linestyle='--', linewidth=1.5)
+    g.set(xlim=(-100, 100))
+    g.set_ylabels('')
+    g.set_xlabels('')
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/fig-synthetic_distinction.png', bbox_inches='tight')
+    plt.show()
+
+#Plot coders agreement using Cohen's Kappa
+def plot_coders_agreement():
+    #Prepare data
+    codings = merge_codings(None, return_codings=True)
+
+    #Prepare heatmap
+    coder_A = codings[[mo + '_' + CODERS[0] for mo in MORALITY_ORIGIN]].astype(int).values.T
+    coder_B = codings[[mo + '_' + CODERS[1] for mo in MORALITY_ORIGIN]].astype(int).values.T
+    heatmap = np.zeros((len(MORALITY_ORIGIN), len(MORALITY_ORIGIN)))
+    
+    for mo_A in range(len(MORALITY_ORIGIN)):
+        for mo_B in range(len(MORALITY_ORIGIN)):
+            heatmap[mo_A, mo_B] = cohen_kappa_score(coder_A[mo_A], coder_B[mo_B])
+    heatmap = pd.DataFrame(heatmap, index=['Intuitive', 'Conseq.', 'Social', 'Theistic'], columns=['Intuitive', 'Conseq.', 'Social', 'Theistic'])
+
+    #Plot coders agreement
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    ax = sns.heatmap(heatmap, cmap = sns.color_palette('pink_r', n_colors=4), square=True, cbar_kws={'shrink': .8}, vmin=-0.2, vmax=1)
+    plt.ylabel('')
+    plt.xlabel('')
+    colorbar = ax.collections[0].colorbar
+    colorbar.set_ticks([-.05, .25, .55, .85])
+    colorbar.set_ticklabels(['Poor', 'Slight', 'Moderate', 'Perfect'])
+    plt.title('Cohen\'s Kappa Agreement between Annotators')
+    plt.savefig('data/plots/fig-coders_agreement.png', bbox_inches='tight')
+    plt.show()
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -841,3 +888,6 @@ if __name__ == '__main__':
         elif c == 14:
             compute_synthetic_data()
             compute_synthetic_morality()
+            plot_morality_distinction()
+        elif c == 15:
+            plot_coders_agreement()

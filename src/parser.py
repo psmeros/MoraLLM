@@ -389,6 +389,31 @@ def merge_network(interviews, file = 'data/interviews/misc/network_variables.dta
     interviews[[wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]] = interviews[[wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Regular volunteers', 'Use drugs', 'Similar beliefs']]].map(lambda x: round(x, 2) if not pd.isna(x) else x)
     return interviews
 
+#Merge crowd labeling data
+def merge_crowd(interviews, file = 'data/interviews/misc/crowd_labeling.csv'):
+    data = pd.read_csv(file, skiprows=[1,2])
+    data = data[data['Finished']]
+
+    # Crowd Labeling Statistics
+    lazy_annotators = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].isna().any(axis=1)]['workerId'].tolist()
+    [print(a) for a in lazy_annotators]
+    data = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].notna().all(axis=1)]
+
+    #Transform the data to a long format
+    data = pd.concat([pd.DataFrame(data[[id + '_Interview Question_' + str(q) for q in range(1,5)] + [id + '_Survey ID']].values, columns=MORALITY_ORIGIN + ['Survey ID']) for id in [col.split('_')[0] for col in data.columns if 'Survey ID' in col]])
+    data = data.dropna(subset=['Survey ID']).reset_index(drop=True)
+    data = data.groupby('Survey ID').head(5).reset_index(drop=True)
+
+    data = data.groupby('Survey ID').count().join(data.groupby('Survey ID').size().rename('Annotations')).reset_index()
+    data['Survey ID'] = data['Survey ID'].astype(int)
+
+    data[MORALITY_ORIGIN] = data.apply(lambda d: pd.Series([int(d[mo] > d['Annotations']/2) for mo in MORALITY_ORIGIN]), axis=1).fillna(0)
+    data = data.rename(columns={mo: 'Wave 1:' + mo + '_crowd' for mo in MORALITY_ORIGIN} | {'Survey ID': 'Survey Id'}).drop('Annotations', axis=1)
+
+    #Merge data
+    interviews = interviews.merge(data, on='Survey Id', how='left')
+    return interviews
+
 #Fill missing data
 def fill_missing_data(interviews):
     encoder = {control : LabelEncoder() for control in ['Gender', 'Race', 'Religion', 'Region']}
@@ -452,8 +477,8 @@ def prepare_data(models, extend_dataset):
     interviews = merge_matches(interviews, extend_dataset)
     interviews = merge_surveys(interviews)
     interviews = merge_network(interviews)
+    interviews = merge_crowd(interviews)
     interviews = fill_missing_data(interviews)
-    interviews = interviews.merge(pd.read_pickle('data/cache/crowd.pkl'), on='Survey Id', how='left')
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
@@ -546,28 +571,6 @@ def prepare_crowd_labeling(morality_text):
     interviews[morality_text] = interviews[morality_text].apply(lambda t: re.sub(r'I:', '<b>I: </b>', t)).apply(lambda t: re.sub(r'R:', '<b>R: </b>', t)).apply(lambda t: re.sub(r'\n', '<br>', t))
     interviews.to_clipboard(index=False, header=False)
 
-#Parse crowd labeling data
-def parse_crowd_labeling(file = 'data/interviews/misc/crowd_labeling.csv'):
-    data = pd.read_csv(file, skiprows=[1,2])
-    data = data[data['Finished']]
-
-    # Crowd Labeling Statistics
-    lazy_annotators = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].isna().any(axis=1)]['workerId'].tolist()
-    [print(a) for a in lazy_annotators]
-    data = data[data[['Honeypot Question _' + str(q) for q in range(1,5)]].notna().all(axis=1)]
-    print('Median Duration:', round(data['Duration (in seconds)'].median()/60, 1), 'minutes')
-
-    #Transform the data to a long format
-    data = pd.concat([pd.DataFrame(data[[id + '_Interview Question_' + str(q) for q in range(1,5)] + [id + '_Survey ID']].values, columns=MORALITY_ORIGIN + ['Survey ID']) for id in [col.split('_')[0] for col in data.columns if 'Survey ID' in col]])
-    data = data.dropna(subset=['Survey ID']).reset_index(drop=True)
-    data = data.groupby('Survey ID').head(5).reset_index(drop=True)
-
-    data = data.groupby('Survey ID').count().join(data.groupby('Survey ID').size().rename('Annotations')).reset_index()
-    data['Survey ID'] = data['Survey ID'].astype(int)
-
-    data[MORALITY_ORIGIN] = data.apply(lambda d: pd.Series([int(d[mo] > d['Annotations']/2) for mo in MORALITY_ORIGIN]), axis=1).fillna(0)
-    data = data.rename(columns={mo: 'Wave 1:' + mo + '_crowd' for mo in MORALITY_ORIGIN} | {'Survey ID': 'Survey Id'}).drop('Annotations', axis=1)
-    data.to_pickle('data/cache/crowd.pkl')
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -587,5 +590,3 @@ if __name__ == '__main__':
         elif c == 4:
             morality_text = 'Wave 1:Morality Text'
             prepare_crowd_labeling(morality_text)
-        elif c == 5:
-            parse_crowd_labeling()

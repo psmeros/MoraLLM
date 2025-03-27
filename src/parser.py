@@ -246,7 +246,7 @@ def clean_morality_tags(transcript):
 
 
 #Merge matched interviews from different waves
-def merge_matches(interviews, extend_dataset, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/interviews/alignments/crosswave.csv'):
+def merge_matches(interviews, extend_dataset, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/interviews/misc/interview_matches.csv'):
     matches = pd.read_csv(matches_file)[wave_list]
 
     for wave in wave_list:
@@ -259,7 +259,7 @@ def merge_matches(interviews, extend_dataset, wave_list = ['Wave 1', 'Wave 2', '
     return matches
 
 #Merge codings from two coders for wave 1 and wave 3 of interviews
-def merge_codings(interviews, codings_folder = 'data/interviews/codings', gold_file = 'data/interviews/alignments/gold_standard.csv'):
+def merge_codings(interviews, codings_folder = 'data/interviews/misc/codings', gold_file = 'data/interviews/misc/gold_standard.csv'):
     #Parse codings
     codings_wave_1 = []
     codings_wave_3 = []
@@ -308,7 +308,7 @@ def merge_codings(interviews, codings_folder = 'data/interviews/codings', gold_f
     return interviews
 
 #Merge interviews and surveys
-def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignment_file = 'data/interviews/alignments/interview-survey.csv'):
+def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignment_file = 'data/interviews/misc/interview_survey.csv'):
     surveys = pd.read_csv(alignment_file)
     wave_1_surveys = surveys[surveys['Wave'] == 1].drop('Wave', axis=1)
     wave_3_surveys = surveys[surveys['Wave'] == 3].drop('Wave', axis=1)
@@ -380,7 +380,7 @@ def merge_surveys(interviews, surveys_folder = 'data/interviews/surveys', alignm
     return interviews
 
 #Merge network variables
-def merge_network(interviews, file = 'data/interviews/network/net_vars.dta'):
+def merge_network(interviews, file = 'data/interviews/misc/network_variables.dta'):
     network = pd.read_stata(file)[NETWORK_ATTRIBUTES.keys()].rename(columns=NETWORK_ATTRIBUTES)
     network = network.map(lambda x: None if str(x).strip() in ['DON\'T KNOW', 'LEGITIMATE SKIP'] else 0 if str(x).strip() == 'NO' else 1 if str(x).strip() == 'YES' else x)
     network = network.T.groupby(network.columns, dropna=False).sum(min_count=1).T
@@ -547,7 +547,7 @@ def prepare_crowd_labeling(morality_text):
     interviews.to_clipboard(index=False, header=False)
 
 #Parse crowd labeling data
-def parse_crowd_labeling(file):
+def parse_crowd_labeling(file = 'data/interviews/misc/crowd_labeling.csv'):
     data = pd.read_csv(file, skiprows=[1,2])
     data = data[data['Finished']]
 
@@ -588,5 +588,4 @@ if __name__ == '__main__':
             morality_text = 'Wave 1:Morality Text'
             prepare_crowd_labeling(morality_text)
         elif c == 5:
-            file = 'data/interviews/crowd/crowd_labeling.csv'
-            parse_crowd_labeling(file)
+            parse_crowd_labeling()

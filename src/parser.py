@@ -14,7 +14,7 @@ from transformers import pipeline
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS
+from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS
 
 
 #Convert encoding of files in a folder
@@ -246,7 +246,7 @@ def clean_morality_tags(transcript):
 
 
 #Merge matched interviews from different waves
-def merge_matches(interviews, extend_dataset, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/interviews/misc/interview_matches.csv'):
+def merge_matches(interviews, extend_dataset = True, wave_list = ['Wave 1', 'Wave 2', 'Wave 3'], matches_file = 'data/interviews/misc/interview_matches.csv'):
     matches = pd.read_csv(matches_file)[wave_list]
 
     for wave in wave_list:
@@ -465,7 +465,7 @@ def fill_missing_data(interviews):
     return interviews
     
 #Merge all different types of data
-def prepare_data(models, extend_dataset):
+def prepare_data(models):
     interviews = pd.read_pickle('data/cache/interviews.pkl')
     interviews[MORALITY_ORIGIN] = ''
     interviews['Morality Text'] = interviews['Morality Text'].apply(clean_morality_tags)
@@ -474,7 +474,7 @@ def prepare_data(models, extend_dataset):
         interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))
 
     interviews = merge_codings(interviews)
-    interviews = merge_matches(interviews, extend_dataset)
+    interviews = merge_matches(interviews)
     interviews = merge_surveys(interviews)
     interviews = merge_network(interviews)
     interviews = merge_crowd(interviews)
@@ -564,7 +564,7 @@ def compute_linguistics():
 
 #Prepare data for crowd labeling
 def prepare_crowd_labeling(morality_text):
-    interviews = prepare_data([], extend_dataset=True)
+    interviews = prepare_data([])
     interviews[morality_text] = interviews[morality_text].replace('', pd.NA)
     interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
     interviews[morality_text] = interviews[morality_text].apply(clean_morality_tags)
@@ -579,8 +579,7 @@ if __name__ == '__main__':
     for c in config:
         if c == 1:
             models = ['deepseek_bin', 'chatgpt_bin', 'nli_bin', 'sbert_bin', 'lda_bin', 'wc_bin']
-            extend_dataset = True
-            interviews = prepare_data(models, extend_dataset=extend_dataset)
+            interviews = prepare_data(models)
             interviews = interviews.rename(columns={wave + ':' + mo + '_' + k : wave + ':' + mo + '_' + v for k,v in {'wc_bin':'WC_F', 'wc_sum_bin':'WC_Σ', 'wc_resp_bin':'WC_R', 'lda_bin':'LDA_F', 'lda_sum_bin':'LDA_Σ', 'lda_resp_bin':'LDA_R', 'sbert_bin':'SBERT_F', 'sbert_resp_bin':'SBERT_R', 'sbert_sum_bin':'SBERT_Σ', 'nli_bin':'NLI_F', 'nli_resp_bin':'NLI_R', 'nli_sum_bin':'NLI_Σ', 'chatgpt_bin':'GPT4_F', 'chatgpt_resp_bin':'GPT4_R', 'chatgpt_sum_bin':'GPT4_Σ', 'chatgpt_bin_notags':'GPT4_NT', 'chatgpt_bin_3.5':'GPT3.5_F', 'chatgpt_bin_nodistinction':'GPT4_ND', 'chatgpt_bin_interviewers':'GPT4_I', 'deepseek_bin':'DEEPSEEK_F'}.items() for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN})
             interviews.sort_values(by='Survey Id').to_clipboard(index=False)
         elif c == 2:

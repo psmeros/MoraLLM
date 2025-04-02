@@ -180,7 +180,7 @@ def compute_morality_dimensions(models, excerpts):
 #Plot F1 Score for all models
 def evaluate_morality_dimensions(models, evaluation_waves, n_bootstraps, human_evaluation):
     #Prepare data
-    interviews = prepare_data(models, extend_dataset=True)
+    interviews = prepare_data(models)
     interviews = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd']]) for wave in evaluation_waves]).dropna()
     print('Evaluation data size', len(interviews))
 
@@ -371,10 +371,9 @@ if __name__ == '__main__':
             evaluate_morality_dimensions(models=models, evaluation_waves=evaluation_waves, n_bootstraps=n_bootstraps, human_evaluation=human_evaluation)
 
         elif c == 3:
-            extend_dataset = True
             to_latex = False
             model = 'deepseek_bin'
-            interviews = prepare_data([model], extend_dataset)
+            interviews = prepare_data([model])
             #Future Behavior with Controls
             conf = {'Description': 'Predicting Future Behavior: ' + model,
                     'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],

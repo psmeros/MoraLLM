@@ -486,7 +486,7 @@ def prepare_data(models):
     columns += [wave + ':' + mo + '_' + coder for coder in CODERS for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
     columns += [wave + ':' + mo + '_crowd' for wave in ['Wave 1'] for mo in MORALITY_ORIGIN]
 
-    columns += [wave + ':' + mo + '_' + estimatior for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for estimatior in models for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_' + estimatior for estimatior in models for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
@@ -578,9 +578,8 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
-            models = ['deepseek_bin', 'chatgpt_bin', 'nli_bin', 'sbert_bin', 'lda_bin', 'wc_bin']
+            models = ['deepseek_bin', 'deepseek_resp_bin', 'deepseek_sum_bin', 'chatgpt_bin', 'chatgpt_bin_3.5', 'chatgpt_resp_bin', 'chatgpt_sum_bin', 'deepseek_bin_dto1', 'deepseek_bin_cto1', 'deepseek_bin_rto1', 'deepseek_bin_to1', 'deepseek_bin_toa', 'chatgpt_bin_dto1', 'chatgpt_bin_cto1', 'chatgpt_bin_rto1', 'chatgpt_bin_to1', 'chatgpt_bin_toa', 'deepseek_bin_ar', 'deepseek_bin_nt', 'chatgpt_bin_ar', 'chatgpt_bin_nt', 'nli_bin', 'nli_resp_bin', 'nli_sum_bin', 'sbert_bin', 'sbert_resp_bin', 'sbert_sum_bin', 'lda_bin', 'lda_resp_bin', 'lda_sum_bin', 'wc_bin', 'wc_resp_bin', 'wc_sum_bin', 'nli_quant', 'nli_resp_quant', 'nli_sum_quant', 'chatgpt_quant']
             interviews = prepare_data(models)
-            interviews = interviews.rename(columns={wave + ':' + mo + '_' + k : wave + ':' + mo + '_' + v for k,v in {'wc_bin':'WC_F', 'wc_sum_bin':'WC_Σ', 'wc_resp_bin':'WC_R', 'lda_bin':'LDA_F', 'lda_sum_bin':'LDA_Σ', 'lda_resp_bin':'LDA_R', 'sbert_bin':'SBERT_F', 'sbert_resp_bin':'SBERT_R', 'sbert_sum_bin':'SBERT_Σ', 'nli_bin':'NLI_F', 'nli_resp_bin':'NLI_R', 'nli_sum_bin':'NLI_Σ', 'chatgpt_bin':'GPT4_F', 'chatgpt_resp_bin':'GPT4_R', 'chatgpt_sum_bin':'GPT4_Σ', 'chatgpt_bin_notags':'GPT4_NT', 'chatgpt_bin_3.5':'GPT3.5_F', 'chatgpt_bin_nodistinction':'GPT4_ND', 'chatgpt_bin_interviewers':'GPT4_I', 'deepseek_bin':'DEEPSEEK_F'}.items() for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN})
             interviews.sort_values(by='Survey Id').to_clipboard(index=False)
         elif c == 2:
             compute_morality_summary()

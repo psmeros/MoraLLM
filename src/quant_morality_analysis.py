@@ -224,9 +224,9 @@ def compute_decisiveness(interviews, model, waves, decisive_threshold = .5):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [6]
+    config = [1,2,3,4,5,6]
     to_latex = False
-    model = 'nli_sum_bin'
+    model = 'nli_sum_quant'
     interviews = prepare_data([model])
 
     for c in config:

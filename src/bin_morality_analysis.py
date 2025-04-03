@@ -1,5 +1,4 @@
 import os
-import re
 import time
 
 import numpy as np
@@ -26,29 +25,14 @@ import patsy
 
 from __init__ import *
 from src.helpers import MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, MORALITY_VOCAB, format_pvalue, llm_prompt
-from src.parser import clean_morality_tags, prepare_data
+from src.parser import merge_summaries, prepare_data, wave_parser
 
 
 #Compute morality dimensions from interviews
-def compute_morality_dimensions(models, excerpts):
-    for excerpt in excerpts:
-        interviews = pd.read_pickle('data/cache/interviews.pkl')
-
-        #Locate morality text in interviews
-        morality_text = 'Morality Text'
-        if excerpt == 'full_QnA':
-            interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
-            interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
-            interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
-            interviews[morality_text] = interviews[morality_text].apply(clean_morality_tags)
-        elif excerpt == 'response':
-            interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
-            interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
-            interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
-        elif excerpt == 'summary':
-            interviews[morality_text] = interviews['Morality Summary']
-        interviews[morality_text] = interviews[morality_text].replace('', np.nan)
-        interviews = interviews.dropna(subset=[morality_text]).reset_index(drop=True)
+def compute_morality_dimensions(models, morality_texts):
+    for morality_text in morality_texts:
+        interviews = wave_parser()
+        interviews = merge_summaries(interviews)
 
         #Compute all models
         for model in models:
@@ -169,12 +153,12 @@ def compute_morality_dimensions(models, excerpts):
                 nlp_model = spacy.load('en_core_web_lg')
                 data[MORALITY_ORIGIN] = data[morality_text].apply(lambda t: pd.Series([sum(1 for w in nlp_model(t) if w.lemma_ in MORALITY_VOCAB[mo]) for mo in MORALITY_ORIGIN]) > 0).astype(int)
 
-            data.to_pickle('data/cache/morality_model-' + model + ('_resp' if excerpt == 'response' else '_sum' if excerpt == 'summary' else '') + '.pkl')
+            data.to_pickle('data/cache/morality_model-' + model + ('_resp' if morality_text == 'Morality Response' else '_sum' if morality_text == 'Morality Summary' else '') + '.pkl')
 
             #Binarize continuous morality dimensions
             if model in ['sbert', 'lg', 'lda']:
                 data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN].apply(minmax_scale) > .5).astype(int)
-                data.to_pickle('data/cache/morality_model-' + model + ('_resp' if excerpt == 'response' else '_sum' if excerpt == 'summary' else '') + '_bin.pkl')        
+                data.to_pickle('data/cache/morality_model-' + model + ('_resp' if morality_text == 'Morality Response' else '_sum' if morality_text == 'Morality Summary' else '') + '_bin.pkl')        
 
 
 #Plot F1 Score for all models
@@ -352,9 +336,9 @@ if __name__ == '__main__':
     for c in config:
 
         if c == 1:
-            excerpts = ['full_QnA']
+            morality_texts = ['Morality Text']
             models = ['deepseek_bin', 'chatgpt_bin']
-            compute_morality_dimensions(models, excerpts)
+            compute_morality_dimensions(models, morality_texts)
 
         elif c == 2:
             #Prompt engineering

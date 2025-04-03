@@ -1,5 +1,6 @@
 import os
 from itertools import combinations
+import re
 
 import matplotlib.ticker as mtick
 import numpy as np
@@ -26,7 +27,7 @@ from transformers_interpret import ZeroShotClassificationExplainer
 from wordcloud import WordCloud
 
 from src.helpers import ADOLESCENCE_RANGE, CHURCH_ATTENDANCE_RANGE, CODED_WAVES, CODERS, DEMOGRAPHICS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_PARTICIPANTS, INTERVIEW_SECTIONS, MORALITY_ESTIMATORS, MORALITY_ORIGIN, MORALITY_ORIGIN_EXPLAINED, REFINED_SECTIONS
-from src.parser import merge_codings, merge_matches, merge_surveys, wave_parser
+from src.parser import merge_codings, prepare_data, wave_parser
 
 
 # Find k embeddings with maximum distance
@@ -833,14 +834,19 @@ def plot_coders_agreement():
     plt.savefig('data/plots/fig-coders_agreement.png', bbox_inches='tight')
     plt.show()
 
+#Prepare data for crowd labeling
+def prepare_crowd_labeling(interviews):
+    morality_text = 'Wave 1:Morality Text'
+    interviews[morality_text] = interviews[morality_text].replace('', pd.NA)
+    interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
+    interviews[morality_text] = interviews[morality_text].apply(lambda t: re.sub(r'I:', '<b>I: </b>', t)).apply(lambda t: re.sub(r'R:', '<b>R: </b>', t)).apply(lambda t: re.sub(r'\n', '<br>', t))
+    interviews.to_clipboard(index=False, header=False)
+
+
 if __name__ == '__main__':
     #Hyperparameters
     config = []
-
-    interviews = pd.read_pickle('data/cache/morality_model-top.pkl')
-    interviews = merge_surveys(interviews)
-    interviews = merge_codings(interviews)
-    interviews = merge_matches(interviews)
+    interviews = prepare_data([])
 
     for c in config:
         #word level
@@ -891,3 +897,5 @@ if __name__ == '__main__':
             plot_morality_distinction()
         elif c == 15:
             plot_coders_agreement()
+        elif c == 16:
+            prepare_crowd_labeling(interviews)

@@ -211,15 +211,88 @@ def wave_parser(waves_folder='data/interviews/waves'):
             interviews = pd.concat([interviews, pd.Series([int(foldername[-1])] * len(interviews), name='Wave')], axis=1)
             waves.append(interviews)
 
-    waves = pd.concat(waves, ignore_index=True)
+    interviews = pd.concat(waves, ignore_index=True)
     
     #Clean Metadata
-    waves['Gender'] = waves['Gender'].map(METADATA_GENDER_MAP)
-    waves['Race'] = waves['Race'].map(METADATA_RACE_MAP)
-    waves['Race'] = waves['Race'].map(RACE_RANGE)
-    waves['Age'] = waves['Age'].astype('Int64')
+    interviews['Gender'] = interviews['Gender'].map(METADATA_GENDER_MAP)
+    interviews['Race'] = interviews['Race'].map(METADATA_RACE_MAP)
+    interviews['Race'] = interviews['Race'].map(RACE_RANGE)
+    interviews['Age'] = interviews['Age'].astype('Int64')
+
+    #Clean Morality Text
+    interviews['Morality_Full_Text'] = interviews['Morality_Full_Text'].replace('', pd.NA)
+    interviews = interviews.dropna(subset=['Morality_Full_Text']).reset_index(drop=True)
+
+    interviews.loc[interviews['Wave'] == 1, 'Morality Text'] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
+    interviews.loc[interviews['Wave'] == 2, 'Morality Text'] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
+    interviews.loc[interviews['Wave'] == 3, 'Morality Text'] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
+    interviews['Morality Text'] = interviews['Morality Text'].apply(clean_morality_tags)
+
+    interviews.loc[interviews['Wave'] == 1, 'Morality Response'] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
+    interviews.loc[interviews['Wave'] == 2, 'Morality Response'] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
+    interviews.loc[interviews['Wave'] == 3, 'Morality Response'] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
+
+    #Filter columns
+    interviews = interviews[['Interview Code', 'Wave', 'Gender', 'Race', 'Age', 'Morality Text', 'Morality Response']]
+
+    return interviews
+
+#Merge morality text summary
+def merge_summaries(interviews, file = 'data/interviews/misc/morality_summaries.csv'):
+    if not os.path.isfile(file):
+        #OpenAI API
+        openai.api_key = os.getenv('OPENAI_API_KEY')
+        summarizer = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': CHATGPT_SUMMARY_PROMPT},{'role': 'user','content': text}], temperature=.2, max_tokens=256, frequency_penalty=0, presence_penalty=0, seed=42)
+        aggregator = lambda r: r['choices'][0]['message']['content']
+        full_pipeline = lambda text: aggregator(summarizer(text))
+        interviews['Morality Summary'] = interviews['Morality Text'].apply(full_pipeline)
+        summary = interviews[['Interview Code', 'Wave', 'Morality Summary']]
+        summary.to_csv(file, index=False)
+    else:
+        summary = pd.read_csv(file)
     
-    return waves
+    interviews = interviews.merge(summary, on=['Interview Code', 'Wave'], how='inner', validate='1:1')
+    return interviews
+
+#Merge linguistics features
+def merge_linguistics(interviews, file = 'data/interviews/misc/interview_linguistics.csv'):
+    if not os.path.isfile(file):
+        #Count words in morality text
+        nlp = spacy.load('en_core_web_lg')
+        count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
+        interviews['Verbosity'] = interviews['Morality Response'].map(count)
+        interviews = interviews[interviews['Verbosity'] < interviews['Verbosity'].quantile(.95)].reset_index(drop=True)        
+        
+        #Count uncertain terms in morality text
+        pattern = r'\b(' + '|'.join(re.escape(term) for term in UNCERTAINT_TERMS) + r')\b'
+        count = lambda section : 0 if pd.isna(section) else len(re.findall(pattern, section.lower()))
+        interviews['Uncertainty'] = interviews['Morality Response'].map(count)
+
+        #Measure readability in morality text
+        measure = lambda section : 0 if pd.isna(section) else textstat.flesch_reading_ease(section)
+        interviews['Complexity'] = interviews['Morality Response'].map(measure)
+
+        #Measure sentiment in morality text
+        model_params = {'device':0} if torch.cuda.is_available() else {}
+        sentiment_pipeline = pipeline('sentiment-analysis', model='distilbert/distilbert-base-uncased-finetuned-sst-2-english', **model_params)
+        cumpute_score = lambda r : (r['score'] + 1)/2 if r['label'] == 'POSITIVE' else (-r['score'] + 1)/2 if r['label'] == 'NEGATIVE' else .5
+        interviews['Sentiment'] = pd.Series(sentiment_pipeline(interviews['Morality Response'].tolist(), truncation=True)).map(cumpute_score)
+
+        #Normalize values
+        interviews['Uncertainty'] = minmax_scale(interviews['Uncertainty'].astype(int) / interviews['Verbosity'].astype(int))
+        interviews['Verbosity'] = minmax_scale(np.log(interviews['Verbosity'].astype(int)))
+        interviews['Complexity'] = minmax_scale((interviews['Complexity']).astype(float))
+        interviews['Sentiment'] = minmax_scale(interviews['Sentiment'].astype(float))
+
+        #Filter columns
+        linguistics = interviews[['Interview Code', 'Wave', 'Uncertainty', 'Verbosity', 'Complexity', 'Sentiment']]
+        linguistics.to_csv(file, index=False)
+    else:
+        linguistics = pd.read_csv(file)
+
+    interviews = interviews.merge(linguistics, on=['Interview Code', 'Wave'], how='inner', validate='1:1')
+    
+    return interviews
 
 #Clean and normalize morality tags
 def clean_morality_tags(transcript):
@@ -466,7 +539,10 @@ def fill_missing_data(interviews):
     
 #Merge all different types of data
 def prepare_data(models):
-    interviews = pd.read_pickle('data/cache/interviews.pkl')
+    interviews = wave_parser()
+    interviews = merge_linguistics(interviews)
+    interviews = merge_summaries(interviews)
+
     interviews[MORALITY_ORIGIN] = ''
     interviews['Morality Text'] = interviews['Morality Text'].apply(clean_morality_tags)
 
@@ -496,95 +572,14 @@ def prepare_data(models):
 
     columns += [wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]
 
-    columns += [wave + ':' + 'Morality Text' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
+    columns += [wave + ':' + text for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for text in ['Morality Text', 'Morality Response', 'Morality Summary']]
     
-    columns += [wave + ':' + 'Morality Summary' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
-
     interviews = interviews[columns]
     return interviews
 
-#Compute summary of morality text
-def compute_morality_summary():
-    interviews = wave_parser()
-    interviews['Morality_Full_Text'] = interviews['Morality_Full_Text'].replace('', pd.NA)
-    interviews = interviews.dropna(subset=['Morality_Full_Text']).reset_index(drop=True)
-    #OpenAI API
-    openai.api_key = os.getenv('OPENAI_API_KEY')
-    summarizer = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': CHATGPT_SUMMARY_PROMPT},{'role': 'user','content': text}], temperature=.2, max_tokens=256, frequency_penalty=0, presence_penalty=0, seed=42)
-    aggregator = lambda r: r['choices'][0]['message']['content']
-    full_pipeline = lambda text: aggregator(summarizer(text))
-    interviews['Morality Summary'] = interviews['Morality_Full_Text'].apply(full_pipeline)
-    interviews.to_pickle('data/cache/interviews.pkl')
-
-def compute_linguistics():
-    interviews = pd.read_pickle('data/cache/interviews.pkl')
-        
-    #Locate morality text in interviews
-    morality_text = 'Morality Text'
-    interviews[morality_text] = ''
-    interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
-    interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
-    interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
-    interviews[morality_text] = interviews[morality_text].replace('', np.nan)
-    interviews = interviews.dropna(subset=[morality_text]).reset_index(drop=True)
-
-    #Count words in morality text
-    nlp = spacy.load('en_core_web_lg')
-    count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
-    interviews['Verbosity'] = interviews[morality_text].map(count)
-    interviews = interviews[interviews['Verbosity'] < interviews['Verbosity'].quantile(.95)].reset_index(drop=True)
-    
-    #Count uncertain terms in morality text
-    pattern = r'\b(' + '|'.join(re.escape(term) for term in UNCERTAINT_TERMS) + r')\b'
-    count = lambda section : 0 if pd.isna(section) else len(re.findall(pattern, section.lower()))
-    interviews['Uncertainty'] = interviews[morality_text].map(count)
-
-    #Measure readability in morality text
-    measure = lambda section : 0 if pd.isna(section) else textstat.flesch_reading_ease(section)
-    interviews['Complexity'] = interviews[morality_text].map(measure)
-
-    #Measure sentiment in morality text
-    model_params = {'device':0} if torch.cuda.is_available() else {}
-    sentiment_pipeline = pipeline('sentiment-analysis', model='distilbert/distilbert-base-uncased-finetuned-sst-2-english', **model_params)
-    cumpute_score = lambda r : (r['score'] + 1)/2 if r['label'] == 'POSITIVE' else (-r['score'] + 1)/2 if r['label'] == 'NEGATIVE' else .5
-    interviews['Sentiment'] = pd.Series(sentiment_pipeline(interviews[morality_text].tolist(), truncation=True)).map(cumpute_score)
-
-    #Normalize values
-    interviews['Uncertainty'] = minmax_scale(interviews['Uncertainty'].astype(int) / interviews['Verbosity'].astype(int))
-    interviews['Verbosity'] = minmax_scale(np.log(interviews['Verbosity'].astype(int)))
-    interviews['Complexity'] = minmax_scale((interviews['Complexity']).astype(float))
-    interviews['Sentiment'] = minmax_scale(interviews['Sentiment'].astype(float))
-
-    #Save full morality dialogue
-    interviews.loc[interviews['Wave'] == 1, morality_text] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]))
-    interviews.loc[interviews['Wave'] == 2, morality_text] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]))
-    interviews.loc[interviews['Wave'] == 3, morality_text] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]))
-
-    interviews.to_pickle('data/cache/interviews.pkl')
-
-#Prepare data for crowd labeling
-def prepare_crowd_labeling(morality_text):
-    interviews = prepare_data([])
-    interviews[morality_text] = interviews[morality_text].replace('', pd.NA)
-    interviews = interviews[['Survey Id', morality_text]].dropna(subset=[morality_text]).reset_index(drop=True)
-    interviews[morality_text] = interviews[morality_text].apply(clean_morality_tags)
-    interviews[morality_text] = interviews[morality_text].apply(lambda t: re.sub(r'I:', '<b>I: </b>', t)).apply(lambda t: re.sub(r'R:', '<b>R: </b>', t)).apply(lambda t: re.sub(r'\n', '<br>', t))
-    interviews.to_clipboard(index=False, header=False)
-
 
 if __name__ == '__main__':
-    #Hyperparameters
-    config = [1]
-
-    for c in config:
-        if c == 1:
-            models = ['deepseek_bin', 'deepseek_resp_bin', 'deepseek_sum_bin', 'chatgpt_bin', 'chatgpt_bin_3.5', 'chatgpt_resp_bin', 'chatgpt_sum_bin', 'deepseek_bin_dto1', 'deepseek_bin_cto1', 'deepseek_bin_rto1', 'deepseek_bin_to1', 'deepseek_bin_toa', 'chatgpt_bin_dto1', 'chatgpt_bin_cto1', 'chatgpt_bin_rto1', 'chatgpt_bin_to1', 'chatgpt_bin_toa', 'deepseek_bin_ar', 'deepseek_bin_nt', 'chatgpt_bin_ar', 'chatgpt_bin_nt', 'nli_bin', 'nli_resp_bin', 'nli_sum_bin', 'sbert_bin', 'sbert_resp_bin', 'sbert_sum_bin', 'lda_bin', 'lda_resp_bin', 'lda_sum_bin', 'wc_bin', 'wc_resp_bin', 'wc_sum_bin', 'nli_quant', 'nli_resp_quant', 'nli_sum_quant', 'chatgpt_quant']
-            interviews = prepare_data(models)
-            interviews.sort_values(by='Survey Id').to_clipboard(index=False)
-        elif c == 2:
-            compute_morality_summary()
-        elif c == 3:
-            compute_linguistics()
-        elif c == 4:
-            morality_text = 'Wave 1:Morality Text'
-            prepare_crowd_labeling(morality_text)
+    models = ['deepseek_bin', 'deepseek_resp_bin', 'deepseek_sum_bin', 'chatgpt_bin', 'chatgpt_bin_3.5', 'chatgpt_resp_bin', 'chatgpt_sum_bin', 'deepseek_bin_dto1', 'deepseek_bin_cto1', 'deepseek_bin_rto1', 'deepseek_bin_to1', 'deepseek_bin_toa', 'chatgpt_bin_dto1', 'chatgpt_bin_cto1', 'chatgpt_bin_rto1', 'chatgpt_bin_to1', 'chatgpt_bin_toa', 'deepseek_bin_ar', 'deepseek_bin_nt', 'chatgpt_bin_ar', 'chatgpt_bin_nt', 'nli_bin', 'nli_resp_bin', 'nli_sum_bin', 'sbert_bin', 'sbert_resp_bin', 'sbert_sum_bin', 'lda_bin', 'lda_resp_bin', 'lda_sum_bin', 'wc_bin', 'wc_resp_bin', 'wc_sum_bin', 'nli_quant', 'nli_resp_quant', 'nli_sum_quant', 'chatgpt_quant']
+    interviews = prepare_data(models)
+    interviews.sort_values(by='Survey Id').to_clipboard(index=False)
+            

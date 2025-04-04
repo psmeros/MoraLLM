@@ -39,19 +39,15 @@ def compute_morality_dimensions(models, morality_texts):
             data = interviews.copy()
 
             #NLI model
-            if model in ['entail', 'entail_ml', 'entail_explained', 'entail_ml_explained']:
+            if model in ['nli_quant', 'nli_quant_uv']:
                 #Premise and hypothesis templates
                 hypothesis_template = 'The reasoning in this example is based on {}.'
                 model_params = {'device':0} if torch.cuda.is_available() else {}
                 morality_pipeline = pipeline('zero-shot-classification', model='roberta-large-mnli', **model_params)
 
-                #Model variants
-                multi_label = True if model in ['entail_ml', 'entail_ml_explained'] else False
-                morality_dictionary = MORALITY_ORIGIN_EXPLAINED if model in ['entail_explained', 'entail_ml_explained'] else {mo:mo for mo in MORALITY_ORIGIN}
-
                 #Trasformation functions
-                classifier = lambda series: pd.Series(morality_pipeline(series.tolist(), list(morality_dictionary.keys()), hypothesis_template=hypothesis_template, multi_label=multi_label))
-                aggregator = lambda r: pd.DataFrame([{morality_dictionary[l]:s for l, s in zip(r['labels'], r['scores'])}]).max()
+                classifier = lambda series: pd.Series(morality_pipeline(series.tolist(), list(MORALITY_ORIGIN_EXPLAINED.keys()), hypothesis_template=hypothesis_template, multi_label=(True if model == 'nli_quant' else False if model == 'nli_quant_uv' else None)))
+                aggregator = lambda r: pd.DataFrame([{MORALITY_ORIGIN_EXPLAINED[l]:s for l, s in zip(r['labels'], r['scores'])}]).max()
                 
                 #Classify morality origin and join results
                 morality_origin = classifier(data[morality_text]).apply(aggregator)
@@ -156,7 +152,7 @@ def compute_morality_dimensions(models, morality_texts):
             data.to_pickle('data/cache/morality_model-' + model + ('_resp' if morality_text == 'Morality Response' else '_sum' if morality_text == 'Morality Summary' else '') + '.pkl')
 
             #Binarize continuous morality dimensions
-            if model in ['sbert', 'lg', 'lda']:
+            if model in ['nli_quant', 'sbert', 'lg', 'lda']:
                 data[MORALITY_ORIGIN] = (data[MORALITY_ORIGIN].apply(minmax_scale) > .5).astype(int)
                 data.to_pickle('data/cache/morality_model-' + model + ('_resp' if morality_text == 'Morality Response' else '_sum' if morality_text == 'Morality Summary' else '') + '_bin.pkl')        
 

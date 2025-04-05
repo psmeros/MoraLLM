@@ -135,41 +135,20 @@ def plot_morality_evolution(interviews, model, waves):
 def plot_morality_shift(interviews, model, waves):
     data = interviews.copy()
 
-    #standardize separately
+    #Standardize waves separately
     data[[wave + ':' + mo + '_' + model for wave in waves for mo in MORALITY_ORIGIN]] = scale(data[[wave + ':' + mo + '_' + model for wave in waves for mo in MORALITY_ORIGIN]], with_std=False)
 
     #Compute morality shifts across waves
-    shifts = []
-    if len(waves) == 3:
-        slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].notna().all(axis=1)]
-        for from_wave, to_wave in zip(['Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3']):
-            shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-            shift[DEMOGRAPHICS] = slice[[from_wave + ':' + d for d in DEMOGRAPHICS]].values
-            shift ['Count'] = .5
-            shift = shift.melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-            shifts.append(shift)
-
-        slice = data[data[[wave + ':Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]].isna().any(axis=1)]
-        for from_wave, to_wave in zip(['Wave 1', 'Wave 1', 'Wave 2'], ['Wave 2', 'Wave 3', 'Wave 3']):
-            shift = pd.DataFrame(slice[[to_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - slice[[from_wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-            shift[DEMOGRAPHICS] = slice[[from_wave + ':' + d for d in DEMOGRAPHICS]].values
-            shift ['Count'] = 1
-            shift = shift.dropna().melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-            shifts.append(shift)
-    elif len(waves) == 2:
-        shift = pd.DataFrame(data[[waves[1] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - data[[waves[0] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
-        shift[DEMOGRAPHICS] = data[[waves[0] + ':' + d for d in DEMOGRAPHICS]].values
-        shift ['Count'] = 1
-        shift = shift.dropna().melt(id_vars=DEMOGRAPHICS+['Count'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
-        shifts.append(shift)
+    shifts = pd.DataFrame(data[[waves[1] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - data[[waves[0] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    shifts[DEMOGRAPHICS] = data[[waves[0] + ':' + d for d in DEMOGRAPHICS]].values
+    shifts = shifts.dropna().melt(id_vars=DEMOGRAPHICS, value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
 
     #Prepare data
-    shifts = pd.concat(shifts).reset_index(drop=True)
     shifts['Value'] = shifts['Value'] * 100
     shifts['Race'] = shifts['Race'].map(lambda r: {'White': 'White', 'Black': 'Other', 'Other': 'Other'}.get(r, None))
     shifts['Household Income'] = shifts['Household Income'].map(lambda x: INCOME_RANGE.get(x, None))
     for demographic in DEMOGRAPHICS:
-        shifts[demographic] = shifts[demographic].map(lambda x: x + ' (N = ' + str(int(shifts[shifts[demographic] == x]['Count'].sum()/len(MORALITY_ORIGIN))) + ')')
+        shifts[demographic] = shifts[demographic].map(lambda x: x + ' (N = ' + str(int(len(shifts[shifts[demographic] == x])/len(MORALITY_ORIGIN))) + ')')
 
     #Plot overall morality shifts
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)

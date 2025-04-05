@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import pandas as pd
 import seaborn as sns
+from sklearn.preprocessing import scale
 
 from __init__ import *
 from src.helpers import CODED_WAVES, DEMOGRAPHICS, INCOME_RANGE, MORALITY_ORIGIN
@@ -134,6 +135,9 @@ def plot_morality_evolution(interviews, model, waves):
 def plot_morality_shift(interviews, model, waves):
     data = interviews.copy()
 
+    #standardize separately
+    data[[wave + ':' + mo + '_' + model for wave in waves for mo in MORALITY_ORIGIN]] = scale(data[[wave + ':' + mo + '_' + model for wave in waves for mo in MORALITY_ORIGIN]], with_std=False)
+
     #Compute morality shifts across waves
     shifts = []
     if len(waves) == 3:
@@ -201,7 +205,7 @@ def plot_morality_shift(interviews, model, waves):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [1,2,3,4,5,6]
+    config = [5]
     interviews = prepare_data()
     model = 'nli_sum_quant'
     waves = ['Wave 1', 'Wave 3']

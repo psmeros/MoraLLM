@@ -265,8 +265,8 @@ NETWORK_ATTRIBUTES = {'ids': 'Survey Id',
                       'sfrnddrgs_w3': 'Wave 3:Use drugs',
                       'sfrndrelblf_w3': 'Wave 3:Similar beliefs'}
 
-#Income: Dichotomy at 50k
-INCOME_RANGE = {**dict.fromkeys(range(1, 5), 'Low'), **dict.fromkeys(range(5, 12), 'High')}
+#Income: Dichotomy at 90k
+INCOME_RANGE = {**dict.fromkeys(range(1, 9), 'Low'), **dict.fromkeys(range(9, 12), 'High')}
 
 #Education: Dichotomy at College
 EDUCATION_RANGE = {**dict.fromkeys(range(0, 8), '< College'), **dict.fromkeys(range(8, 15), '≥ College')}

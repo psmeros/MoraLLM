@@ -36,14 +36,12 @@ def plot_ecdf(interviews, model):
 
 #Plot Intuitive-Consequentialist and Social-Theistic Morality Distinction
 def plot_morality_distinction(interviews, model, waves):
-
     #Prepare Data
     data = interviews.copy()
     data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in waves]).reset_index(drop=True)
-    data = data * 100
 
     #Compute Distinction
-    data = data.apply(lambda x: pd.Series([abs(x['Intuitive'] - x['Consequentialist']), abs(x['Social'] - x['Theistic'])]), axis=1)
+    data = data.apply(lambda x: pd.Series([x['Intuitive'] - x['Consequentialist'], x['Social'] - x['Theistic']]), axis=1)
 
     #Plot
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2)
@@ -51,12 +49,10 @@ def plot_morality_distinction(interviews, model, waves):
     g = sns.jointplot(data=data, x=0, y=1, kind='hex', color='rosybrown')
     g.figure.suptitle('Morality Distinction', y=1.03)
     ax = plt.gca()
-    ax.xaxis.set_ticks([0, 50, 100])
-    ax.yaxis.set_ticks([0, 50, 100])
+    ax.xaxis.set_ticks([-1, -.5, 0, .5, 1])
+    ax.yaxis.set_ticks([-1, -.5, 0, .5, 1])
     ax.set_xlabel('Intuitive-Consequentialist Distinction')
     ax.set_ylabel('Social-Theistic Distinction')
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
-    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
     plt.savefig('data/plots/fig-morality_distinction.png', bbox_inches='tight')
     plt.show()
 
@@ -229,7 +225,7 @@ def predict_shift(interviews, model, conf, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [6]
+    config = [2]
     interviews = prepare_data()
     model = 'nli_sum_quant'
     waves = ['Wave 1', 'Wave 3']

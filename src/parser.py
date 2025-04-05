@@ -14,7 +14,7 @@ from transformers import pipeline
 from __init__ import *
 from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS
+from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_MODELS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS
 
 
 #Convert encoding of files in a folder
@@ -538,23 +538,26 @@ def fill_missing_data(interviews):
     return interviews
     
 #Merge all different types of data
-def prepare_data(models):
-    interviews = wave_parser()
-    interviews = merge_linguistics(interviews)
-    interviews = merge_summaries(interviews)
+def prepare_data(models = [], file = 'data/cache/morality.csv'):
+    if not os.path.isfile(file):
+        interviews = wave_parser()
+        interviews = merge_linguistics(interviews)
+        interviews = merge_summaries(interviews)
 
-    interviews[MORALITY_ORIGIN] = ''
-    interviews['Morality Text'] = interviews['Morality Text'].apply(clean_morality_tags)
+        interviews[MORALITY_ORIGIN] = ''
+        for model in models:
+            interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))
 
-    for model in models:
-        interviews = pd.merge(interviews, pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']], on=['Interview Code', 'Wave'], how='left', suffixes=('', '_'+model))
-
-    interviews = merge_codings(interviews)
-    interviews = merge_matches(interviews)
-    interviews = merge_surveys(interviews)
-    interviews = merge_network(interviews)
-    interviews = merge_crowd(interviews)
-    interviews = fill_missing_data(interviews)
+        interviews = merge_codings(interviews)
+        interviews = merge_matches(interviews)
+        interviews = merge_surveys(interviews)
+        interviews = merge_network(interviews)
+        interviews = merge_crowd(interviews)
+        interviews = fill_missing_data(interviews)
+    else:
+        interviews = pd.read_csv(file, skiprows=[0])
+        for model in models:
+            interviews = pd.merge(interviews, merge_surveys(merge_matches(pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']].rename(columns={mo: mo + '_' + model for mo in MORALITY_ORIGIN})))[[wave + ':' + mo + '_' + model for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN] + ['Survey Id']], on=['Survey Id'], how='left')
 
     columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
@@ -562,7 +565,7 @@ def prepare_data(models):
     columns += [wave + ':' + mo + '_' + coder for coder in CODERS for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
     columns += [wave + ':' + mo + '_crowd' for wave in ['Wave 1'] for mo in MORALITY_ORIGIN]
 
-    columns += [wave + ':' + mo + '_' + estimatior for estimatior in models for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_' + model for model in MORALITY_MODELS + models for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + demographic for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for demographic in ['Age', 'Gender', 'Race', 'Household Income', 'Parent Education', 'Church Attendance', 'GPA', 'Moral Schemas', 'Religion', 'Region']]
 
@@ -579,7 +582,5 @@ def prepare_data(models):
 
 
 if __name__ == '__main__':
-    models = ['deepseek_bin', 'deepseek_resp_bin', 'deepseek_sum_bin', 'chatgpt_bin', 'chatgpt_bin_3.5', 'chatgpt_resp_bin', 'chatgpt_sum_bin', 'deepseek_bin_dto1', 'deepseek_bin_cto1', 'deepseek_bin_rto1', 'deepseek_bin_to1', 'deepseek_bin_toa', 'chatgpt_bin_dto1', 'chatgpt_bin_cto1', 'chatgpt_bin_rto1', 'chatgpt_bin_to1', 'chatgpt_bin_toa', 'deepseek_bin_ar', 'deepseek_bin_nt', 'chatgpt_bin_ar', 'chatgpt_bin_nt', 'nli_bin', 'nli_resp_bin', 'nli_sum_bin', 'sbert_bin', 'sbert_resp_bin', 'sbert_sum_bin', 'lda_bin', 'lda_resp_bin', 'lda_sum_bin', 'wc_bin', 'wc_resp_bin', 'wc_sum_bin', 'nli_quant', 'nli_resp_quant', 'nli_sum_quant', 'chatgpt_quant']
-    interviews = prepare_data(models)
+    interviews = prepare_data()
     interviews.sort_values(by='Survey Id').to_clipboard(index=False)
-            

@@ -1,11 +1,14 @@
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import pandas as pd
+import patsy
 import seaborn as sns
+from IPython.display import display
 from sklearn.preprocessing import scale
+from statsmodels.regression.linear_model import OLS
 
 from __init__ import *
-from src.helpers import CODED_WAVES, DEMOGRAPHICS, INCOME_RANGE, MORALITY_ORIGIN
+from src.helpers import DEMOGRAPHICS, INCOME_RANGE, MORALITY_ORIGIN, format_pvalue
 from src.parser import prepare_data
 
 #Show benefits of quantification by plotting ecdf
@@ -181,10 +184,52 @@ def plot_morality_shift(interviews, model, waves):
     plt.suptitle('Morality Shift over Waves')
     plt.savefig('data/plots/fig-morality_shift_by_demographic.png', bbox_inches='tight')
 
+#Predict morality shifts across waves
+def predict_shift(interviews, model, conf, to_latex):
+    data = interviews.copy()
+
+    #Compute morality shifts across waves
+    data = pd.DataFrame(data[[waves[1] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - data[[waves[0] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
+    data[DEMOGRAPHICS] = interviews[[waves[0] + ':' + d for d in DEMOGRAPHICS]].values
+    
+    #Add Reference Controls
+    for attribute_name in conf['References']['Attribute Names']:
+        dummies = pd.get_dummies(data[attribute_name], prefix=attribute_name, prefix_sep=' = ').astype(int)
+        data = pd.concat([data, dummies], axis=1).drop(attribute_name, axis=1)
+        conf['Controls'] = conf['Controls'][:conf['Controls'].index(attribute_name)] + list(dummies.columns) + conf['Controls'][conf['Controls'].index(attribute_name) + 1:]
+
+    #Convert Data to Numeric
+    data = data.apply(pd.to_numeric)
+
+    #Drop NA and Reference Dummies
+    conf['Controls'] = [c for c in conf['Controls'] if c not in [attribute_name + ' = ' + attribute_value for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values'])]]
+    data = data.drop([attribute_name + ' = ' + attribute_value for attribute_name, attribute_value in zip(conf['References']['Attribute Names'], conf['References']['Attribute Values'])], axis=1)
+    data = data.reset_index(drop=True)
+
+    #Define Formulas
+    formulas = ['Q("' + p + '")' + ' ~ ' + (' + '.join(['Q("' + c + '")' for c in conf['Controls']])) for p in conf['Predictions']]
+    
+    #Run Regressions
+    results = {}
+    results_index = ['Intercept'] + conf['Controls'] + ['N', 'AIC']
+    for formula, p in zip(formulas, conf['Predictions']):
+        y, X = patsy.dmatrices(formula, data, return_type='dataframe')
+        model = OLS(y, X).fit(maxiter=10000)
+        result = {param:(coef,pvalue) for param, coef, pvalue in zip(model.params.index, model.params, model.pvalues)}
+        result['N'] = int(model.nobs)
+        result['AIC'] = round(model.aic, 2)
+        results[p.split('_')[0]] = result
+    results = pd.DataFrame(results)
+    results.index = results_index
+    results[:-2] = results[:-2].map(format_pvalue)
+    
+    #Show Results
+    print(results.to_latex()) if to_latex else display(results)
+    results.to_clipboard()
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [5]
+    config = [6]
     interviews = prepare_data()
     model = 'nli_sum_quant'
     waves = ['Wave 1', 'Wave 3']
@@ -201,3 +246,10 @@ if __name__ == '__main__':
             plot_morality_evolution(interviews, model, waves)
         elif c == 5:
             plot_morality_shift(interviews, model, waves)
+        elif c == 6:
+            conf = {
+                    'Predictions': MORALITY_ORIGIN,
+                    'Controls': ['Race', 'Gender', 'Parent Education', 'Household Income'],
+                    'References': {'Attribute Names': ['Race', 'Gender', 'Parent Education'], 'Attribute Values': ['White', 'Male', '≥ College']}}
+            to_latex = False
+            predict_shift(interviews, model, conf, to_latex)

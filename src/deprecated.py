@@ -842,6 +842,27 @@ def prepare_crowd_labeling(interviews):
     interviews[morality_text] = interviews[morality_text].apply(lambda t: re.sub(r'I:', '<b>I: </b>', t)).apply(lambda t: re.sub(r'R:', '<b>R: </b>', t)).apply(lambda t: re.sub(r'\n', '<br>', t))
     interviews.to_clipboard(index=False, header=False)
 
+#Compute overall morality distribution
+def compute_distribution(interviews, model):
+    #Prepare Data
+    data = interviews.copy()
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in CODED_WAVES]).reset_index(drop=True)
+    data = data.melt(value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
+    data['Value'] = data['Value'] * 100
+
+    #Plot
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    plt.figure(figsize=(10, 10))
+    g = sns.displot(data=data, x='Value', y='Morality', hue='Morality', hue_order=MORALITY_ORIGIN, kind='hist', legend=False, aspect=2, palette='Set2')
+    g.figure.suptitle('Overall Distribution', y= 1.05, x=.5)
+    g.set_ylabels('')
+    g.set_xlabels('')
+    g.set(xlim=(0, 100))
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f%%'))
+    plt.savefig('data/plots/fig-morality_distro.png', bbox_inches='tight')
+    plt.show()
+
 
 if __name__ == '__main__':
     #Hyperparameters
@@ -899,3 +920,5 @@ if __name__ == '__main__':
             plot_coders_agreement()
         elif c == 16:
             prepare_crowd_labeling(interviews)
+        elif c == 17:
+            compute_distribution(interviews, 'nli_sum_quant')

@@ -158,25 +158,20 @@ def compute_morality_dimensions(models, morality_texts):
 
 
 #Plot F1 Score for all models
-def evaluate_morality_dimensions(models, evaluation_waves, n_bootstraps, human_evaluation):
+def evaluate_morality_dimensions(interviews, models, evaluation_waves = ['Wave 1'], n_bootstraps = 10):
     #Prepare data
-    interviews = prepare_data(models)
-    interviews = pd.concat([pd.DataFrame(interviews[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold', 'crowd']]) for wave in evaluation_waves]).dropna()
-    print('Evaluation data size', len(interviews))
+    data = interviews.copy()
+    data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]].values, columns=[mo + '_' + model for mo in MORALITY_ORIGIN for model in models + ['gold']]) for wave in evaluation_waves]).dropna()
+    print('Evaluation data size', len(data))
 
     #Bootstrapping
     scores = []
     for i in range(n_bootstraps):
-        indices = resample(range(len(interviews)), replace=True, random_state=42 + i)
-        data = interviews.iloc[indices]
-
-        if human_evaluation:
-            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_crowd'], average='weighted') for mo in MORALITY_ORIGIN}])
-            score['Model'] = 'Crowdworkers'
-            scores.append(round(score, 2))
+        indices = resample(range(len(data)), replace=True, random_state=42 + i)
+        slice = data.iloc[indices]
         for model in models:
-            score = pd.DataFrame([{mo:f1_score(data[mo + '_gold'], data[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
-            score['Model'] = {'wc_bin':'$Dictionary$', 'wc_sum_bin':'$Dictionary_{Σ}$', 'wc_resp_bin':'$Dictionary_{R}$', 'lda_bin':'$LDA$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'sbert_resp_bin':'$SBERT_{R}$', 'nli_bin':'$NLI$', 'nli_sum_bin':'$NLI_{Σ}$', 'nli_resp_bin':'$NLI_{R}$', 'chatgpt_bin':'$GPT$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_sum_bin':'$GPT_{Σ}$', 'chatgpt_resp_bin':'$GPT_{R}$', 'chatgpt_bin_nt':'$GPT_{NT}$', 'chatgpt_bin_ar':'$GPT_{AR}$', 'chatgpt_bin_toa':'$GPT_{TOA}$', 'chatgpt_bin_to1':'$GPT_{TO1}$', 'chatgpt_bin_rto1':'$GPT_{RTO1}$', 'chatgpt_bin_cto1':'$GPT_{CTO1}$', 'chatgpt_bin_dto1':'$GPT_{DTO1}$', 'deepseek_bin':'$DeepSeek$', 'deepseek_sum_bin':'$DeepSeek_{Σ}$', 'deepseek_resp_bin':'$DeepSeek_{R}$', 'deepseek_bin_nt':'$DeepSeek_{NT}$', 'deepseek_bin_ar':'$DeepSeek_{AR}$', 'deepseek_bin_toa':'$DeepSeek_{TOA}$', 'deepseek_bin_to1':'$DeepSeek_{TO1}$', 'deepseek_bin_rto1':'$DeepSeek_{RTO1}$', 'deepseek_bin_cto1':'$DeepSeek_{CTO1}$', 'deepseek_bin_dto1':'$DeepSeek_{DTO1}$'}.get(model, model)
+            score = pd.DataFrame([{mo:f1_score(slice[mo + '_gold'], slice[mo + '_' + model], average='weighted') for mo in MORALITY_ORIGIN}])
+            score['Model'] = {'crowd': 'Crowdworkers', 'wc_bin':'$Dictionary$', 'wc_sum_bin':'$Dictionary_{Σ}$', 'wc_resp_bin':'$Dictionary_{R}$', 'lda_bin':'$LDA$', 'lda_sum_bin':'$LDA_{Σ}$', 'lda_resp_bin':'$LDA_{R}$', 'sbert_bin':'$SBERT$', 'sbert_sum_bin':'$SBERT_{Σ}$', 'sbert_resp_bin':'$SBERT_{R}$', 'nli_bin':'$NLI$', 'nli_sum_bin':'$NLI_{Σ}$', 'nli_resp_bin':'$NLI_{R}$', 'chatgpt_bin':'$GPT$', 'chatgpt_bin_3.5':'$GPT_{3.5}$', 'chatgpt_sum_bin':'$GPT_{Σ}$', 'chatgpt_resp_bin':'$GPT_{R}$', 'chatgpt_bin_nt':'$GPT_{NT}$', 'chatgpt_bin_ar':'$GPT_{AR}$', 'chatgpt_bin_toa':'$GPT_{TOA}$', 'chatgpt_bin_to1':'$GPT_{TO1}$', 'chatgpt_bin_rto1':'$GPT_{RTO1}$', 'chatgpt_bin_cto1':'$GPT_{CTO1}$', 'chatgpt_bin_dto1':'$GPT_{DTO1}$', 'deepseek_bin':'$DeepSeek$', 'deepseek_sum_bin':'$DeepSeek_{Σ}$', 'deepseek_resp_bin':'$DeepSeek_{R}$', 'deepseek_bin_nt':'$DeepSeek_{NT}$', 'deepseek_bin_ar':'$DeepSeek_{AR}$', 'deepseek_bin_toa':'$DeepSeek_{TOA}$', 'deepseek_bin_to1':'$DeepSeek_{TO1}$', 'deepseek_bin_rto1':'$DeepSeek_{RTO1}$', 'deepseek_bin_cto1':'$DeepSeek_{CTO1}$', 'deepseek_bin_dto1':'$DeepSeek_{DTO1}$'}.get(model, model)
             scores.append(round(score, 2))
     scores = pd.concat(scores, ignore_index=True).iloc[::-1]
     display(scores.set_index('Model').groupby('Model', sort=False).mean().round(2))
@@ -328,6 +323,7 @@ def predict_behavior(interviews, conf, to_latex):
 if __name__ == '__main__':
     #Hyperparameters
     config = [2]
+    interviews = prepare_data()
 
     for c in config:
 
@@ -344,16 +340,12 @@ if __name__ == '__main__':
             #Input engineering
             # models = ['nli_sum_bin', 'nli_resp_bin', 'nli_bin', 'sbert_sum_bin', 'sbert_resp_bin', 'sbert_bin', 'lda_sum_bin', 'lda_resp_bin', 'lda_bin', 'wc_sum_bin', 'wc_resp_bin', 'wc_bin']
             #Final model comparison
-            models = ['deepseek_bin', 'chatgpt_bin', 'nli_sum_bin', 'sbert_resp_bin', 'lda_sum_bin', 'wc_bin']
-            evaluation_waves = ['Wave 1']
-            human_evaluation = False
-            n_bootstraps = 10
-            evaluate_morality_dimensions(models=models, evaluation_waves=evaluation_waves, n_bootstraps=n_bootstraps, human_evaluation=human_evaluation)
+            models = ['crowd', 'deepseek_bin', 'chatgpt_bin', 'nli_sum_bin', 'sbert_resp_bin', 'lda_sum_bin', 'wc_bin']
+            evaluate_morality_dimensions(interviews, models)
 
         elif c == 3:
             to_latex = False
             model = 'deepseek_bin'
-            interviews = prepare_data([model])
             #Future Behavior with Controls
             conf = {'Description': 'Predicting Future Behavior: ' + model,
                     'From_Wave': ['Wave 1', 'Wave 2', 'Wave 3'],

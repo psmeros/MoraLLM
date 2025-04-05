@@ -225,9 +225,9 @@ def compute_decisiveness(interviews, model, waves, decisive_threshold = .5):
 if __name__ == '__main__':
     #Hyperparameters
     config = [1,2,3,4,5,6]
-    to_latex = False
+    interviews = prepare_data()
     model = 'nli_sum_quant'
-    interviews = prepare_data([model])
+    waves = ['Wave 1', 'Wave 3']
 
     for c in config:
         if c == 1:
@@ -235,13 +235,10 @@ if __name__ == '__main__':
         elif c == 2:
             plot_ecdf(interviews, model)
         elif c == 3:
-            waves = ['Wave 1', 'Wave 3']
             plot_morality_evolution(interviews, model, waves)
         elif c == 4:
-            waves = ['Wave 1', 'Wave 3']
             plot_morality_shift(interviews, model, waves)
         elif c == 5:
-            waves = ['Wave 1', 'Wave 3']
             plot_morality_distinction(interviews, model, waves)
         elif c == 6:
-            compute_decisiveness(interviews, model, ['Wave 1', 'Wave 3'])
+            compute_decisiveness(interviews, model, waves)

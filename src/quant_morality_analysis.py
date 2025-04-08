@@ -3,6 +3,7 @@ import matplotlib.ticker as mtick
 import pandas as pd
 import patsy
 import seaborn as sns
+from scipy.stats import pearsonr
 from IPython.display import display
 from sklearn.preprocessing import scale
 from statsmodels.regression.linear_model import OLS
@@ -35,10 +36,20 @@ def plot_ecdf(interviews, model):
     plt.show()
 
 #Plot Intuitive-Consequentialist and Social-Theistic Morality Distinction
-def plot_morality_distinction(interviews, model, waves):
+def plot_morality_distinction(interviews, model, waves, to_latex):
     #Prepare Data
     data = interviews.copy()
     data = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in waves]).reset_index(drop=True)
+
+    #Compute Correlations
+    results = pd.DataFrame(index=[mo1 + ' - ' + mo2 for i, mo1 in enumerate(MORALITY_ORIGIN) for j, mo2 in enumerate(MORALITY_ORIGIN) if i < j] + ['N'], columns=['Correlation'])
+    for i in results.index[:-1]:
+        results.loc[i] = format_pvalue(pearsonr(data[i.split(' - ')[0]], data[i.split(' - ')[1]]))
+    results.loc['N'] = len(data)
+    
+    #Show Results
+    print(results.to_latex()) if to_latex else display(results)
+    results.to_clipboard()
 
     #Compute Distinction
     data = data.apply(lambda x: pd.Series([x['Intuitive'] - x['Consequentialist'], x['Social'] - x['Theistic']]), axis=1)
@@ -227,7 +238,7 @@ def predict_shift(interviews, model, conf, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [6]
+    config = [2]
     interviews = prepare_data()
     model = 'nli_sum_quant'
     waves = ['Wave 1', 'Wave 3']
@@ -237,7 +248,8 @@ if __name__ == '__main__':
         if c == 1:
             plot_ecdf(interviews, model)
         elif c == 2:
-            plot_morality_distinction(interviews, model, waves)
+            to_latex = False            
+            plot_morality_distinction(interviews, model, waves, to_latex)
         elif c == 3:
             compute_decisiveness(interviews, model, waves)
         elif c == 4:

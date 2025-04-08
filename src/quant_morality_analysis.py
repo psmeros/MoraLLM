@@ -187,6 +187,8 @@ def predict_shift(interviews, model, conf, to_latex):
     #Compute morality shifts across waves
     data = pd.DataFrame(data[[waves[1] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values - data[[waves[0] + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN)
     data[DEMOGRAPHICS] = interviews[[waves[0] + ':' + d for d in DEMOGRAPHICS]].values
+    data['Race'] = data['Race'].map(lambda r: {'White': 'White', 'Black': 'Other', 'Other': 'Other'}.get(r, None))
+    data['Household Income'] = scale(data['Household Income'])
     
     #Add Reference Controls
     for attribute_name in conf['References']['Attribute Names']:
@@ -225,7 +227,7 @@ def predict_shift(interviews, model, conf, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [6]
     interviews = prepare_data()
     model = 'nli_sum_quant'
     waves = ['Wave 1', 'Wave 3']
@@ -246,6 +248,6 @@ if __name__ == '__main__':
             conf = {
                     'Predictions': MORALITY_ORIGIN,
                     'Controls': ['Race', 'Gender', 'Parent Education', 'Household Income'],
-                    'References': {'Attribute Names': ['Race', 'Gender', 'Parent Education'], 'Attribute Values': ['White', 'Male', '≥ College']}}
+                    'References': {'Attribute Names': ['Race', 'Gender', 'Parent Education'], 'Attribute Values': ['White', 'Male', '< College']}}
             to_latex = False
             predict_shift(interviews, model, conf, to_latex)

@@ -13,11 +13,12 @@ from src.helpers import DEMOGRAPHICS, INCOME_RANGE, MORALITY_ORIGIN, format_pval
 from src.parser import prepare_data
 
 #Show benefits of quantification by plotting ecdf
-def plot_ecdf(interviews, model):
+def plot_ecdf(interviews, model, waves):
     #Prepare Data
-    model = pd.DataFrame(interviews[['Wave 1:' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).assign(Estimator='NLI').assign(Estimator='NLI').dropna()
-    crowd = pd.DataFrame(interviews[['Wave 1:' + mo + '_' + 'crowd' for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN).assign(Estimator='NLI').assign(Estimator='Crowd').dropna()
-    data = pd.concat([model, crowd])
+    data = interviews.copy()
+    model = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + model for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in waves]).reset_index(drop=True).assign(Estimator='NLI')
+    gold = pd.concat([pd.DataFrame(data[[wave + ':' + mo + '_' + 'gold' for mo in MORALITY_ORIGIN]].values, columns=MORALITY_ORIGIN) for wave in waves]).reset_index(drop=True).assign(Estimator='Gold')
+    data = pd.concat([model, gold])
     data = data.melt(id_vars=['Estimator'], value_vars=MORALITY_ORIGIN, var_name='Morality', value_name='Value')
 
     #Plot
@@ -238,7 +239,7 @@ def predict_shift(interviews, model, conf, to_latex):
 
 if __name__ == '__main__':
     #Hyperparameters
-    config = [2]
+    config = [1]
     interviews = prepare_data()
     model = 'nli_sum_quant'
     waves = ['Wave 1', 'Wave 3']
@@ -246,9 +247,9 @@ if __name__ == '__main__':
 
     for c in config:
         if c == 1:
-            plot_ecdf(interviews, model)
+            plot_ecdf(interviews, model, waves)
         elif c == 2:
-            to_latex = False            
+            to_latex = False
             plot_morality_distinction(interviews, model, waves, to_latex)
         elif c == 3:
             compute_decisiveness(interviews, model, waves)

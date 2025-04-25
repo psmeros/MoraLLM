@@ -219,10 +219,6 @@ def wave_parser(waves_folder='data/interviews/waves'):
     interviews['Race'] = interviews['Race'].map(RACE_RANGE)
     interviews['Age'] = interviews['Age'].astype('Int64')
 
-    #Clean Morality Text
-    interviews['Morality_Full_Text'] = interviews['Morality_Full_Text'].replace('', pd.NA)
-    interviews = interviews.dropna(subset=['Morality_Full_Text']).reset_index(drop=True)
-
     interviews.loc[interviews['Wave'] == 1, 'Morality Text'] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
     interviews.loc[interviews['Wave'] == 2, 'Morality Text'] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
     interviews.loc[interviews['Wave'] == 3, 'Morality Text'] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
@@ -231,6 +227,10 @@ def wave_parser(waves_folder='data/interviews/waves'):
     interviews.loc[interviews['Wave'] == 1, 'Morality Response'] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
     interviews.loc[interviews['Wave'] == 2, 'Morality Response'] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
     interviews.loc[interviews['Wave'] == 3, 'Morality Response'] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
+
+    #Clean Morality Text
+    interviews['Morality Text'] = interviews['Morality Text'].replace('', pd.NA)
+    interviews = interviews.dropna(subset=['Morality Text']).reset_index(drop=True)
 
     #Filter columns
     interviews = interviews[['Interview Code', 'Wave', 'Gender', 'Race', 'Age', 'Morality Text', 'Morality Response']]

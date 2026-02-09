@@ -559,7 +559,7 @@ def prepare_data(models = [], file = 'data/cache/morality.csv'):
         for model in models:
             interviews = pd.merge(interviews, merge_surveys(merge_matches(pd.read_pickle('data/cache/morality_model-'+model+'.pkl')[MORALITY_ORIGIN + ['Interview Code', 'Wave']].rename(columns={mo: mo + '_' + model for mo in MORALITY_ORIGIN})))[[wave + ':' + mo + '_' + model for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN] + ['Survey Id']], on=['Survey Id'], how='left')
 
-    columns = ['Survey Id'] + [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
+    columns = ['Survey Id'] #+ [wave + ':' + 'Interview Code' for wave in ['Wave 1', 'Wave 2', 'Wave 3']]
 
     columns += [wave + ':' + mo + '_gold' for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
     columns += [wave + ':' + mo + '_' + coder for coder in CODERS for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
@@ -575,7 +575,7 @@ def prepare_data(models = [], file = 'data/cache/morality.csv'):
 
     columns += [wave + ':' + network for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for network in ['Number of friends', 'Regular volunteers', 'Use drugs', 'Similar beliefs']]
 
-    columns += [wave + ':' + text for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for text in ['Morality Text', 'Morality Response', 'Morality Summary']]
+    #columns += [wave + ':' + text for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for text in ['Morality Text', 'Morality Response', 'Morality Summary']]
     
     interviews = interviews[columns]
     return interviews

@@ -83,11 +83,25 @@ INTERVIEW_MARKERS_MAPPING = { #all waves
                               '#IV Code:': '#Interview Code:',
                               r':P\d+:': ':',
                               r':C\d+:': ':',
+                              #wave_4 (TODO: adapt if Wave 4 transcripts use another marker)
+                              r':V\d+:': ':',
                               '#ORGANIZED ACTIVITIES' : '#ORGANIZED ACTIVITIES AND WORK',
                               '#WORK' : '#ORGANIZED ACTIVITIES AND WORK',
                               }
 
 MORALITY_QUESTIONS = ['M' + str(i) + ':' for i in list(range(17))+['X']]
+
+#Per-wave selection of the morality questions used for annotation.
+#  'text'     : question tags whose I:/R: exchanges form the 'Morality Text' (LLM input)
+#  'response' : question tags whose respondent answers form the 'Morality Response'
+#To annotate a new wave, add an entry here (check the question tags, e.g. M2:, M5:,
+#in that wave's transcripts against its interview protocol) and, if the wave uses its
+#own speaker/question markers, add the corresponding regex to INTERVIEW_MARKERS_MAPPING.
+WAVE_MORALITY_QUESTIONS = {1: {'text': ['M4'], 'response': ['M4']},
+                           2: {'text': ['M2', 'M4', 'M6'], 'response': ['M2', 'M4', 'M6']},
+                           3: {'text': ['M2', 'M5', 'M7'], 'response': ['M2', 'M5', 'M7']},
+                           #TODO: verify against the Wave 4 protocol before running
+                           4: {'text': ['M2', 'M5', 'M7'], 'response': ['M2', 'M5', 'M7']}}
 
 REFINED_SECTIONS = [participant + section for participant in INTERVIEW_PARTICIPANTS for section in [s for s in INTERVIEW_SECTIONS if s not in ['Morality']] + ['Morality:'+q[:-1] for q in MORALITY_QUESTIONS]]
 
@@ -169,7 +183,17 @@ MORALITY_ORIGIN_EXPLAINED = {**dict.fromkeys(['intuition'], 'Intuitive'),
                              **dict.fromkeys(['social'], 'Social'),
                              **dict.fromkeys(['religion'], 'Theistic')}
 
-MORALITY_VOCAB = {mo:vocab for mo, vocab in zip(MORALITY_ORIGIN, [['intuition', 'intuitive', 'gut', 'feel', 'instinct'], ['consequence', 'outcome', 'affect', 'impact', 'future', 'cost', 'benefit', 'harm', 'help', 'maximize', 'minimize'], ['parent', 'mother', 'father', 'brother', 'sister', 'mom', 'dad', 'friend', 'school', 'teacher', 'society', 'social'], ['god', 'devil', 'faith', 'prayer', 'pray', 'church', 'islam', 'bible', 'religion', 'religious', 'belief', 'commandment', 'heaven', 'hell']])}
+#Dictionary vocabulary (lemmas): the name of each moral dimension plus a few common synonyms.
+#Fixed a priori; it uses no information from the expert annotations. Also the seed words of the guided LDA.
+MORALITY_VOCAB = {'Intuitive': ['intuitive', 'intuition', 'instinct', 'gut', 'hunch'],
+                  'Consequentialist': ['consequentialist', 'consequence', 'outcome', 'result', 'effect'],
+                  'Social': ['social', 'society', 'community', 'peer'],
+                  'Theistic': ['theistic', 'god', 'religion', 'religious', 'faith']}
+
+#Validation design: every model choice is made on the development wave; the selected
+#configurations are then frozen and evaluated once on the held-out test wave.
+DEVELOPMENT_WAVES = ['Wave 1']
+TEST_WAVES = ['Wave 3']
 
 CODERS = ['Coder_1', 'Coder_2']
 
@@ -324,3 +348,15 @@ UNCERTAINT_TERMS = ['hypothetically speaking', 'possibly', 'potentially', 'must'
 MORALITY_MODELS = ['deepseek_bin', 'deepseek_resp_bin', 'deepseek_sum_bin', 'chatgpt_bin', 'chatgpt_bin_3.5', 'chatgpt_resp_bin', 'chatgpt_sum_bin', 'deepseek_bin_dto1', 'deepseek_bin_cto1', 'deepseek_bin_rto1', 'deepseek_bin_to1', 'deepseek_bin_toa', 'chatgpt_bin_dto1', 'chatgpt_bin_cto1', 'chatgpt_bin_rto1', 'chatgpt_bin_to1', 'chatgpt_bin_toa', 'deepseek_bin_ar', 'deepseek_bin_nt', 'chatgpt_bin_ar', 'chatgpt_bin_nt', 'nli_bin', 'nli_resp_bin', 'nli_sum_bin', 'sbert_bin', 'sbert_resp_bin', 'sbert_sum_bin', 'lda_bin', 'lda_resp_bin', 'lda_sum_bin', 'wc_bin', 'wc_resp_bin', 'wc_sum_bin', 'nli_quant', 'nli_resp_quant', 'nli_sum_quant', 'chatgpt_quant', 'nli_quant_alt', 'nli_bin_alt']
 
 format_pvalue = lambda x: '-' if x is None else (('{:.2f}'.format(x[0]).replace('0.', '.') if abs(x[0]) < 1 else '{:.2f}'.format(x[0])) + ('' if x[1] == None else '***' if float(x[1])<.001 else '**' if float(x[1])<.01 else '*' if float(x[1])<.05 else '†' if float(x[1])<.1 else ''))
+#LLM back-ends for annotation, all reached through the OpenAI-compatible /chat/completions endpoint
+#(OpenAI, OpenRouter, or a local Ollama/vLLM server). 'chatgpt_bin' and 'deepseek_bin' are the models of the
+#paper; the others are examples of newer models (check the exact model ids available to your account).
+#temperature=None omits the field (reasoning models accept only the default); 'local' = transcripts never
+#leave the machine; reasoning models need a larger output budget than the 32 tokens used in the paper.
+OPENAI_URL, OPENROUTER_URL, OLLAMA_URL = 'https://api.openai.com/v1', 'https://openrouter.ai/api/v1', 'http://localhost:11434/v1'
+LLM_REGISTRY = {'chatgpt_bin': dict(url=OPENAI_URL, model='gpt-4o-mini', key='OPENAI_API_KEY', temperature=.2, max_tokens=32),
+                'deepseek_bin': dict(url=OPENROUTER_URL, model='deepseek/deepseek-chat', key='OPENROUTER_API_KEY', temperature=1.3, max_tokens=32),
+                'gpt5mini_bin': dict(url=OPENAI_URL, model='gpt-5-mini', key='OPENAI_API_KEY', temperature=None, max_tokens=2048, token_field='max_completion_tokens', extra={'reasoning_effort': 'low'}),
+                'claude_bin': dict(url=OPENROUTER_URL, model='anthropic/claude-sonnet-4.5', key='OPENROUTER_API_KEY', temperature=0, max_tokens=32),
+                'gemini_bin': dict(url=OPENROUTER_URL, model='google/gemini-2.5-flash', key='OPENROUTER_API_KEY', temperature=0, max_tokens=1024),
+                'qwen_local_bin': dict(url=OLLAMA_URL, model='qwen3:32b', key=None, temperature=0, max_tokens=2048, local=True)}

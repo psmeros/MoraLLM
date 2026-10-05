@@ -12,4 +12,5 @@ striprtf==0.0.25
 openai==0.28.1
 textstat==0.7.3
 sentence-transformers==3.3.0
+gensim==4.3.3
 ipython==8.18.1

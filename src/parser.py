@@ -1,24 +1,20 @@
+import csv
 import os
 import re
 
 import numpy as np
-import openai
 import pandas as pd
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from sklearn.preprocessing import LabelEncoder, minmax_scale
-import spacy
-import textstat
-import torch
-from transformers import pipeline
 from __init__ import *
-from striprtf.striprtf import rtf_to_text
 
-from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_MODELS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS
+from src.helpers import CHATGPT_SUMMARY_PROMPT, CHURCH_ATTENDANCE_RANGE, CODERS, MORAL_SCHEMAS, EDUCATION_RANGE, INCOME_RANGE, INTERVIEW_SINGLELINE_COMMENTS, INTERVIEW_MULTILINE_COMMENTS, INTERVIEW_SECTIONS, INTERVIEW_PARTICIPANTS, INTERVIEW_METADATA, INTERVIEW_MARKERS_MAPPING, METADATA_GENDER_MAP, METADATA_RACE_MAP, MORALITY_MODELS, MORALITY_ORIGIN, MORALITY_QUESTIONS, NETWORK_ATTRIBUTES, RACE_RANGE, REFINED_SECTIONS, REGION, RELIGION, SURVEY_ATTRIBUTES, TRANSCRIPT_ENCODING, UNCERTAINT_TERMS, WAVE_MORALITY_QUESTIONS
 
 
 #Convert encoding of files in a folder
 def convert_encoding(folder_path, from_encoding, to_encoding):
+    from striprtf.striprtf import rtf_to_text
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
         if os.path.isfile(file_path):
@@ -188,12 +184,12 @@ def get_raw_text(interview):
     return raw_text
 
 #parse folder of transcripts
-def wave_parser(waves_folder='data/interviews/waves'):
+def wave_parser(waves_folder='data/interviews/waves', wave_filter=None):
     
     waves = []
     for foldername in os.listdir(waves_folder):
         foldername = os.path.join(waves_folder, foldername)
-        if os.path.isdir(foldername):
+        if os.path.isdir(foldername) and (wave_filter is None or int(foldername[-1]) in wave_filter):
             interviews = []
 
             for filename in os.listdir(foldername):
@@ -219,14 +215,21 @@ def wave_parser(waves_folder='data/interviews/waves'):
     interviews['Race'] = interviews['Race'].map(RACE_RANGE)
     interviews['Age'] = interviews['Age'].astype('Int64')
 
-    interviews.loc[interviews['Wave'] == 1, 'Morality Text'] = interviews.loc[interviews['Wave'] == 1, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[4]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
-    interviews.loc[interviews['Wave'] == 2, 'Morality Text'] = interviews.loc[interviews['Wave'] == 2, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[246]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
-    interviews.loc[interviews['Wave'] == 3, 'Morality Text'] = interviews.loc[interviews['Wave'] == 3, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(r'^[IR]:M[257]', l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
-    interviews['Morality Text'] = interviews['Morality Text'].apply(clean_morality_tags)
-
-    interviews.loc[interviews['Wave'] == 1, 'Morality Response'] = interviews.loc[interviews['Wave'] == 1].apply(lambda i: i['R:Morality:M4'], axis=1)
-    interviews.loc[interviews['Wave'] == 2, 'Morality Response'] = interviews.loc[interviews['Wave'] == 2].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M4'], i['R:Morality:M6']] if not pd.isna(t)]), axis=1)
-    interviews.loc[interviews['Wave'] == 3, 'Morality Response'] = interviews.loc[interviews['Wave'] == 3].apply(lambda i: ' '.join([t for t in [i['R:Morality:M2'], i['R:Morality:M5'], i['R:Morality:M7']] if not pd.isna(t)]), axis=1)
+    #Select the morality questions of each wave (see WAVE_MORALITY_QUESTIONS in helpers)
+    for wave, questions in WAVE_MORALITY_QUESTIONS.items():
+        in_wave = interviews['Wave'] == wave
+        if not in_wave.any():
+            continue
+        tag_pattern = r'^[IR]:(' + '|'.join(questions['text']) + r')(?!\d)'
+        interviews.loc[in_wave, 'Morality Text'] = interviews.loc[in_wave, 'Morality_Full_Text'].apply(lambda i: ''.join([l + '\n' if re.match(tag_pattern, l) else '' for l in i.split('\n')]) if not pd.isna(i) else '')
+        if len(questions['response']) == 1:
+            interviews.loc[in_wave, 'Morality Response'] = interviews.loc[in_wave, 'R:Morality:' + questions['response'][0]]
+        else:
+            interviews.loc[in_wave, 'Morality Response'] = interviews.loc[in_wave].apply(lambda i: ' '.join([t for t in [i['R:Morality:' + q] for q in questions['response']] if not pd.isna(t)]), axis=1)
+        interviews.loc[in_wave, 'Morality Text'] = interviews.loc[in_wave, 'Morality Text'].apply(lambda t: clean_morality_tags(t, legacy=wave <= 3))
+    unknown = set(interviews['Wave']) - set(WAVE_MORALITY_QUESTIONS)
+    if unknown:
+        raise ValueError(f'No morality-question configuration for wave(s) {unknown}; add them to WAVE_MORALITY_QUESTIONS')
 
     #Clean Morality Text
     interviews['Morality Text'] = interviews['Morality Text'].replace('', pd.NA)
@@ -240,6 +243,7 @@ def wave_parser(waves_folder='data/interviews/waves'):
 #Merge morality text summary
 def merge_summaries(interviews, file = 'data/interviews/misc/morality_summaries.csv'):
     if not os.path.isfile(file):
+        import openai
         #OpenAI API
         openai.api_key = os.getenv('OPENAI_API_KEY')
         summarizer = lambda text: openai.ChatCompletion.create(model='gpt-4o-mini', messages=[{'role': 'system', 'content': CHATGPT_SUMMARY_PROMPT},{'role': 'user','content': text}], temperature=.2, max_tokens=256, frequency_penalty=0, presence_penalty=0, seed=42)
@@ -257,6 +261,10 @@ def merge_summaries(interviews, file = 'data/interviews/misc/morality_summaries.
 #Merge linguistics features
 def merge_linguistics(interviews, file = 'data/interviews/misc/interview_linguistics.csv'):
     if not os.path.isfile(file):
+        import spacy
+        import textstat
+        import torch
+        from transformers import pipeline
         #Count words in morality text
         nlp = spacy.load('en_core_web_lg')
         count = lambda section : 0 if pd.isna(section) else sum([1 for token in nlp(section) if token.pos_ in ['VERB', 'NOUN', 'ADJ', 'ADV']])
@@ -295,9 +303,10 @@ def merge_linguistics(interviews, file = 'data/interviews/misc/interview_linguis
     return interviews
 
 #Clean and normalize morality tags
-def clean_morality_tags(transcript):
+def clean_morality_tags(transcript, legacy=True):
+    #legacy=True reproduces the tag cleaning used for Waves 1-3 in the paper
 
-    transcript = re.sub(r'M[24567]:', '', transcript)
+    transcript = re.sub(r'M[24567]:', '', transcript) if legacy else re.sub(r'(?<=[IR]:)(M[0-9X]+:)+', '', transcript)
 
     lines = transcript.split('\n')
     cleaned_lines = []
@@ -463,7 +472,7 @@ def merge_network(interviews, file = 'data/interviews/misc/network_variables.dta
     return interviews
 
 #Merge crowd labeling data
-def merge_crowd(interviews, file = 'data/interviews/misc/crowd_labeling.csv'):
+def merge_crowd(interviews, file = 'data/interviews/misc/crowd_labeling.csv', wave = 1):
     data = pd.read_csv(file, skiprows=[1,2])
     data = data[data['Finished']]
 
@@ -481,11 +490,57 @@ def merge_crowd(interviews, file = 'data/interviews/misc/crowd_labeling.csv'):
     data['Survey ID'] = data['Survey ID'].astype(int)
 
     data[MORALITY_ORIGIN] = data.apply(lambda d: pd.Series([int(d[mo] > d['Annotations']/2) for mo in MORALITY_ORIGIN]), axis=1).fillna(0)
-    data = data.rename(columns={mo: 'Wave 1:' + mo + '_crowd' for mo in MORALITY_ORIGIN} | {'Survey ID': 'Survey Id'}).drop('Annotations', axis=1)
+    data = data.rename(columns={mo: 'Wave ' + str(wave) + ':' + mo + '_crowd' for mo in MORALITY_ORIGIN} | {'Survey ID': 'Survey Id'}).drop('Annotations', axis=1)
 
-    #Merge data
+    #Merge data (interviews=None returns the crowd labels alone)
+    if interviews is None:
+        return data
     interviews = interviews.merge(data, on='Survey Id', how='left')
     return interviews
+
+#Prepare the input of a crowd-labeling task (same format as the Wave 1 CloudResearch task):
+#one row per interview with its Survey Id and the HTML-formatted morality excerpt.
+def prepare_crowd_task(texts, wave, file = None):
+    file = file or 'data/interviews/misc/crowd_task_wave_' + str(wave) + '.csv'
+    task = texts[texts['Wave'] == wave][['Survey Id', 'Morality Text']].dropna().reset_index(drop=True)
+    task['Morality Text'] = task['Morality Text'].apply(lambda t: re.sub(r'I:', '<b>I: </b>', t)).apply(lambda t: re.sub(r'R:', '<b>R: </b>', t)).apply(lambda t: re.sub(r'\n', '<br>', t))
+    task.to_csv(file, index=False, header=False)
+    print('Saved', file, len(task), 'interviews')
+
+#Write columns (DataFrame with 'Survey Id' and 'Wave X:<dimension>_<model>' columns) into the data dump,
+#replacing existing columns and inserting new ones after the columns of the same model, keeping the two-row header
+def update_cache(columns, file = 'data/cache/morality.csv'):
+    with open(file, newline='') as f:
+        raw = f.read()
+    rows = list(csv.reader(raw.splitlines()))
+    terminator = '\r\n' if '\r\n' in raw else '\n'
+    groups, header, body = rows[0], rows[1], rows[2:]
+    row_of = {row[header.index('Survey Id')]: k for k, row in enumerate(body)}
+    columns = columns.set_index(columns['Survey Id'].astype(int).astype(str)).drop(columns='Survey Id')
+    for column in columns.columns:
+        if column not in header:
+            same_model = [k for k, c in enumerate(header) if c.split('_', 1)[-1] == column.split('_', 1)[-1]]
+            position = (max(same_model) + 1) if same_model else len(header)
+            header.insert(position, column)
+            groups.insert(position, '')
+            for row in body:
+                row.insert(position, '')
+        k = header.index(column)
+        for row in body:
+            row[k] = ''
+        for survey_id, value in columns[column].items():
+            if survey_id in row_of:
+                body[row_of[survey_id]][k] = '' if pd.isna(value) else str(int(value))
+    with open(file, 'w', newline='') as f:
+        writer = csv.writer(f, lineterminator=terminator)
+        writer.writerows([groups, header] + body[:-1])
+        writer = csv.writer(f, lineterminator='' if not raw.endswith(terminator) else terminator)
+        writer.writerow(body[-1])
+    print('Updated', file, 'with', len(columns.columns), 'columns')
+
+#Add the majority-vote crowd labels of a wave (CloudResearch export) to the data dump
+def add_crowd_labels(file, wave):
+    update_cache(merge_crowd(None, file=file, wave=wave))
 
 #Fill missing data
 def fill_missing_data(interviews):
@@ -537,6 +592,12 @@ def fill_missing_data(interviews):
     interviews[[wave + ':' + action for wave in ['Wave 3', 'Wave 4'] for action in ['Cheat', 'Cutclass', 'Secret']]] = pd.NA
     return interviews
     
+#Load the local dump of the morality excerpts (one row per respondent and wave), used when the raw
+#transcripts are not available. Columns: Survey Id, Wave, Interview Code, Morality Text/Response/Summary.
+#The file contains interview text and is never shared (data/ is git-ignored).
+def load_text_dump(file='data/interviews/misc/morality_texts.csv'):
+    return pd.read_csv(file)
+
 #Merge all different types of data
 def prepare_data(models = [], file = 'data/cache/morality.csv'):
     if not os.path.isfile(file):
@@ -563,7 +624,7 @@ def prepare_data(models = [], file = 'data/cache/morality.csv'):
 
     columns += [wave + ':' + mo + '_gold' for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
     columns += [wave + ':' + mo + '_' + coder for coder in CODERS for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
-    columns += [wave + ':' + mo + '_crowd' for wave in ['Wave 1'] for mo in MORALITY_ORIGIN]
+    columns += [wave + ':' + mo + '_crowd' for wave in ['Wave 1', 'Wave 3'] for mo in MORALITY_ORIGIN]
 
     columns += [wave + ':' + mo + '_' + model for model in MORALITY_MODELS + models for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for mo in MORALITY_ORIGIN]
 
@@ -577,6 +638,7 @@ def prepare_data(models = [], file = 'data/cache/morality.csv'):
 
     #columns += [wave + ':' + text for wave in ['Wave 1', 'Wave 2', 'Wave 3'] for text in ['Morality Text', 'Morality Response', 'Morality Summary']]
     
+    columns = [c for c in dict.fromkeys(columns) if c in interviews.columns]
     interviews = interviews[columns]
     return interviews
 
